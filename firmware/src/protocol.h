@@ -8,7 +8,7 @@
 
 #include <stdint.h>
 
-#define PROTO_VERSION 1
+#define PROTO_VERSION 2
 
 /* 128-bit UUIDs: 7a1e00XX-5b0c-4f3a-9c6e-3a5d2b9e0a01 */
 #define SP_UUID_BASE(x) \
@@ -19,6 +19,7 @@
 #define SP_UUID_CONTROL SP_UUID_BASE(0x04) /* write: sp_ctrl_* commands        */
 #define SP_UUID_CONFIG  SP_UUID_BASE(0x05) /* read, write: sp_config_t         */
 #define SP_UUID_STATUS  SP_UUID_BASE(0x06) /* read, notify: sp_status_t        */
+#define SP_UUID_CAPTURE SP_UUID_BASE(0x07)
 
 typedef struct __attribute__((packed)) {
 	uint32_t total;     /* lifetime accepted shots (persisted)           */
@@ -45,7 +46,35 @@ enum {
 	SP_CTRL_REPLAY = 0x03,      /* + uint32 from_seq: re-notify logged events */
 	SP_CTRL_FACTORY_CFG = 0x04, /* restore default thresholds               */
 	SP_CTRL_LED_BLINK = 0x05,   /* find-my-puck blink                       */
+	SP_CTRL_GET_CAPTURE = 0x06,
+	SP_CTRL_FORGET_BONDS = 0x07,
 };
+
+enum {
+	SP_CAP_HEADER = 0x01,
+	SP_CAP_DATA = 0x02,
+};
+
+typedef struct __attribute__((packed)) {
+	uint8_t type;
+	uint32_t seq;
+	uint16_t n_samples;
+	uint16_t trigger_index;
+	uint16_t odr_hz;
+	uint16_t acc_ug_per_lsb;
+	uint16_t gyro_mdps_per_lsb;
+} sp_cap_header_t;
+
+typedef struct __attribute__((packed)) {
+	uint8_t type;
+	uint32_t seq;
+	uint16_t first;
+} sp_cap_data_t;
+
+typedef struct __attribute__((packed)) {
+	int16_t acc[3];
+	int16_t gyro[3];
+} sp_cap_sample_t;
 
 typedef struct __attribute__((packed)) {
 	uint8_t version;          /* PROTO_VERSION                            */

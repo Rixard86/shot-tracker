@@ -186,3 +186,8 @@ void power_off_until_charger(void)
 	gpio_pin_set_dt(&chg_inhibit, 0);
 	sys_poweroff();
 }
+
+bool power_vbus_present(void)
+{
+	return nrf_power_usbregstatus_vbusdet_get(NRF_POWER);
+}

@@ -19,6 +19,7 @@ int power_init(void);
 const power_state_t *power_update(void);
 const power_state_t *power_state(void);
 bool power_should_cutoff(void);
+bool power_vbus_present(void);
 void power_off_until_charger(void); /* does not return */
 
 #endif

@@ -1,21 +1,30 @@
 /*
  * sim_runner.c - host-side pipeline around shot_detect.c, mirroring the
  * firmware: IDLE at a slow rate with motion wake, ACTIVE at cfg.fs_hz,
- * LIS2DE12-like sensor model (+-16 g clip, 8-bit / 187.5 mg quantisation,
- * point sampling = worst-case aliasing, no anti-alias filter assumed).
+ * LSM6DSO32 accelerometer model (+-32 g clip, 16-bit / 0.976 mg quantisation
+ * converted to mg exactly like accel_to_mg(), point sampling = worst-case
+ * aliasing, no anti-alias filter assumed).
  */
 #include <math.h>
 #include <stdint.h>
 #include "../src/shot_detect.h"
 
-#define LSB_MG 187.5f
-#define CLIP_MG 16000.0f
+#define ACC_UG_PER_LSB 976L
+#define UG_PER_MG 1000L
+#define RAW_MAX 32767L
+#define RAW_MIN (-32768L)
 
-static int16_t sensor(float v)
+static int16_t sensor(float mg)
 {
-	if (v > CLIP_MG) v = CLIP_MG;
-	if (v < -CLIP_MG) v = -CLIP_MG;
-	return (int16_t)(roundf(v / LSB_MG) * LSB_MG);
+	long raw = lroundf(mg * (float)UG_PER_MG / (float)ACC_UG_PER_LSB);
+
+	if (raw > RAW_MAX) {
+		raw = RAW_MAX;
+	}
+	if (raw < RAW_MIN) {
+		raw = RAW_MIN;
+	}
+	return (int16_t)((raw * ACC_UG_PER_LSB) / UG_PER_MG);
 }
 
 typedef struct {

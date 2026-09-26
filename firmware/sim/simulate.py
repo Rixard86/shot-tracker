@@ -3,8 +3,10 @@
 simulate.py - Monte Carlo validation of firmware/src/shot_detect.c.
 
 Builds libsd (shot_detect.c + sim_runner.c), generates synthetic archery
-sessions at 3.2 kHz ground truth, runs them through the same IDLE/ACTIVE
-pipeline and sensor model as the firmware, and scores detections.
+sessions at 3.3 kHz ground truth, runs them through the same IDLE/ACTIVE
+pipeline and sensor model as the firmware, and scores detections. Also
+builds and runs the unit tests of the other portable firmware modules
+(test_capture.c, test_evlog.c).
 
     python simulate.py                 # default config, 60 sessions
     python simulate.py --sessions 200 --seed 7
@@ -19,12 +21,17 @@ import ctypes as C
 import os
 import subprocess
 import sys
+import tempfile
 
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "..", "src")
-FS = 3200.0  # ground-truth sample rate
+FS = 3328.0
+IDLE_HZ = 12.5
+WAKE_LATENCY_MS = 5
+CC = os.environ.get("CC", "gcc")
+CFLAGS = ["-std=c99", "-O2", "-Wall", "-Wextra", "-Werror"]
 G = 1000.0   # mg
 
 # --------------------------------------------------------------------------
@@ -48,11 +55,12 @@ class SimStats(C.Structure):
 
 
 def build_lib():
-    so = os.path.join(HERE, "libsd.so")
+    windows = sys.platform == "win32"
+    so = os.path.join(HERE, "libsd.dll" if windows else "libsd.so")
     srcs = [os.path.join(SRC, "shot_detect.c"), os.path.join(HERE, "sim_runner.c")]
     if not os.path.exists(so) or any(os.path.getmtime(s) > os.path.getmtime(so) for s in srcs):
-        subprocess.check_call(["gcc", "-std=c99", "-O2", "-Wall", "-Wextra", "-Werror",
-                               "-shared", "-fPIC", "-o", so] + srcs + ["-lm"])
+        pic = [] if windows else ["-fPIC"]
+        subprocess.check_call([CC] + CFLAGS + ["-shared"] + pic + ["-o", so] + srcs + ["-lm"])
     lib = C.CDLL(so)
     lib.sd_default_config.argtypes = [C.POINTER(SdConfig)]
     fp = np.ctypeslib.ndpointer(dtype=np.float32, flags="C_CONTIGUOUS")
@@ -337,7 +345,8 @@ def run_set(lib, cfg, name, n, seed, hard=False, drop_frac=0.0, shot_kw=None, ve
         a = np.concatenate(s.chunks).astype(np.float32)
         st = SimStats()
         ne = lib.sim_run(np.ascontiguousarray(a[:, 0]), np.ascontiguousarray(a[:, 1]),
-                         np.ascontiguousarray(a[:, 2]), len(a), FS, C.byref(cfg), 10.0, 5,
+                         np.ascontiguousarray(a[:, 2]), len(a), FS, C.byref(cfg), IDLE_HZ,
+                         WAKE_LATENCY_MS,
                          ev_buf, 4096, C.byref(st))
         evs = [ev_buf[i] for i in range(ne)]
         tp, fps, fns = score(s, evs)
@@ -381,6 +390,21 @@ def margins(res):
         print(f"    {nm:13s} shots {np.round(ps).astype(int)}   non-shots {np.round(pn).astype(int)}")
 
 
+UNIT_TESTS = [("test_capture.c", "capture.c"), ("test_evlog.c", "evlog.c")]
+
+
+def unit_test_passes(pair):
+    test, module = pair
+    exe = os.path.join(tempfile.mkdtemp(), test.replace(".c", ".exe"))
+    srcs = [os.path.join(HERE, test), os.path.join(SRC, module)]
+    subprocess.check_call([CC] + CFLAGS + ["-o", exe] + srcs)
+    return subprocess.run([exe]).returncode == 0
+
+
+def unit_tests_pass():
+    return all([unit_test_passes(pair) for pair in UNIT_TESTS])
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--sessions", type=int, default=60)
@@ -395,7 +419,7 @@ def main():
           f"pre_still>={cfg.pre_still_min_ms} ms, post_lf>={cfg.post_lf_min_mg:.0f} mg "
           f"[{cfg.post_start_ms}-{cfg.post_end_ms} ms], fs={cfg.fs_hz:.0f} Hz")
 
-    ok = True
+    ok = unit_tests_pass()
     r = run_set(lib, cfg, "nominal", args.sessions, args.seed, drop_frac=0.1)
     margins(r)
     ok &= r["recall"] >= 0.99 and r["precision"] >= 0.99

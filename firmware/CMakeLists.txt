@@ -8,6 +8,12 @@ target_sources(app PRIVATE
   src/main.c
   src/shot_detect.c
   src/accel.c
+  src/capture.c
+  src/capture_tx.c
+  src/evlog.c
+  src/event_tx.c
+  src/claim.c
+  src/identity.c
   src/power.c
   src/store.c
   src/ble.c

@@ -18,7 +18,7 @@ import design  # noqa: E402
 import sexp  # noqa: E402
 from sexp import Str  # noqa: E402
 
-SYMDIR = "/usr/share/kicad/symbols/"
+SYMDIR = os.environ.get("KICAD10_SYMBOL_DIR", r"C:\Program Files\KiCad\10.0\share\kicad\symbols")
 OUTDIR = os.path.join(HERE, "kicad")
 PROJECT = "shotpuck"
 ROOT_UUID = str(uuid.uuid5(uuid.NAMESPACE_URL, "shotpuck-root"))
@@ -108,7 +108,7 @@ def main():
          203.2, 35.56, 405.0),
         ("Charge inhibit / status", ["R2", "Q1", "R3", "D2"], 203.2, 81.28, 405.0),
         ("Battery", ["BT1", "JP1", "C2", "C3"], 203.2, 124.46, 405.0),
-        ("Accelerometer", ["U2", "C6", "R5", "R6"], 203.2, 160.02, 405.0),
+        ("IMU (accelerometer + gyroscope)", ["U2", "C6", "C7", "R5", "R6"], 203.2, 160.02, 405.0),
         ("Mechanical", ["H1", "H2", "H3"], 203.2, 203.2, 405.0),
     ]
     by_ref = {p[0]: p for p in design.PARTS}

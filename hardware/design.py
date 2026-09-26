@@ -8,7 +8,10 @@ Power path
   J1 magnetic pogo (VIN_RAW) -> D1 BAT54J (reverse polarity) -> VIN
   VIN -> U3 MCP73831-2 (4.20 V, 50 mA via R1 = 20k) -> VBAT (CP1654)
   VBAT -> U1 VDDH (nRF52833 high-voltage mode, REG0 -> VDD 3.0 V)
-  VDD  -> U2 LIS2DE12, LED, SWD VCC sense
+  VDD  -> U2 LSM6DSO32 (VDD + VDDIO), LED, SWD VCC sense
+IMU
+  U2 LSM6DSO32 on I2C at 0x6A (SA0 = GND, CS = VDD selects I2C). Aux master
+  pins SDx/SCx to GND; INT2, OCS_Aux, SDO_Aux unconnected.
 Charge inhibit (temperature, firmware)
   PROG -> R1 -> Q1A drain; Q1A gate pulled to VIN by R2 (charging allowed
   whenever a cable is present). Q1B (gate = CHG_INH, R3 pull-down) pulls
@@ -28,12 +31,13 @@ PARTS = [
       "28": "VDD", "30": "VBAT", "32": "VIN",
       "20": "SCL", "22": "SDA", "24": "ACC_INT1", "26": "CHG_STAT", "16": "CHG_INH",
       "37": "LED_IO", "51": "SWDIO", "53": "SWDCLK"}, {}),
-    ("U2", "Sensor_Motion:LIS2DE12", "Package_LGA:LGA-12_2x2mm_P0.5mm", "LIS2DE12TR",
-     {"1": "SCL", "2": "VDD", "3": "GND", "4": "SDA", "5": "GND", "6": "GND", "7": "GND",
-      "8": "GND", "9": "VDD", "10": "VDD", "12": "ACC_INT1"}, {}),
+    ("U2", "Sensor_Motion:LSM6DSL", "Package_LGA:LGA-14_3x2.5mm_P0.5mm_LayoutBorder3x4y",
+     "LSM6DSO32TR",
+     {"1": "GND", "2": "GND", "3": "GND", "4": "ACC_INT1", "5": "VDD", "6": "GND", "7": "GND",
+      "8": "VDD", "12": "VDD", "13": "SCL", "14": "SDA"}, {}),
     ("U3", "Battery_Management:MCP73831-2-OT", "Package_TO_SOT_SMD:SOT-23-5", "MCP73831T-2ACI/OT",
      {"1": "STAT", "2": "GND", "3": "VBAT", "4": "VIN", "5": "PROG"}, {}),
-    ("Q1", "Device:Q_Dual_NMOS_S1G1D2S2G2D1", "Package_TO_SOT_SMD:SOT-363_SC-70-6", "DMN63D8LDW",
+    ("Q1", "Transistor_FET:Q_Dual_NMOS_S1G1D2S2G2D1", "Package_TO_SOT_SMD:SOT-363_SC-70-6", "DMN63D8LDW",
      {"1": "GND", "2": "Q1_GATE", "6": "PROG_SW", "4": "GND", "5": "CHG_INH", "3": "Q1_GATE"},
      {"units": 2}),
     ("R1", "Device:R_Small", "Resistor_SMD:R_0402_1005Metric", "20k 1%",
@@ -68,6 +72,8 @@ PARTS = [
      {"1": "VDD", "2": "GND"}, {}),
     ("C6", "Device:C_Small", "Capacitor_SMD:C_0402_1005Metric", "100n",
      {"1": "VDD", "2": "GND"}, {}),
+    ("C7", "Device:C_Small", "Capacitor_SMD:C_0402_1005Metric", "100n",
+     {"1": "VDD", "2": "GND"}, {}),
     ("BT1", "Device:Battery_Cell", "ShotPuck:CP1654_Tabbed", "Varta CP1654 A3 (tabbed)",
      {"1": "BAT_P", "2": "GND"}, {}),
     ("JP1", "Jumper:SolderJumper_2_Bridged", "Jumper:SolderJumper-2_P1.3mm_Bridged_Pad1.0x1.5mm",
@@ -82,7 +88,7 @@ PARTS = [
     ("H3", "Mechanical:MountingHole", "ShotPuck:MountingHole_1.8mm_NPTH", "M1.6", {}, {}),
 ]
 
-POWER_FLAG_NETS = ["GND", "VBAT", "VDD", "VIN", "VIN_RAW"]
+POWER_FLAG_NETS = ["GND", "VDD", "VIN", "VIN_RAW"]
 
 # Nets that carry charge current / supply: wider tracks on the PCB
 POWER_NETS = {"BAT_P": 0.4, "VIN_RAW": 0.4, "VIN": 0.4, "VBAT": 0.4, "GND": 0.4, "VDD": 0.3}

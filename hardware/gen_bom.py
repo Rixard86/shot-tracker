@@ -7,7 +7,7 @@ import design
 
 MPN = {
     "MDBT50Q-512K": ("Raytac", "MDBT50Q-512K"),
-    "LIS2DE12TR": ("STMicroelectronics", "LIS2DE12TR"),
+    "LSM6DSO32TR": ("STMicroelectronics", "LSM6DSO32TR"),
     "MCP73831T-2ACI/OT": ("Microchip", "MCP73831T-2ACI/OT"),
     "DMN63D8LDW": ("Diodes Inc", "DMN63D8LDW-7"),
     "BAT54J": ("Nexperia", "BAT54J,115"),

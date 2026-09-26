@@ -14,7 +14,7 @@
 
 void sd_default_config(sd_config_t *c)
 {
-	c->fs_hz = 400.0f;
+	c->fs_hz = 416.0f;
 	c->trig_hf_mg = 6000.0f;
 	c->move_mg = 300.0f;
 	c->pre_still_min_ms = 500;

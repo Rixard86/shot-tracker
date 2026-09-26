@@ -2,9 +2,9 @@
  * ShotPuck - nRF52833 (Raytac MDBT50Q-512K), VDDH = Li-ion cell.
  *
  * Pin map (MDBT50Q pad -> signal):
- *   P0.04 (20) I2C SCL      -> LIS2DE12 SCL
- *   P0.06 (22) I2C SDA      -> LIS2DE12 SDA
- *   P0.08 (24) ACCEL_INT1   <- LIS2DE12 INT1
+ *   P0.04 (20) I2C SCL      -> LSM6DSO32 SCL
+ *   P0.06 (22) I2C SDA      -> LSM6DSO32 SDA
+ *   P0.08 (24) ACCEL_INT1   <- LSM6DSO32 INT1
  *   P1.09 (26) CHG_STAT     <- MCP73831 STAT via BAT54 (low = charging)
  *   P0.27 (16) CHG_INHIBIT  -> Q2 gate (high = charging disabled)
  *   P0.13 (37) LED          -> LED anode via 1k (active high)
@@ -100,7 +100,11 @@
 		};
 		slot1_partition: partition@43000 {
 			label = "image-1";
-			reg = <0x00043000 0x37000>;
+			reg = <0x00043000 0x2F000>;
+		};
+		eventlog_partition: partition@72000 {
+			label = "eventlog";
+			reg = <0x00072000 0x00008000>;
 		};
 		storage_partition: partition@7a000 {
 			label = "storage";

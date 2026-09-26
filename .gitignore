@@ -1,0 +1,9 @@
+__pycache__/
+firmware/sim/libsd.*
+hardware/kicad/*.dsn
+hardware/kicad/*.ses
+hardware/kicad/*.net
+hardware/kicad/*.lck
+hardware/kicad/freerouting.log
+hardware/kicad/fp-info-cache
+hardware/kicad/*-backups/

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 gen_pcb.py - builds kicad/shotpuck.kicad_pcb from design.py + ../layout.json
-(+ ../mechanical/out/trim.json), with the KiCad 7 pcbnew Python API.
+(+ ../mechanical/out/trim.json), with the KiCad 10 pcbnew Python API.
 
   * round 2-layer board, 3 NPTH holes for the cap screws
   * custom footprints written to kicad/ShotPuck.pretty
@@ -13,7 +13,7 @@ gen_pcb.py - builds kicad/shotpuck.kicad_pcb from design.py + ../layout.json
     python gen_pcb.py            # place + route + DRC
     python gen_pcb.py --no-route
 
-Routing takes 1-5 min (Freerouting 2.1, Java 17+).
+Routing takes 1-5 min (Freerouting 2.1, Java 21: set JAVA and FREEROUTING_JAR).
 """
 import json
 import math
@@ -25,16 +25,18 @@ import sys
 import pcbnew
 
 import design
+import islands
 import sexp
 from gen_sch import U
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 KI = os.path.join(HERE, "kicad")
 LIB = os.path.join(KI, "ShotPuck.pretty")
-STD = "/usr/share/kicad/footprints"
+STD = os.environ.get("KICAD10_FOOTPRINT_DIR", r"C:\Program Files\KiCad\10.0\share\kicad\footprints")
 L = json.load(open(os.path.join(HERE, "..", "layout.json")))
 TRIM = json.load(open(os.path.join(HERE, "..", "mechanical", "out", "trim.json")))
-JAR = os.environ.get("FREEROUTING_JAR", "/opt/fr/freerouting.jar")
+JAR = os.environ.get("FREEROUTING_JAR", os.path.expanduser("~/tools/freerouting-2.1.0.jar"))
+JAVA = os.environ.get("JAVA", os.path.expanduser("~/tools/jre21/bin/java.exe"))
 
 MM = pcbnew.FromMM
 
@@ -58,8 +60,8 @@ PLACE = {
     "JP1": (5.3, -10.0, 0), "C2": (2.4, -10.2, 90), "U3": (3.9, -13.4, 0),
     "R1": (6.9, -13.6, 90), "Q1": (9.2, -12.6, 0), "R2": (8.8, -14.6, 0),
     "R3": (11.5, -12.6, 90), "D2": (13.0, -10.0, 90),
-    # accelerometer by the I2C pads
-    "U2": (-3.6, -8.2, 180), "C6": (-3.6, -10.3, 0), "R5": (-1.0, -9.3, 90),
+    # IMU by the I2C pads: SCL/SDA/CS edge faces the module-cell channel, C6 at VDDIO, C7 at VDD
+    "U2": (-3.6, -8.2, 270), "C6": (-6.1, -7.2, 180), "C7": (-4.35, -10.5, 0), "R5": (-1.0, -9.3, 90),
     "R6": (0.1, -10.8, 90),
 }
 
@@ -70,7 +72,6 @@ def pad(fp, num, shape, x, y, w, h, smd=True, drill=None, npth=False, layers=Non
     p.SetNumber(num)
     p.SetShape(shape)
     p.SetSize(pcbnew.VECTOR2I(MM(w), MM(h)))
-    p.SetPos0(pcbnew.VECTOR2I(MM(x), MM(y)))
     p.SetPosition(pcbnew.VECTOR2I(MM(x), MM(y)))
     if npth:
         p.SetAttribute(pcbnew.PAD_ATTRIB_NPTH)
@@ -88,9 +89,9 @@ def pad(fp, num, shape, x, y, w, h, smd=True, drill=None, npth=False, layers=Non
 
 
 def line(fp, layer, x1, y1, x2, y2, w=0.12):
-    s = pcbnew.FP_SHAPE(fp, pcbnew.SHAPE_T_SEGMENT)
-    s.SetStart0(pcbnew.VECTOR2I(MM(x1), MM(y1)))
-    s.SetEnd0(pcbnew.VECTOR2I(MM(x2), MM(y2)))
+    s = pcbnew.PCB_SHAPE(fp, pcbnew.SHAPE_T_SEGMENT)
+    s.SetStart(pcbnew.VECTOR2I(MM(x1), MM(y1)))
+    s.SetEnd(pcbnew.VECTOR2I(MM(x2), MM(y2)))
     s.SetLayer(layer)
     s.SetWidth(MM(w))
     fp.Add(s)
@@ -103,9 +104,9 @@ def rect(fp, layer, w, h, w_line=0.05, cx=0.0, cy=0.0):
 
 
 def circle(fp, layer, r, w=0.05, cx=0.0, cy=0.0):
-    s = pcbnew.FP_SHAPE(fp, pcbnew.SHAPE_T_CIRCLE)
-    s.SetCenter0(pcbnew.VECTOR2I(MM(cx), MM(cy)))
-    s.SetEnd0(pcbnew.VECTOR2I(MM(cx + r), MM(cy)))
+    s = pcbnew.PCB_SHAPE(fp, pcbnew.SHAPE_T_CIRCLE)
+    s.SetCenter(pcbnew.VECTOR2I(MM(cx), MM(cy)))
+    s.SetEnd(pcbnew.VECTOR2I(MM(cx + r), MM(cy)))
     s.SetLayer(layer)
     s.SetWidth(MM(w))
     fp.Add(s)
@@ -114,7 +115,7 @@ def circle(fp, layer, r, w=0.05, cx=0.0, cy=0.0):
 def new_fp(name, descr):
     fp = pcbnew.FOOTPRINT(None)
     fp.SetFPID(pcbnew.LIB_ID("ShotPuck", name))
-    fp.SetDescription(descr)
+    fp.SetLibDescription(descr)
     fp.Reference().SetLayer(pcbnew.F_Fab)
     fp.Value().SetLayer(pcbnew.F_Fab)
     return fp
@@ -170,6 +171,13 @@ def load_fp(fpid):
 
 
 # --------------------------------------------------------------------- zones
+def layer_set(layers):
+    ls = pcbnew.LSET()
+    for layer in layers:
+        ls.AddLayer(layer)
+    return ls
+
+
 def poly_zone(board, layer_set, pts, net=None, rule=None, name=""):
     z = pcbnew.ZONE(board)
     z.SetLayerSet(layer_set)
@@ -181,7 +189,7 @@ def poly_zone(board, layer_set, pts, net=None, rule=None, name=""):
         z.SetIsRuleArea(True)
         z.SetDoNotAllowTracks("tracks" in rule)
         z.SetDoNotAllowVias("vias" in rule)
-        z.SetDoNotAllowCopperPour("pour" in rule)
+        z.SetDoNotAllowZoneFills("pour" in rule)
         z.SetDoNotAllowPads(False)
         z.SetDoNotAllowFootprints("footprints" in rule)
         z.SetZoneName(name)
@@ -213,7 +221,7 @@ def build():
     ds.m_ViasMinSize = MM(0.45)
     ds.m_MinThroughDrill = MM(0.2)
     ds.m_CopperEdgeClearance = MM(0.3)
-    nc = ds.m_NetSettings.m_DefaultNetClass
+    nc = ds.m_NetSettings.GetDefaultNetclass()
     nc.SetTrackWidth(MM(0.2))
     nc.SetClearance(MM(0.15))
     nc.SetViaDiameter(MM(0.5))
@@ -276,11 +284,11 @@ def build():
     poly_zone(board, allcu, [(-R - 1, -6.3), (ant_x, -6.3), (ant_x, 6.3), (-R - 1, 6.3)],
               rule="tracks vias pour", name="antenna_to_rim")
     c = L["cell"]
-    poly_zone(board, pcbnew.LSET(pcbnew.F_Cu), circ(c["x"], c["y"], c["dia"] / 2 + 0.3),
+    poly_zone(board, layer_set([pcbnew.F_Cu]), circ(c["x"], c["y"], c["dia"] / 2 + 0.3),
               rule="tracks vias pour", name="under_cell_top")
     for i, t in enumerate(TRIM):
         if t["clear_above_pcb"] < 2.0:           # pin reaches low: no parts below it
-            poly_zone(board, pcbnew.LSET(pcbnew.F_Cu), circ(t["x"], t["y"], t["keepout_r"]),
+            poly_zone(board, layer_set([pcbnew.F_Cu]), circ(t["x"], t["y"], t["keepout_r"]),
                       rule="footprints", name=f"trim_pin_{i + 1}")
     add_pours(board)
     gnd_fanout(board)
@@ -466,7 +474,7 @@ def add_pours(board):
     R = L["pcb_dia"] / 2
     gnd = board.FindNet("GND")
     for layer in (pcbnew.F_Cu, pcbnew.B_Cu):
-        poly_zone(board, pcbnew.LSET(layer), circ(0, 0, R + 0.5, 72), net=gnd)
+        poly_zone(board, layer_set([layer]), circ(0, 0, R + 0.5, 72), net=gnd)
 
 
 def fill(board):
@@ -486,7 +494,7 @@ def route(board, path, timeout=900):
         return False
     if os.path.exists(ses):
         os.remove(ses)
-    cmd = ["java", "-jar", JAR, "--gui.enabled=false", "-de", dsn, "-do", ses, "-mp", "40",
+    cmd = [JAVA, "-jar", JAR, "--gui.enabled=false", "-de", dsn, "-do", ses, "-mp", "40",
            "-mt", "1"]
     print(" ".join(cmd))
     try:
@@ -502,9 +510,13 @@ def route(board, path, timeout=900):
 
 
 def import_ses(board, ses):
-    """Add Freerouting's wires/vias to the board (KiCad 7's ImportSpecctraSES
+    """Add Freerouting's wires/vias to the board (pcbnew's ImportSpecctraSES
     only works inside the GUI). SES units: 0.1 um, y up."""
-    tree = sexp.parse(open(ses).read())[0]
+    parsed = sexp.parse(open(ses).read())
+    if not parsed:
+        print("empty session file; keeping previous copper")
+        return False
+    tree = parsed[0]
 
     def find(node, key):
         return [x for x in node if isinstance(x, list) and x and x[0] == key]
@@ -558,9 +570,10 @@ def import_ses(board, ses):
     return n_tr > 0
 
 
-def drc(board):
+def drc(path):
     rpt = os.path.join(KI, "drc.rpt")
-    pcbnew.WriteDRCReport(board, rpt, pcbnew.EDA_UNITS_MILLIMETRES, True)
+    subprocess.run(["kicad-cli", "pcb", "drc", "--severity-all", "--all-track-errors", "-o", rpt, path],
+                   stdout=subprocess.DEVNULL, check=True)
     lines = [l.strip() for l in open(rpt) if l.startswith("** Found")]
     print("\n".join(lines))
     return lines
@@ -579,9 +592,12 @@ def main():
         left = board.GetConnectivity().GetUnconnectedCount(False)
         if left:
             print(f"second pass for {left} connection(s):", route(board, path, timeout=200))
+            stitch(board)
     fill(board)
+    if islands.bridge_islands(board):
+        fill(board)
     pcbnew.SaveBoard(path, board)
-    drc(board)
+    drc(path)
 
 
 if __name__ == "__main__":

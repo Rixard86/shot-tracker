@@ -4,10 +4,11 @@
  * Event loop on one thread; all I2C and flash work happens here. ISRs and
  * BT callbacks only set flags / queue messages and give wake_sem.
  *
- *   IDLE   : LIS2DE12 at 10 Hz with HP wake interrupt, CPU asleep.
- *            Advertising stops ADV_LINGER_MS after entering IDLE.
- *   ACTIVE : 400 Hz FIFO -> shot_detect.c; advertising / connected.
- *            Back to IDLE after cfg.idle_timeout_ms of stillness.
+ *   IDLE   : LSM6DSO32 accelerometer at 12.5 Hz with wake interrupt, gyro
+ *            off, CPU asleep. Advertising stops ADV_LINGER_MS after IDLE.
+ *   ACTIVE : 416 Hz accel + gyro FIFO -> shot_detect.c and the capture
+ *            ring; advertising / connected. Back to IDLE after
+ *            cfg.idle_timeout_ms of stillness.
  */
 #include <string.h>
 #include <zephyr/drivers/gpio.h>
@@ -18,6 +19,10 @@
 
 #include "accel.h"
 #include "ble.h"
+#include "capture.h"
+#include "capture_tx.h"
+#include "claim.h"
+#include "event_tx.h"
 #include "power.h"
 #include "protocol.h"
 #include "shot_detect.h"
@@ -26,12 +31,22 @@
 LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 
 #define FW_MAJOR 0
-#define FW_MINOR 1
-#define EVENT_LOG_LEN 128
+#define FW_MINOR 2
 #define ADV_LINGER_MS 120000
 #define HOUSEKEEP_ACTIVE_MS 10000
 #define HOUSEKEEP_IDLE_MS 60000
-#define SAMPLE_PERIOD_X2_MS 5 /* 2.5 ms at 400 Hz, stored x2 */
+#define FIFO_BATCH_SAMPLES 32
+#define FIFO_WATERMARK_SAMPLES 26
+#define FIFO_DRAIN_ROUNDS 4
+#define CTRL_SEQ_MSG_LEN 5
+#define TX_POLL_MS 20
+#define ACTIVE_POLL_MS 1000
+#define IDLE_POLL_MS 2000
+#define CLAIM_POLL_MS 250
+#define CLAIM_BLINK_PERIOD_MS 1000
+#define CLAIM_BLINK_MS 30
+#define PAIRED_BLINKS 2
+#define PAIRED_BLINK_MS 60
 
 static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
 
@@ -46,12 +61,10 @@ struct ctrl_msg {
 K_MSGQ_DEFINE(ctrl_q, sizeof(struct ctrl_msg), 4, 4);
 
 static store_t st;
+static cap_t cap;
 static sd_state_t det;
 static sp_config_t pending_cfg;
 static atomic_t cfg_pending;
-
-static sp_event_t ev_log[EVENT_LOG_LEN];
-static uint32_t ev_log_n; /* total ever written */
 
 static int64_t unix_offset_ms;
 static bool time_set;
@@ -159,6 +172,11 @@ static int on_cfg(const sp_config_t *c)
 	return 0;
 }
 
+static void on_tx_done(void)
+{
+	k_sem_give(&wake_sem);
+}
+
 static void on_conn(bool connected)
 {
 	ARG_UNUSED(connected);
@@ -173,6 +191,7 @@ static void go_active(void)
 	accel_set_active();
 	active_start_ms = k_uptime_get_32();
 	sample_idx = 0;
+	cap_reset(&cap);
 	sd_start_active(&det, active_start_ms);
 	ble_adv_start();
 	LOG_INF("ACTIVE");
@@ -189,6 +208,15 @@ static void go_idle(void)
 
 /* ------------------------------------------------------------- events */
 
+static void request_capture(const sd_event_t *e, uint32_t seq)
+{
+	cap_request_t req = {.seq = seq, .trigger_index = cap_ms_to_index(e->t_ms - active_start_ms)};
+
+	if (cap_request(&cap, &req) == CAP_NO_SLOT) {
+		LOG_WRN("no capture for seq %u", seq);
+	}
+}
+
 static void handle_detection(const sd_event_t *e, uint32_t uptime_ms)
 {
 	sp_event_t w = {
@@ -201,13 +229,12 @@ static void handle_detection(const sd_event_t *e, uint32_t uptime_ms)
 		.accepted = e->accepted,
 		.reason = e->reason,
 	};
-	ev_log[ev_log_n % EVENT_LOG_LEN] = w;
-	ev_log_n++;
-
+	event_tx_record(&w);
 	if (e->accepted) {
 		st.total++;
 		store_save_counts(&st);
 		publish_count();
+		request_capture(e, w.seq);
 		led_pulse(20);
 		LOG_INF("SHOT #%u pk=%u still=%u lf=%u", st.total, e->peak_hf_mg,
 			e->pre_still_ms, e->post_lf_mg);
@@ -215,16 +242,50 @@ static void handle_detection(const sd_event_t *e, uint32_t uptime_ms)
 		LOG_INF("reject r=%u pk=%u still=%u lf=%u", e->reason, e->peak_hf_mg,
 			e->pre_still_ms, e->post_lf_mg);
 	}
-	ble_send_event(&w);
+}
+
+static uint32_t sample_ms(uint32_t index)
+{
+	return active_start_ms + cap_index_to_ms(index);
+}
+
+static void restart_stream(uint32_t now)
+{
+	LOG_WRN("FIFO overrun");
+	active_start_ms = now;
+	sample_idx = 0;
+	cap_reset(&cap);
+	sd_start_active(&det, now);
+}
+
+static void process_batch(const accel_fifo_t *fifo, uint32_t n)
+{
+	uint32_t now = k_uptime_get_32();
+	uint32_t t_last = sample_ms(sample_idx + n - 1u);
+
+	for (uint32_t i = 0; i < n; i++) {
+		int16_t mg[3];
+		sd_event_t e;
+		int slot = cap_push(&cap, &fifo->samples[i]);
+
+		if (slot != CAP_NO_SLOT) {
+			cap_tx_queue(cap.slots[slot].seq);
+		}
+		accel_to_mg(&fifo->samples[i], mg);
+		if (sd_process(&det, mg, sample_ms(sample_idx++), &e)) {
+			handle_detection(&e, now - (t_last - e.t_ms));
+		}
+	}
 }
 
 static void handle_accel(void)
 {
-	static int16_t buf[32][3];
+	static sp_cap_sample_t buf[FIFO_BATCH_SAMPLES];
+	accel_fifo_t fifo = {.samples = buf, .max = FIFO_BATCH_SAMPLES};
 
 	if (accel_mode() == ACCEL_IDLE) {
 		if (accel_clear_wake() > 0) {
-			go_active(); /* re-arms the interrupt */
+			go_active();
 		} else {
 			accel_irq_rearm();
 		}
@@ -233,59 +294,23 @@ static void handle_accel(void)
 	if (accel_mode() != ACCEL_ACTIVE) {
 		return;
 	}
-
-	for (int guard = 0; guard < 4; guard++) {
-		int ovr = 0;
-		int n = accel_read_fifo(buf, ARRAY_SIZE(buf), &ovr);
+	for (int round = 0; round < FIFO_DRAIN_ROUNDS; round++) {
+		int n = accel_read_fifo(&fifo);
 		if (n <= 0) {
 			break;
 		}
-		uint32_t now = k_uptime_get_32();
-		if (ovr) {
-			/* samples were lost: restart the detector's time base */
-			LOG_WRN("FIFO overrun");
-			active_start_ms = now;
-			sample_idx = 0;
-			sd_start_active(&det, now);
+		if (fifo.overrun) {
+			restart_stream(k_uptime_get_32());
 		}
-		uint32_t t_last = active_start_ms + ((sample_idx + n - 1) * SAMPLE_PERIOD_X2_MS) / 2;
-		for (int i = 0; i < n; i++) {
-			uint32_t t = active_start_ms + (sample_idx * SAMPLE_PERIOD_X2_MS) / 2;
-			sample_idx++;
-			sd_event_t e;
-			if (sd_process(&det, buf[i], t, &e)) {
-				/* map detector time to uptime (ODR may deviate +-10 %) */
-				handle_detection(&e, now - (t_last - e.t_ms));
-			}
-		}
-		if (n < 25) {
+		process_batch(&fifo, (uint32_t)n);
+		if (n < FIFO_WATERMARK_SAMPLES) {
 			break;
 		}
 	}
-
-	uint32_t t_now = active_start_ms + (sample_idx * SAMPLE_PERIOD_X2_MS) / 2;
-	if (sd_active_should_sleep(&det, t_now)) {
+	if (sd_active_should_sleep(&det, sample_ms(sample_idx))) {
 		go_idle();
 	} else {
 		accel_irq_rearm();
-	}
-}
-
-static void replay_from(uint32_t from_seq)
-{
-	uint32_t first = ev_log_n > EVENT_LOG_LEN ? ev_log_n - EVENT_LOG_LEN : 0;
-	for (uint32_t i = first; i < ev_log_n; i++) {
-		const sp_event_t *e = &ev_log[i % EVENT_LOG_LEN];
-		if (e->seq < from_seq) {
-			continue;
-		}
-		for (int tries = 0; tries < 50; tries++) {
-			int err = ble_send_event(e);
-			if (err != -ENOMEM) {
-				break;
-			}
-			k_msleep(20);
-		}
 	}
 }
 
@@ -310,7 +335,7 @@ static void handle_ctrl(void)
 			break;
 		case SP_CTRL_REPLAY:
 			if (m.len >= 5) {
-				replay_from(sys_get_le32(&m.data[1]));
+				event_tx_replay(sys_get_le32(&m.data[1]));
 			}
 			break;
 		case SP_CTRL_FACTORY_CFG: {
@@ -322,6 +347,14 @@ static void handle_ctrl(void)
 			ble_update_config(&w);
 			break;
 		}
+		case SP_CTRL_GET_CAPTURE:
+			if (m.len >= CTRL_SEQ_MSG_LEN) {
+				cap_tx_queue(sys_get_le32(&m.data[1]));
+			}
+			break;
+		case SP_CTRL_FORGET_BONDS:
+			claim_forget_all();
+			break;
 		case SP_CTRL_LED_BLINK:
 			for (int i = 0; i < 5; i++) {
 				led_pulse(80);
@@ -346,6 +379,34 @@ static void housekeeping(void)
 	publish_status();
 }
 
+static void claim_feedback(void)
+{
+	static uint32_t last_blink_ms;
+	uint32_t now = k_uptime_get_32();
+
+	if (claim_take_paired()) {
+		for (int i = 0; i < PAIRED_BLINKS; i++) {
+			led_pulse(PAIRED_BLINK_MS);
+			k_msleep(PAIRED_BLINK_MS);
+		}
+	}
+	if (claim_is_open() && now - last_blink_ms >= CLAIM_BLINK_PERIOD_MS) {
+		last_blink_ms = now;
+		led_pulse(CLAIM_BLINK_MS);
+	}
+}
+
+static uint32_t poll_period(bool active)
+{
+	if (event_tx_busy() || cap_tx_busy()) {
+		return TX_POLL_MS;
+	}
+	if (claim_is_open()) {
+		return CLAIM_POLL_MS;
+	}
+	return active ? ACTIVE_POLL_MS : IDLE_POLL_MS;
+}
+
 /* --------------------------------------------------------------- main */
 
 int main(void)
@@ -364,12 +425,18 @@ int main(void)
 
 	sd_default_config(&st.cfg);
 	store_init(&st);
-	st.cfg.fs_hz = 400.0f; /* hardware rate is fixed */
+	if (event_tx_init()) {
+		LOG_ERR("shot log unavailable");
+	}
+	st.cfg.fs_hz = (float)CAP_ODR_HZ;
 	sd_init(&det, &st.cfg);
+	cap_init(&cap);
+	cap_tx_init(&cap);
+	ble_set_tx_done_cb(on_tx_done);
 
 	cfg_to_wire(&st.cfg, &w);
 	ble_update_config(&w);
-	if (ble_init(on_ctrl, on_cfg, on_conn)) {
+	if (ble_init(on_ctrl, on_cfg, on_conn) || claim_init()) {
 		LOG_ERR("BLE init failed");
 	}
 	publish_count();
@@ -392,12 +459,20 @@ int main(void)
 		bool active = det.mode == SD_MODE_ACTIVE;
 		uint32_t hk_period = active ? HOUSEKEEP_ACTIVE_MS : HOUSEKEEP_IDLE_MS;
 
-		k_sem_take(&wake_sem, K_MSEC(active ? 1000 : 10000));
+		k_sem_take(&wake_sem, K_MSEC(poll_period(active)));
 
 		if (atomic_cas(&accel_pending, 1, 0)) {
 			handle_accel();
 		}
 		handle_ctrl();
+		claim_poll(power_vbus_present());
+		claim_feedback();
+		if (event_tx_busy()) {
+			event_tx_pump();
+		}
+		if (cap_tx_busy()) {
+			cap_tx_pump();
+		}
 		if (atomic_cas(&cfg_pending, 1, 0)) {
 			wire_to_cfg(&pending_cfg, &st.cfg);
 			det.cfg = st.cfg;
@@ -406,7 +481,8 @@ int main(void)
 		}
 
 		uint32_t now = k_uptime_get_32();
-		bool in_linger = det.mode == SD_MODE_ACTIVE || (now - idle_since_ms) < ADV_LINGER_MS;
+		bool in_linger = det.mode == SD_MODE_ACTIVE || (now - idle_since_ms) < ADV_LINGER_MS ||
+				 claim_is_open();
 		if (atomic_cas(&conn_event, 1, 0) || !ble_is_advertising()) {
 			if (!ble_is_connected() && in_linger) {
 				ble_adv_start();
