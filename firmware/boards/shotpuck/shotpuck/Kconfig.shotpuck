@@ -1,0 +1,3 @@
+# ShotPuck board: Raytac MDBT50Q-512K (nRF52833) in high-voltage mode
+config BOARD_SHOTPUCK
+	select SOC_NRF52833_QIAA

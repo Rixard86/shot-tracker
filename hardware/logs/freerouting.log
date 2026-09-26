@@ -1,0 +1,14 @@
+2026-09-26 16:06:55.739 [main] INFO  Freerouting v1.9.0 (build-date: 2023-10-30)
+2026-09-26 16:06:55.836 [main] ERROR null
+java.awt.HeadlessException: null
+	at sun.awt.HeadlessToolkit.getScreenSize(HeadlessToolkit.java:186) ~[?:?]
+	at app.freerouting.gui.MainApplication.main(MainApplication.java:269) ~[freerouting.jar:unspecified]
+2026-09-26 16:06:55.859 [main] ERROR Exception in FRAnalytics.trackAnonymousAction: Cannot invoke "app.freerouting.management.SegmentClient.track(String, String, String, app.freerouting.management.segment.Properties)" because "app.freerouting.management.FRAnalytics.analytics" is null
+java.lang.NullPointerException: Cannot invoke "app.freerouting.management.SegmentClient.track(String, String, String, app.freerouting.management.segment.Properties)" because "app.freerouting.management.FRAnalytics.analytics" is null
+	at app.freerouting.management.FRAnalytics.trackAnonymousAction(FRAnalytics.java:139) [freerouting.jar:unspecified]
+	at app.freerouting.management.FRAnalytics.exceptionThrown(FRAnalytics.java:323) [freerouting.jar:unspecified]
+	at app.freerouting.gui.DefaultExceptionHandler.handleException(DefaultExceptionHandler.java:15) [freerouting.jar:unspecified]
+	at app.freerouting.gui.DefaultExceptionHandler.uncaughtException(DefaultExceptionHandler.java:29) [freerouting.jar:unspecified]
+	at java.lang.ThreadGroup.uncaughtException(ThreadGroup.java:695) [?:?]
+	at java.lang.ThreadGroup.uncaughtException(ThreadGroup.java:690) [?:?]
+	at java.lang.Thread.dispatchUncaughtException(Thread.java:2902) [?:?]

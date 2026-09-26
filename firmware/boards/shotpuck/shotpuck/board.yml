@@ -1,0 +1,6 @@
+board:
+  name: shotpuck
+  full_name: ShotPuck (Raytac MDBT50Q / nRF52833)
+  vendor: shotpuck
+  socs:
+  - name: nrf52833

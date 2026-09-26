@@ -1,0 +1,17 @@
+config: trig=6000 mg, move=300 mg, pre_still>=500 ms, post_lf>=250 mg [100-600 ms], fs=400 Hz
+[nominal] sessions=36 sim_time=4.67 h shots=475  recall=99.16%  precision=100.00%  FN=4 {'rej_not_still': 4}  FP=0 {}  ACTIVE=73.4% of time  wakes=129
+  feature ranges over triggered candidates (5th/50th/95th pct):
+    peak_hf_mg    shots [11616 28401 45078]   non-shots [ 6220 10036 20437]
+    pre_still_ms  shots [ 813 4097 7405]   non-shots [   20    20 15077]
+    post_lf_mg    shots [ 391  723 1140]   non-shots [ 19 323 782]
+[hard-cases] sessions=36 sim_time=4.31 h shots=440  recall=98.41%  precision=98.86%  FN=7 {'rej_not_still': 5, 'missed_trigger': 2}  FP=5 {'grab': 5}  ACTIVE=75.1% of time  wakes=118
+  feature ranges over triggered candidates (5th/50th/95th pct):
+    peak_hf_mg    shots [12346 27785 45343]   non-shots [ 6155  9273 23772]
+    pre_still_ms  shots [ 946 4029 7525]   non-shots [   20    22 15334]
+    post_lf_mg    shots [ 388  733 1084]   non-shots [ 31 343 904]
+[weak-bow (info)] sessions=18 sim_time=2.44 h shots=244  recall=75.82%  precision=100.00%  FN=59 {'rej_not_still': 5, 'rej_no_follow': 20, 'missed_trigger': 34}  FP=0 {}  ACTIVE=75.9% of time  wakes=65
+  feature ranges over triggered candidates (5th/50th/95th pct):
+    peak_hf_mg    shots [ 6431 11099 19062]   non-shots [ 6202  9586 17034]
+    pre_still_ms  shots [ 690 3846 7556]   non-shots [   20    20 16136]
+    post_lf_mg    shots [228 358 523]   non-shots [ 34 340 617]
+RESULT: PASS

@@ -1,0 +1,6 @@
+CONFIG_ARM_MPU=y
+CONFIG_HW_STACK_PROTECTION=y
+CONFIG_GPIO=y
+# 32.768 kHz from internal RC: works whether or not the module fits an LFXO.
+# If your MDBT50Q variant has the crystal, switch to K32SRC_XTAL (saves ~1 uA).
+CONFIG_CLOCK_CONTROL_NRF_K32SRC_RC=y

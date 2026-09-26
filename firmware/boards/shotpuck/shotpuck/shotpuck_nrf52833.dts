@@ -1,0 +1,110 @@
+/*
+ * ShotPuck - nRF52833 (Raytac MDBT50Q-512K), VDDH = Li-ion cell.
+ *
+ * Pin map (MDBT50Q pad -> signal):
+ *   P0.04 (20) I2C SCL      -> LIS2DE12 SCL
+ *   P0.06 (22) I2C SDA      -> LIS2DE12 SDA
+ *   P0.08 (24) ACCEL_INT1   <- LIS2DE12 INT1
+ *   P1.09 (26) CHG_STAT     <- MCP73831 STAT via BAT54 (low = charging)
+ *   P0.27 (16) CHG_INHIBIT  -> Q2 gate (high = charging disabled)
+ *   P0.13 (37) LED          -> LED anode via 1k (active high)
+ *   VBUS  (32)              <- charger input after reverse-polarity diode
+ */
+/dts-v1/;
+#include <nordic/nrf52833_qiaa.dtsi>
+#include "shotpuck_nrf52833-pinctrl.dtsi"
+
+/ {
+	model = "ShotPuck nRF52833";
+	compatible = "shotpuck,shotpuck-nrf52833";
+
+	chosen {
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,code-partition = &slot0_partition;
+		zephyr,settings-partition = &storage_partition;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		led0: led_0 {
+			gpios = <&gpio0 13 GPIO_ACTIVE_HIGH>;
+			label = "Status LED";
+		};
+	};
+
+	zephyr,user {
+		accel-int1-gpios = <&gpio0 8 GPIO_ACTIVE_HIGH>;
+		chg-stat-gpios = <&gpio1 9 GPIO_ACTIVE_LOW>;
+		chg-inhibit-gpios = <&gpio0 27 GPIO_ACTIVE_HIGH>;
+	};
+
+	aliases {
+		led0 = &led0;
+		watchdog0 = &wdt0;
+	};
+};
+
+/* No DC/DC inductors assumed: REG0 and REG1 in LDO mode (works on every
+ * module variant; see README "decisions" to enable DC/DC). */
+&reg0 {
+	status = "okay";
+};
+
+&reg1 {
+	regulator-initial-mode = <NRF5X_REG_MODE_LDO>;
+};
+
+&adc {
+	status = "okay";
+};
+
+&temp {
+	status = "okay";
+};
+
+&gpiote {
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+&i2c0 {
+	compatible = "nordic,nrf-twim";
+	status = "okay";
+	clock-frequency = <I2C_BITRATE_FAST>;
+	pinctrl-0 = <&i2c0_default>;
+	pinctrl-1 = <&i2c0_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+
+&flash0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		boot_partition: partition@0 {
+			label = "mcuboot";
+			reg = <0x00000000 0xC000>;
+		};
+		slot0_partition: partition@c000 {
+			label = "image-0";
+			reg = <0x0000C000 0x37000>;
+		};
+		slot1_partition: partition@43000 {
+			label = "image-1";
+			reg = <0x00043000 0x37000>;
+		};
+		storage_partition: partition@7a000 {
+			label = "storage";
+			reg = <0x0007A000 0x00006000>;
+		};
+	};
+};

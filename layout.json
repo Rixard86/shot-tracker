@@ -1,0 +1,72 @@
+{
+  "_doc": "Single source of truth shared by mechanical/puck.py and hardware/gen_pcb.py. Units mm. Board coordinates: origin on the puck axis, +x right, +y up, viewed from the cap (top). z = 0 at the face that seats on the Avalon weight.",
+  "puck": {
+    "od": 40.0,
+    "base_thickness": 2.0,
+    "insulator": 0.1,
+    "pcb_thickness": 0.8,
+    "cap_wall": 1.5,
+    "cap_top": 1.2,
+    "foam_gap": 0.3,
+    "stud_thread": "5/16-24 UNF-2A",
+    "stud_major_dia": 7.9,
+    "stud_length": 8.0,
+    "oring_cs": 0.8,
+    "screw": "M1.6x5 ISO 10642 countersunk, nylon-patch",
+    "insert": "M1.6 heat-set brass insert, OD 2.4, L 3.0"
+  },
+  "pcb_dia": 37.0,
+  "bosses": {
+    "radius": 17.0,
+    "angles_deg": [
+      30,
+      150,
+      270
+    ],
+    "boss_dia": 3.8,
+    "pcb_hole": 1.8
+  },
+  "cell": {
+    "part": "Varta CP1654 A3 (tabbed)",
+    "x": 8.5,
+    "y": 0.0,
+    "dia": 16.0,
+    "h": 5.4,
+    "tab_h": 0.15,
+    "mass_g": 3.3,
+    "neg_pad": {
+      "x": 8.5,
+      "y": 9.4
+    }
+  },
+  "module": {
+    "part": "Raytac MDBT50Q-512K",
+    "x": -9.25,
+    "y": 0.0,
+    "rot_deg": 90,
+    "w": 10.0,
+    "l": 15.5,
+    "h": 2.2,
+    "mass_g": 0.9,
+    "_rot": "antenna end points to -x (board rim)"
+  },
+  "connector": {
+    "part": "2-pin magnetic pogo receptacle (female, flat contacts)",
+    "x": 0.0,
+    "y": 12.0,
+    "pitch": 2.5,
+    "body_w": 9.0,
+    "body_l": 4.2,
+    "body_h": 4.5,
+    "pin_drill": 0.9,
+    "mass_g": 1.0,
+    "_note": "Replace body_* / pitch with the drawing of the part you buy. The cap gets a well if body_h is shorter than the cavity."
+  },
+  "trim": {
+    "material": "tungsten",
+    "density": 19.25,
+    "pin_dia": 5.0,
+    "_note": "Positions and lengths are solved by puck.py (1-2 pins) to put the centre of mass on the axis."
+  },
+  "other_components_g": 0.6
+}
