@@ -10,8 +10,8 @@ from shapely.ops import unary_union
 HERE = os.path.dirname(os.path.abspath(__file__))
 L = json.load(open(os.path.join(HERE, "..", "layout.json")))
 ARC_SEGMENTS = 32
-ANTENNA_INSET = 3.9
-ANTENNA_HALF_W = 6.3
+ANTENNA_INSET = 3.75
+ANTENNA_HALF_W = 6.2
 RIM_MARGIN = 2.0
 
 

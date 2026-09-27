@@ -64,7 +64,9 @@ ROUTER_JOB_MARGIN_S = 20
 SECOND_PASS_SUFFIX = "-pass2.kicad_pcb"
 PRE_ROUTED = [("Q2", "3", "6"), ("Q1", "4", "1")]
 PRE_ROUTE_WIDTH_MM = 0.2
-PRE_VIAS = [("U1", "51", (0.35, -0.75)), ("U1", "53", (0.35, -0.75))]
+PRE_VIAS = [("U1", "51", (0.45, -0.75)), ("U1", "53", (0.45, -0.75))]
+VIN_ESCAPE = ("C1", "1", ((4.7, 3.65),), ((3.7, 4.65), (3.7, 13.45), (-6.3, 13.45)))
+TRACK_SAMPLE_MM = 0.3
 VIA_DRILL_MM = 0.3
 SWD_PAD_DIA = 1.0
 SWD_PITCH = 2.54
@@ -371,6 +373,7 @@ def build():
     add_keepouts(board)
     pre_route(board)
     pre_vias(board)
+    pre_path(board)
     add_pours(board)
     gnd_fanout(board)
     add_rim_and_bosses(board)
@@ -395,34 +398,69 @@ def pre_route(board):
             board.Add(tr)
 
 
+def locked_track(board, spec):
+    start, end, layer, net = spec
+    tr = pcbnew.PCB_TRACK(board)
+    tr.SetStart(start)
+    tr.SetEnd(end)
+    tr.SetWidth(MM(TRACK_MM))
+    tr.SetLayer(layer)
+    tr.SetNet(net)
+    tr.SetLocked(True)
+    board.Add(tr)
+
+
+def locked_via(board, spec):
+    pos, net = spec
+    via = pcbnew.PCB_VIA(board)
+    via.SetPosition(pos)
+    via.SetWidth(MM(VIA_DIA_MM))
+    via.SetDrill(MM(VIA_DRILL_MM))
+    via.SetLayerPair(pcbnew.F_Cu, pcbnew.B_Cu)
+    via.SetNet(net)
+    via.SetLocked(True)
+    board.Add(via)
+
+
 def pre_vias(board):
     for ref, num, (dx, dy) in PRE_VIAS:
         pad = board.FindFootprintByReference(ref).FindPadByNumber(num)
         start = pad.GetPosition()
         end = pcbnew.VECTOR2I(start.x + MM(dx), start.y - MM(dy))
-        tr = pcbnew.PCB_TRACK(board)
-        tr.SetStart(start)
-        tr.SetEnd(end)
-        tr.SetWidth(MM(TRACK_MM))
-        tr.SetLayer(pcbnew.F_Cu)
-        tr.SetNet(pad.GetNet())
-        tr.SetLocked(True)
-        board.Add(tr)
-        via = pcbnew.PCB_VIA(board)
-        via.SetPosition(end)
-        via.SetWidth(MM(VIA_DIA_MM))
-        via.SetDrill(MM(VIA_DRILL_MM))
-        via.SetLayerPair(pcbnew.F_Cu, pcbnew.B_Cu)
-        via.SetNet(pad.GetNet())
-        via.SetLocked(True)
-        board.Add(via)
+        locked_track(board, (start, end, pcbnew.F_Cu, pad.GetNet()))
+        locked_via(board, (end, pad.GetNet()))
+
+
+def pre_path(board):
+    ref, num, top, bottom = VIN_ESCAPE
+    pad = board.FindFootprintByReference(ref).FindPadByNumber(num)
+    points = [pad.GetPosition()] + [V(x, y) for x, y in top]
+    for a, b in zip(points, points[1:]):
+        locked_track(board, (a, b, pcbnew.F_Cu, pad.GetNet()))
+    locked_via(board, (points[-1], pad.GetNet()))
+    points = points[-1:] + [V(x, y) for x, y in bottom]
+    for a, b in zip(points, points[1:]):
+        locked_track(board, (a, b, pcbnew.B_Cu, pad.GetNet()))
+
+
+def track_points(board):
+    pts = []
+    for t in board.GetTracks():
+        if t.Type() != pcbnew.PCB_TRACE_T:
+            continue
+        s, e = t.GetStart(), t.GetEnd()
+        n = max(1, int(pcbnew.ToMM((e - s).EuclideanNorm()) / TRACK_SAMPLE_MM))
+        pts += [(pcbnew.ToMM(s.x + (e.x - s.x) * k // n), -pcbnew.ToMM(s.y + (e.y - s.y) * k // n))
+                for k in range(n + 1)]
+    return pts
 
 
 def gnd_fanout(board):
     """Give every GND SMD pad a short stub + via to the bottom GND plane."""
     R = L["pcb_dia"] / 2
     gnd = board.FindNet("GND")
-    vias = []
+    vias = [(pcbnew.ToMM(v.GetPosition().x), -pcbnew.ToMM(v.GetPosition().y))
+            for v in board.GetTracks() if v.Type() == pcbnew.PCB_VIA_T] + track_points(board)
     bosses = shape.boss_xy()
     pads = []
     for fp in board.GetFootprints():

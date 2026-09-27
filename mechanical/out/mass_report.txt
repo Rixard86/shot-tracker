@@ -7,7 +7,7 @@ Connector top below the cap top: 0.00 mm (0 = flush)
 part                     mass g       x       y       z
 plate (6061)               6.44   -0.01   -0.00    1.00
 standoffs (Al)             0.21    2.20    0.91    3.60
-pcb (FR4)                  1.12   -0.04    2.37    5.50
+pcb (FR4)                  1.12   -0.04    2.38    5.50
 sleeve (steel)             1.46   -0.00   -0.00    6.00
 cell LIR1254               1.90   -0.00  -11.75    4.80
 module MDBT50Q             0.90    0.05   10.75    7.00
@@ -16,6 +16,6 @@ other SMD parts            0.60    0.00    0.00    6.40
 cap (PC)                   3.03   -0.36    0.12    7.48
 
 Total mass: 16.27 g
-Centre of mass: x=0.457 y=-0.714 z=4.23 mm -> 0.848 mm off axis (13.79 g*mm)
+Centre of mass: x=0.457 y=-0.715 z=4.23 mm -> 0.848 mm off axis (13.79 g*mm)
 
 Component masses are datasheet/estimated values from layout.json. Weigh the real parts and re-run.
