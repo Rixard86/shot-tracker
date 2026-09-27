@@ -3,7 +3,7 @@ import math
 import cadquery as cq
 
 from geometry import (BOSS_D, BOSS_HEAD_WALL, COUNTERBORE_D, COUNTERBORE_DEPTH, L, P, R, SLEEVE_BORE_CLEAR,
-                      T_PLATE, WALL, WELL_CLEAR, Z_CAP, Z_CEIL, Z_CELL, Z_KAPTON_TOP, Z_PCB, Z_PCB_TOP,
+                      LIP_GAP, LIP_WALL, T_PLATE, WALL, WELL_CLEAR, Z_CAP, Z_CEIL, Z_CELL, Z_KAPTON_TOP, Z_PCB, Z_PCB_TOP,
                       Z_SLEEVE_TOP, Z_TOP, boss_xy, cell_dir_deg, connector_pose, module_pose, notch_r)
 
 EDGE_CHAMFER = 0.3
@@ -33,6 +33,17 @@ def make_plate():
     for x, y in boss_xy():
         p = p.cut(column((x, y, L["bosses"]["tap_drill"] / 2, -CUT_MARGIN, T_PLATE + CUT_MARGIN)))
     return p
+
+
+def stadium(size, z_range):
+    length, width = size
+    z0, z1 = z_range
+    return cq.Workplane("XY").workplane(offset=z0).slot2D(length, width).extrude(z1 - z0)
+
+
+def flange_top():
+    k = L["connector"]
+    return Z_PCB_TOP + k["body_h"] - k["boss_h"]
 
 
 def tube(spec, bore_r):
@@ -73,8 +84,9 @@ def add_bosses(cap):
 
 def add_opening(cap):
     k = L["connector"]
-    opening = slab((k["body_w"] + WELL_CLEAR, k["body_l"] + WELL_CLEAR), (Z_CEIL - CUT_MARGIN, Z_TOP + CUT_MARGIN))
-    return cap.cut(placed(opening, connector_pose()))
+    lip = stadium((k["body_w"] + 2 * LIP_WALL, k["body_l"] + 2 * LIP_WALL), (flange_top() + LIP_GAP, Z_TOP))
+    opening = stadium((k["boss_w"] + WELL_CLEAR, k["body_l"] + WELL_CLEAR), (flange_top(), Z_TOP + CUT_MARGIN))
+    return cap.union(placed(lip, connector_pose())).cut(placed(opening, connector_pose()))
 
 
 def make_cap():
@@ -112,5 +124,7 @@ def make_module():
 
 def make_connector():
     k = L["connector"]
-    return placed(slab((k["body_w"], k["body_l"]), (Z_PCB_TOP, Z_PCB_TOP + k["body_h"])), connector_pose())
+    body = stadium((k["body_w"], k["body_l"]), (Z_PCB_TOP, flange_top()))
+    body = body.union(stadium((k["boss_w"], k["body_l"]), (flange_top(), Z_PCB_TOP + k["body_h"])))
+    return placed(body, connector_pose())
 

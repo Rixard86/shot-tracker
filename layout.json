@@ -80,7 +80,10 @@
     "pad_dia": 1.3,
     "mass_g": 0.6,
     "rot_deg": 75,
-    "_note": "Samzo drawing GZ0254-P001. Mounted on the PCB; puck.pcb_standoff puts its top flush with the cap top, which has an opening around it (RTV seal). mass_g is an estimate: weigh the part."
+    "_note": "Samzo drawing GZ0254-P001. Mounted on the PCB; puck.pcb_standoff puts its top flush with the cap top, which has an opening around it (RTV seal). mass_g is an estimate: weigh the part.",
+    "boss_w": 12.5,
+    "boss_h": 2.0,
+    "_body": "Stepped (Samzo GZ0254-P001): a 12.5 mm long top boss (2 mm) on a 14.5 mm flange (2 mm), both 4 mm wide with round ends. The cap opening fits the boss; a lip under the cap top stops 0.1 mm above the flange ends (RTV in the gap), so the cap, not the solder joints, takes the plug's pull."
   },
   "other_components_g": 0.6,
   "bolt": {

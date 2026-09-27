@@ -7,7 +7,7 @@
 	(property "Reference" ""
 		(at 0 0 0)
 		(layer "F.Fab")
-		(uuid "b18f4cb4-f665-4b30-8252-629494851bc5")
+		(uuid "c5fdff23-44b7-4570-84eb-d97749f860f3")
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -17,7 +17,7 @@
 	(property "Value" ""
 		(at 0 0 0)
 		(layer "F.Fab")
-		(uuid "d751b9a8-8c0d-4d1a-b547-4cc0be4d7256")
+		(uuid "a35843b7-4378-4881-827d-e3059d67ec91")
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -28,7 +28,7 @@
 		(at 0 0 0)
 		(layer "F.Fab")
 		(hide yes)
-		(uuid "42148b57-6f23-4c23-97f7-44e841e73ecd")
+		(uuid "0920b5f3-22d0-466c-bc71-e417a41df6b4")
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -39,7 +39,7 @@
 		(at 0 0 0)
 		(layer "F.Fab")
 		(hide yes)
-		(uuid "20178e04-0203-4f1f-b31a-0543f5b054ac")
+		(uuid "a29d1c30-8355-408c-a0bf-480b9352764e")
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -55,7 +55,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "79399fda-a6cc-4d6e-a1be-6ef949726e2a")
+		(uuid "655fb304-7d0b-4a54-b958-c0be766aeb7f")
 	)
 	(fp_line
 		(start -8.345511 -2.93834)
@@ -65,7 +65,7 @@
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "fda6475b-650a-4376-b2ed-b6c14b6296d9")
+		(uuid "196f49a1-d266-48a0-86f9-e73b2da2afda")
 	)
 	(fp_circle
 		(center 0 0)
@@ -76,7 +76,7 @@
 		)
 		(fill no)
 		(layer "F.CrtYd")
-		(uuid "610cc203-92ae-4f99-8e73-8f96652b9f4d")
+		(uuid "a61af04e-b4e1-44c1-a6d9-95ce0bf43e00")
 	)
 	(fp_circle
 		(center 0 0)
@@ -87,21 +87,21 @@
 		)
 		(fill no)
 		(layer "F.Fab")
-		(uuid "058076b8-4d85-494f-bdea-c8a458a459b0")
+		(uuid "02a267e2-da3e-4429-88c8-b18a248cc7e9")
 	)
 	(pad "1" smd rect
 		(at -7.27 -4.2 239.9842587)
 		(size 2.5 2)
 		(layers "F.Cu" "F.Mask" "F.Paste")
 		(thermal_bridge_angle 45)
-		(uuid "cfc96af7-44ca-44ec-98e8-3f5516b33175")
+		(uuid "0aa13ae1-24c1-433c-b315-6cbb713c3296")
 	)
 	(pad "2" smd rect
 		(at -8.27 1.449999 279.9447307)
 		(size 2.5 2)
 		(layers "F.Cu" "F.Mask" "F.Paste")
 		(thermal_bridge_angle 45)
-		(uuid "248a3a83-8fb3-4581-a512-d503a03aa934")
+		(uuid "5b43b8ce-3a62-4530-9a90-c0e98f71d4e5")
 	)
 	(embedded_fonts no)
 )

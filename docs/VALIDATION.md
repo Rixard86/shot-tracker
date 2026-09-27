@@ -46,7 +46,7 @@ Do these in order: each step de-risks the next. **Bold** items are blockers.
 - [ ] **BLE range through the cap**, with the puck on the riser and the phone in a pocket about 1–2 m away, and at 10 m. If the link is weak, raise TX power (`CONFIG_BT_CTLR_TX_PWR_PLUS_4=y`) or check the antenna keep-out against the aluminium base.
 - [ ] **Bolt mounting:** the button head bolt with its sealing washer clamps the puck on the tube alone: the PCB and the cap are not squeezed, and the tube does not shorten; the cap screws still sit tight afterwards. Check BLE range with the bolt head in place (it overlaps the antenna zone's inner corner).
 - [ ] **Tube insulation:** the Kapton tape on the tube faces the cell; with the puck shaken hard, the cell can never touches bare steel.
-- [ ] **Magnetic plug at the surface:** the charging plug snaps onto the flush connector from any approach, charges reliably, and the RTV seal around the connector stays intact after 50 plug cycles.
+- [ ] **Magnetic plug at the surface:** the charging plug snaps onto the flush connector from any approach and charges reliably; the spring pins sit at their 1.0 mm working height. After 50 plug cycles the RTV seal is intact and the connector has not lifted (the cap lip holds its flange).
 - [ ] Weigh each finished puck and compare with `mechanical/out/mass_report.txt`; re-run `puck.py` with measured part masses.
 - [ ] Magnetic connector hold, and that it cannot mate reversed.
 

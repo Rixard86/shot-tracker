@@ -59,13 +59,13 @@ TRACK_MM = 0.15
 VIA_DIA_MM = 0.55
 CLEARANCE_MM = 0.127
 GND_NET = "GND"
-SOLID_GND_REFS = {"U2"}
+SOLID_GND_REFS = {"U2", "J2"}
 ROUTER_JOB_MARGIN_S = 20
 SECOND_PASS_SUFFIX = "-pass2.kicad_pcb"
 PRE_ROUTED = [("Q2", "3", "6"), ("Q1", "4", "1")]
 PRE_ROUTE_WIDTH_MM = 0.2
 PRE_VIAS = [("U1", "51", (0.45, -0.75)), ("U1", "53", (0.45, -0.75))]
-VIN_ESCAPE = ("C1", "1", ((4.7, 3.65),), ((3.7, 4.65), (3.7, 13.45), (-6.3, 13.45)))
+VIN_ESCAPE = ("C1", "1", ((4.7, 3.65),), ((3.7, 4.65), (3.7, 12.0)))
 TRACK_SAMPLE_MM = 0.3
 VIA_DRILL_MM = 0.3
 SWD_PAD_DIA = 1.0
@@ -90,7 +90,7 @@ PLACE = {
     "C2": (-13.4, -4.1, 0), "JP1": (-10.2, -5.0, 0, BOTTOM), "R7": (-15.4, -5.3, 90),
     "U4": (-13.4, -9.0, 180), "Q2": (-10.6, -9.0, 0), "C8": (-13.6, -6.9, 0), "R8": (-12.6, -10.9, 0),
     "C1": (6.6, 2.9, 0), "D1": (9.95, 2.6, 0), "D3": (10.3, 0.4, 0),
-    "J2": (-1.5, 12.6, 0, BOTTOM),
+    "J2": (-1.5, 12.6, 180, BOTTOM),
 }
 
 
@@ -502,7 +502,7 @@ def gnd_fanout(board):
     for fp in board.GetFootprints():
         fx, fy = pcbnew.ToMM(fp.GetPosition().x), -pcbnew.ToMM(fp.GetPosition().y)
         for p in fp.Pads():
-            if p.GetNetname() != "GND" or p.GetAttribute() != pcbnew.PAD_ATTRIB_SMD:
+            if p.GetNetname() != "GND" or p.GetAttribute() != pcbnew.PAD_ATTRIB_SMD or not p.IsOnLayer(pcbnew.F_Cu):
                 continue
             px, py = pcbnew.ToMM(p.GetPosition().x), -pcbnew.ToMM(p.GetPosition().y)
             base = math.atan2(py - fy, px - fx) if (px, py) != (fx, fy) else 0.0

@@ -7,7 +7,7 @@
 	(property "Reference" ""
 		(at 0 0 0)
 		(layer "F.Fab")
-		(uuid "5dd08d5d-e044-4b61-b98b-8538edb9c885")
+		(uuid "62331458-975d-4459-9953-883b5ffeafd2")
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -17,7 +17,7 @@
 	(property "Value" ""
 		(at 0 0 0)
 		(layer "F.Fab")
-		(uuid "3a90b1ce-72b0-411b-a889-ebacaad33b4b")
+		(uuid "8b14b209-d454-48d7-80e4-71dd936b9b3e")
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -28,7 +28,7 @@
 		(at 0 0 0)
 		(layer "F.Fab")
 		(hide yes)
-		(uuid "fe36ea03-9a53-4c33-8869-fe5113d82ce7")
+		(uuid "8445decf-ec96-45a8-9882-b30bd1e534a3")
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -39,7 +39,7 @@
 		(at 0 0 0)
 		(layer "F.Fab")
 		(hide yes)
-		(uuid "5b4db55d-44a7-4f7d-a2ee-b9c17935d9a6")
+		(uuid "155be560-e0c6-44a8-a238-46e1b8c623e5")
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -55,7 +55,7 @@
 			(type default)
 		)
 		(layer "F.CrtYd")
-		(uuid "9b563ec9-5069-43f1-a661-31223a1610fc")
+		(uuid "3952f1d4-4c74-48c8-9a9d-d53b6f20cdc7")
 	)
 	(fp_line
 		(start -4.56 0.75)
@@ -65,7 +65,7 @@
 			(type default)
 		)
 		(layer "F.CrtYd")
-		(uuid "0cb4b2b5-1ec9-4f54-b762-2e7ce7ce7891")
+		(uuid "871525a2-3f63-4b8b-a094-9e92b2f801be")
 	)
 	(fp_line
 		(start 4.56 -0.75)
@@ -75,7 +75,7 @@
 			(type default)
 		)
 		(layer "F.CrtYd")
-		(uuid "3f3a0f28-3b8e-4bb4-bfee-8237e331506a")
+		(uuid "0b6d3ff6-f672-4cfb-b68e-c1307938df15")
 	)
 	(fp_line
 		(start 4.56 0.75)
@@ -85,31 +85,31 @@
 			(type default)
 		)
 		(layer "F.CrtYd")
-		(uuid "78ee780c-7f47-4fc7-affc-a44952354d09")
+		(uuid "fbe6c141-ce44-47f6-825d-04d154a7608f")
 	)
 	(pad "1" smd circle
 		(at -3.81 0)
 		(size 1 1)
 		(layers "F.Cu" "F.Mask" "F.Paste")
-		(uuid "bb3be17d-e1b6-4b48-a529-43f13aff69b0")
+		(uuid "e4262d64-698b-4ca6-931c-8a82490f3b4c")
 	)
 	(pad "2" smd circle
 		(at -1.27 0)
 		(size 1 1)
 		(layers "F.Cu" "F.Mask" "F.Paste")
-		(uuid "ef4136b7-ae23-4029-94be-cdfc0857ee8e")
+		(uuid "9a3ef753-d9b2-4601-b930-9a8a9b7976e4")
 	)
 	(pad "3" smd circle
 		(at 1.27 0)
 		(size 1 1)
 		(layers "F.Cu" "F.Mask" "F.Paste")
-		(uuid "3a923dd3-c378-4048-a676-f4d47ce0c78a")
+		(uuid "eb9f3e86-b41f-4a28-af51-7446afaac94d")
 	)
 	(pad "4" smd circle
 		(at 3.81 0)
 		(size 1 1)
 		(layers "F.Cu" "F.Mask" "F.Paste")
-		(uuid "128d833f-6c35-4bb0-a660-f1925c823922")
+		(uuid "8c061dfc-28c8-4c51-8778-d2c60c826ca1")
 	)
 	(embedded_fonts no)
 )

@@ -19,7 +19,6 @@ GASKET_RATIO = 0.86
 CELL_CAP_RISE = 0.05
 GASKET_RISE = 0.025
 CELL_BEVEL = 0.2
-BODY_BEVEL = 0.3
 CONTACT_DIA = 1.0
 CONTACT_RISE = 0.3
 MAGNET_DIA = 2.5
@@ -82,10 +81,20 @@ def top_disc(spec, name):
     return cylinder({"r": spec[0] / 2, "x": spec[1], "y": 0.0, "z0": top - spec[2], "z1": top + spec[2]}, name)
 
 
+def stadium(spec, name):
+    length, width, z0, z1 = spec
+    half = (length - width) / 2
+    core = tag(box(((-half, -width / 2, z0), (half, width / 2, z1)), name), "black_plastic")
+    for side in (-1, 1):
+        end = cylinder({"r": width / 2, "x": side * half, "y": 0.0, "z0": z0, "z1": z1}, name + "_end")
+        attach(tag(smooth(end), "black_plastic"), core)
+    return core
+
+
 def build_connector():
-    corner0 = (-K["body_w"] / 2, -K["body_l"] / 2, Z_PCB_TOP)
-    corner1 = (K["body_w"] / 2, K["body_l"] / 2, Z_PCB_TOP + K["body_h"])
-    body = tag(bevel(box((corner0, corner1), "connector"), BODY_BEVEL), "black_plastic")
+    z_flange = Z_PCB_TOP + K["body_h"] - K["boss_h"]
+    body = stadium((K["body_w"], K["body_l"], Z_PCB_TOP, z_flange), "connector")
+    attach(stadium((K["boss_w"], K["body_l"], z_flange, Z_PCB_TOP + K["body_h"]), "connector_boss"), body)
     for side in (-1, 1):
         contact = top_disc((CONTACT_DIA, side * K["pitch"] / 2, CONTACT_RISE), "contact")
         attach(tag(smooth(contact), "gold"), body)
