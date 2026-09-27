@@ -10,6 +10,7 @@
  *            ring; advertising / connected. Back to IDLE after
  *            cfg.idle_timeout_ms of stillness.
  */
+#include <app_version.h>
 #include <string.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/kernel.h>
@@ -23,6 +24,7 @@
 #include "capture_tx.h"
 #include "claim.h"
 #include "event_tx.h"
+#include "ota.h"
 #include "power.h"
 #include "protocol.h"
 #include "shot_detect.h"
@@ -30,8 +32,8 @@
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 
-#define FW_MAJOR 0
-#define FW_MINOR 2
+#define FW_MAJOR APP_VERSION_MAJOR
+#define FW_MINOR APP_VERSION_MINOR
 #define ADV_LINGER_MS 120000
 #define HOUSEKEEP_ACTIVE_MS 10000
 #define HOUSEKEEP_IDLE_MS 60000
@@ -414,6 +416,9 @@ int main(void)
 	sp_config_t w;
 
 	power_regout0_3v0(); /* may reset once on first boot */
+	if (ota_init()) {
+		LOG_ERR("watchdog unavailable");
+	}
 
 	gpio_pin_configure_dt(&led, GPIO_OUTPUT_INACTIVE);
 	if (power_init() == 0) {
@@ -446,6 +451,9 @@ int main(void)
 		/* no sensor: blink SOS-ish forever, keep BLE up for diagnostics */
 		ble_adv_start();
 		for (;;) {
+			if (ota_image_confirmed()) {
+				ota_feed();
+			}
 			led_pulse(50);
 			k_msleep(1000);
 		}
@@ -460,6 +468,8 @@ int main(void)
 		uint32_t hk_period = active ? HOUSEKEEP_ACTIVE_MS : HOUSEKEEP_IDLE_MS;
 
 		k_sem_take(&wake_sem, K_MSEC(poll_period(active)));
+		ota_feed();
+		ota_confirm_when_healthy();
 
 		if (atomic_cas(&accel_pending, 1, 0)) {
 			handle_accel();

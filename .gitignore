@@ -7,3 +7,5 @@ hardware/kicad/*.lck
 hardware/kicad/freerouting.log
 hardware/kicad/fp-info-cache
 hardware/kicad/*-backups/
+*.pem
+hardware/kicad/panel/*.lck

@@ -9,8 +9,9 @@ Reads ../layout.json, builds:
   mass_report.txt        mass, centre of mass, trim solution
 
 Balance: every asymmetric mass (cell, module, connector, cap openings) is
-summed, and a tungsten trim pin is sized and placed to cancel the first
-moment, so the centre of mass lands on the axis.
+summed, and trim pins (layout.json trim: material, density, diameter) are
+sized and placed to cancel the first moment, so the centre of mass lands on
+the axis. The pins are optional: the report also gives the balance without them.
 
     python puck.py            # writes into ./out
 """
@@ -33,13 +34,21 @@ R = OD / 2
 T_BASE = P["base_thickness"]
 Z_PCB = T_BASE + P["insulator"]                 # PCB bottom
 Z_PCB_TOP = Z_PCB + P["pcb_thickness"]
-CAV_H = L["cell"]["h"] + L["cell"]["tab_h"] + P["foam_gap"]   # above PCB top
+CAV_H = L["cell"]["swell_h"] + L["cell"]["tab_h"]              # above PCB top: swollen cell fits
 Z_CEIL = Z_PCB_TOP + CAV_H                      # cap ceiling (inside)
 Z_TOP = Z_CEIL + P["cap_top"]                   # outer top face
 WALL = P["cap_wall"]
 BOSS_R = L["bosses"]["radius"]
 BOSS_D = L["bosses"]["boss_dia"]
 BOSS_ANG = L["bosses"]["angles_deg"]
+WELL_CLEAR = 0.2
+WELL_GAP = 0.1
+MODULE_CLEAR = 0.5
+ANTENNA_INSET = 3.9
+ANTENNA_HALF_W = 6.3
+ANTENNA_METAL_CLEAR = 2.0
+PIN_BOSS_SKIRT = 0.6
+PIN_PCB_CLEAR = 0.4
 
 
 def boss_xy():
@@ -89,11 +98,15 @@ def make_cap(trim):
                   .circle(1.6 / 2 + 0.4).extrude(3.2))  # heat-set pilot 2.0
         c = c.union(boss).cut(insert)
     # PCB relief: cavity below PCB top must clear the board edge
-    # charging connector opening (+ well if the part is short)
+    # charging connector: chimney from the ceiling down to the connector top, open to the outside
     k = L["connector"]
-    opening = (cq.Workplane("XY").workplane(offset=Z_CEIL - 0.01).center(k["x"], k["y"])
-               .rect(k["body_w"] + 0.2, k["body_l"] + 0.2).extrude(P["cap_top"] + 0.1))
-    c = c.cut(opening)
+    z_conn = Z_PCB_TOP + k["body_h"] + WELL_GAP
+    chimney = (cq.Workplane("XY").workplane(offset=z_conn).center(k["x"], k["y"])
+               .rect(k["body_w"] + WELL_CLEAR + 2 * P["well_wall"], k["body_l"] + WELL_CLEAR + 2 * P["well_wall"])
+               .extrude(Z_CEIL - z_conn))
+    opening = (cq.Workplane("XY").workplane(offset=z_conn).center(k["x"], k["y"])
+               .rect(k["body_w"] + WELL_CLEAR, k["body_l"] + WELL_CLEAR).extrude(Z_TOP - z_conn))
+    c = c.union(chimney).cut(opening)
     # trim pin pocket: boss hanging from the ceiling
     for pin in (trim or []):
         tx, ty, tl = pin["x"], pin["y"], pin["len"]
@@ -129,7 +142,7 @@ def make_module():
 
 def make_connector():
     k = L["connector"]
-    return (cq.Workplane("XY").workplane(offset=Z_TOP - k["body_h"]).center(k["x"], k["y"])
+    return (cq.Workplane("XY").workplane(offset=Z_PCB_TOP).center(k["x"], k["y"])
             .rect(k["body_w"], k["body_l"]).extrude(k["body_h"]))
 
 
@@ -169,9 +182,9 @@ def collides(x, y, r):
     if math.hypot(x - c["x"], y - c["y"]) < r + c["dia"] / 2 + 0.3:
         return True
     for (cx, cy, w, h) in [
-        (L["module"]["x"], L["module"]["y"], L["module"]["l"] + 1, L["module"]["w"] + 1),
-        (L["connector"]["x"], L["connector"]["y"], L["connector"]["body_w"] + 1,
-         L["connector"]["body_l"] + 1),
+        (L["connector"]["x"], L["connector"]["y"],
+         L["connector"]["body_w"] + WELL_CLEAR + 2 * P["well_wall"] + 1,
+         L["connector"]["body_l"] + WELL_CLEAR + 2 * P["well_wall"] + 1),
     ]:
         dx = max(abs(x - cx) - w / 2, 0)
         dy = max(abs(y - cy) - h / 2, 0)
@@ -180,23 +193,44 @@ def collides(x, y, r):
     return False
 
 
+def near_antenna(x, y, r):
+    m = L["module"]
+    ant_x = m["x"] - m["l"] / 2 + ANTENNA_INSET
+    dx = max(x - ant_x, 0)
+    dy = max(abs(y - m["y"]) - ANTENNA_HALF_W, 0)
+    return math.hypot(dx, dy) < r + ANTENNA_METAL_CLEAR
+
+
+def over_module(x, y, r):
+    m = L["module"]
+    dx = max(abs(x - m["x"]) - m["l"] / 2, 0)
+    dy = max(abs(y - m["y"]) - m["w"] / 2, 0)
+    return math.hypot(dx, dy) < r
+
+
+def max_pin_len(x, y, r):
+    full = CAV_H - PIN_BOSS_SKIRT - PIN_PCB_CLEAR
+    if not over_module(x, y, r):
+        return full
+    above_module = Z_CEIL - PIN_BOSS_SKIRT - (Z_PCB_TOP + L["module"]["h"] + MODULE_CLEAR)
+    return min(full, above_module)
+
+
 def solve_trim(mx, my):
     t = L["trim"]
     dia = t["pin_dia"]
-    max_len = CAV_H - 0.6 - 0.4                   # stays clear of PCB parts
     g_per_mm = t["density"] * math.pi * (dia / 2) ** 2 / 1000.0
-    max_m = max_len * g_per_mm
     min_m = 1.5 * g_per_mm                        # no slivers: >= 1.5 mm long
-    # free candidate spots on a polar grid
+    # free candidate spots on a polar grid, each with the longest pin that fits there
     cands = []
     for rr in [x / 2 for x in range(16, 31)]:     # 8.0 .. 15.0 mm
         for a in range(0, 360, 5):
             x, y = rr * math.cos(math.radians(a)), rr * math.sin(math.radians(a))
-            if not collides(x, y, dia / 2 + 0.8):
-                cands.append((x, y))
+            if not collides(x, y, dia / 2 + 0.8) and not near_antenna(x, y, dia / 2):
+                cands.append((x, y, max_pin_len(x, y, dia / 2 + 0.8) * g_per_mm))
     best = None
     # one pin exactly opposite, else best pair (2x2 solve, masses >= 0)
-    for (x, y) in cands:
+    for (x, y, max_m) in cands:
         k = -(mx * x + my * y) / (x * x + y * y)
         if min_m <= k <= max_m:
             res = math.hypot(mx + k * x, my + k * y)
@@ -204,9 +238,9 @@ def solve_trim(mx, my):
                 best = (k, [(x, y, k)])
     if best is None:
         for i in range(len(cands)):
-            x1, y1 = cands[i]
+            x1, y1, max1 = cands[i]
             for j in range(i + 1, len(cands)):
-                x2, y2 = cands[j]
+                x2, y2, max2 = cands[j]
                 if math.hypot(x1 - x2, y1 - y2) < dia + 2 * 0.8 + 0.5:
                     continue
                 det = x1 * y2 - x2 * y1
@@ -214,7 +248,7 @@ def solve_trim(mx, my):
                     continue
                 m1 = (-mx * y2 + my * x2) / det
                 m2 = (-my * x1 + mx * y1) / det
-                if min_m <= m1 <= max_m and min_m <= m2 <= max_m:
+                if min_m <= m1 <= max1 and min_m <= m2 <= max2:
                     tot = m1 + m2
                     if best is None or tot < best[0]:
                         best = (tot, [(x1, y1, m1), (x2, y2, m2)])
@@ -252,6 +286,7 @@ def main():
         items2.append((L[key]["mass_g"], (c.x, c.y, c.z)))
     items2.append((L["other_components_g"], (0.0, 0.0, Z_PCB_TOP + 0.5)))
     tv = props(trim, L["trim"]["density"])
+    m_bare, mx_bare, my_bare, _ = moment(items2)
     items2.append(tv)
     m, mx2, my2, mz2 = moment(items2)
     com = (mx2 / m, my2 / m, mz2 / m)
@@ -268,24 +303,26 @@ def main():
             .add(cell, name="cell_cp1654", color=cq.Color(0.8, 0.8, 0.8))
             .add(mod, name="mdbt50q", color=cq.Color(0.2, 0.2, 0.2))
             .add(conn, name="mag_connector", color=cq.Color(0.9, 0.7, 0.2))
-            .add(trim, name="tungsten_trim", color=cq.Color(0.3, 0.3, 0.35)))
+            .add(trim, name=f"{L['trim']['material']}_trim", color=cq.Color(0.8, 0.65, 0.2)))
     assy.save(os.path.join(OUT, "assembly.step"))
 
     rep = []
     rep.append("ShotPuck mass & balance report (generated by puck.py)\n")
     rep.append(f"Overall: OD {OD:.1f} mm, height above weight face {Z_TOP:.2f} mm "
                f"(+ {P['stud_length']:.1f} mm stud into the weight)")
-    rep.append(f"Cavity above PCB: {CAV_H:.2f} mm\n")
+    rep.append(f"Cavity above PCB: {CAV_H:.2f} mm (swollen cell {L['cell']['swell_h']:.1f} mm fits)")
+    rep.append(f"Connector well depth (cap top to connector): "
+               f"{Z_TOP - Z_PCB_TOP - L['connector']['body_h']:.2f} mm\n")
     rep.append(f"{'part':22s}{'mass g':>9s}{'x':>8s}{'y':>8s}{'z':>8s}")
     names = ["base (7075)", "cap (PC)", "pcb (FR4)", "cell CP1654", "module MDBT50Q",
-             "mag connector", "other SMD parts", "tungsten trim"]
+             "mag connector", "other SMD parts", f"{L['trim']['material']} trim"]
     for n, (mm, c) in zip(names, items2):
         rep.append(f"{n:22s}{mm:9.2f}{c[0]:8.2f}{c[1]:8.2f}{c[2]:8.2f}")
     rep.append(f"\nTotal mass: {m:.2f} g")
     rep.append(f"Unbalance before trim: {need:.2f} g*mm "
                f"(COM {need / m0:.3f} mm off axis)")
     for i, pin in enumerate(pins, 1):
-        rep.append(f"Trim pin {i}: tungsten D{pin['dia']:.1f} x {pin['len']:.2f} mm at "
+        rep.append(f"Trim pin {i}: {L['trim']['material']} D{pin['dia']:.1f} x {pin['len']:.2f} mm at "
                    f"x={pin['x']:.2f}, y={pin['y']:.2f} (cut from D{pin['dia']:.0f} rod)")
     rep.append(f"Trim total: {tv[0]:.2f} g")
     for pin in pins:
@@ -295,6 +332,9 @@ def main():
     off = math.hypot(com[0], com[1])
     rep.append(f"Centre of mass after trim: x={com[0]:.3f} y={com[1]:.3f} z={com[2]:.2f} mm "
                f"-> {off:.3f} mm off axis ({off * m:.3f} g*mm)")
+    off_bare = math.hypot(mx_bare, my_bare) / m_bare
+    rep.append(f"Without the (optional) trim pins: {m_bare:.2f} g, COM {off_bare:.3f} mm off axis "
+               f"({math.hypot(mx_bare, my_bare):.2f} g*mm; the cap pockets stay empty)")
     rep.append("\nComponent masses are datasheet/estimated values from layout.json."
                " Weigh the real parts and re-run; the trim updates automatically.")
     txt = "\n".join(rep)

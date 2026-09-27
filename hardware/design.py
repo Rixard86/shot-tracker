@@ -5,9 +5,9 @@ gen_sch.py turns this into shotpuck.kicad_sch and gen_pcb.py into
 shotpuck.kicad_pcb. Change the circuit here, then re-run both.
 
 Power path
-  J1 magnetic pogo (VIN_RAW) -> D1 BAT54J (reverse polarity) -> VIN
+  J1 Samzo PR5L4015 magnetic receptacle (VIN_RAW) -> D1 BAT54J (reverse polarity) -> VIN
   VIN -> U3 MCP73831-2 (4.20 V, 50 mA via R1 = 20k) -> VBAT (CP1654)
-  VBAT -> U1 VDDH (nRF52833 high-voltage mode, REG0 -> VDD 3.0 V)
+  VBAT -> U1 VDDH (nRF52840 high-voltage mode, REG0 -> VDD 3.0 V)
   VDD  -> U2 LSM6DSO32 (VDD + VDDIO), LED, SWD VCC sense
 IMU
   U2 LSM6DSO32 on I2C at 0x6A (SA0 = GND, CS = VDD selects I2C). Aux master
@@ -16,6 +16,11 @@ Charge inhibit (temperature, firmware)
   PROG -> R1 -> Q1A drain; Q1A gate pulled to VIN by R2 (charging allowed
   whenever a cable is present). Q1B (gate = CHG_INH, R3 pull-down) pulls
   Q1A gate low -> PROG floats -> MCP73831 charge disabled.
+Cell protection (PCM, required by VARTA for CoinPower cells)
+  U4 BQ29700 + Q2 DMN2004DWK in the cell's negative lead: BAT_N -> Q2A (DOUT,
+  discharge) -> PCM_D -> Q2B (COUT, charge) -> GND. OVP 4.275 V, UVP 2.80 V,
+  OCD/OCC +-100 mV across ~1 ohm of FETs (~0.1 A), SCD 0.5 V. R7 330R + C8
+  100n filter the BAT supply, R8 2k2 on V-. Standby 4 uA.
 Current measurement
   JP1 (bridged solder jumper) in series with the cell: cut, insert an
   ammeter, re-bridge with solder.
@@ -26,7 +31,7 @@ Charge status
 
 # (ref, lib_id, footprint, value, {pin: net}, extra)
 PARTS = [
-    ("U1", "RF_Module:MDBT50Q-512K", "RF_Module:Raytac_MDBT50Q", "MDBT50Q-512K",
+    ("U1", "RF_Module:MDBT50Q-1MV2", "RF_Module:Raytac_MDBT50Q", "MDBT50Q-1MV2",
      {"1": "GND", "2": "GND", "15": "GND", "33": "GND", "55": "GND",
       "28": "VDD", "30": "VBAT", "32": "VIN",
       "20": "SCL", "22": "SDA", "24": "ACC_INT1", "26": "CHG_STAT", "16": "CHG_INH",
@@ -74,11 +79,22 @@ PARTS = [
      {"1": "VDD", "2": "GND"}, {}),
     ("C7", "Device:C_Small", "Capacitor_SMD:C_0402_1005Metric", "100n",
      {"1": "VDD", "2": "GND"}, {}),
-    ("BT1", "Device:Battery_Cell", "ShotPuck:CP1654_Tabbed", "Varta CP1654 A3 (tabbed)",
-     {"1": "BAT_P", "2": "GND"}, {}),
+    ("BT1", "Device:Battery_Cell", "ShotPuck:CP1654_Pads", "Varta CP1654 A3 (wire or tag version)",
+     {"1": "BAT_P", "2": "BAT_N"}, {}),
+    ("U4", "Battery_Management:BQ297xy", "Package_SON:WSON-6_1.5x1.5mm_P0.5mm", "BQ29700DSER",
+     {"2": "PCM_COUT", "3": "PCM_DOUT", "4": "BAT_N", "5": "PCM_BAT", "6": "PCM_VM"}, {}),
+    ("Q2", "Transistor_FET:Q_Dual_NMOS_S1G1D2S2G2D1", "Package_TO_SOT_SMD:SOT-363_SC-70-6", "DMN2004DWK",
+     {"1": "BAT_N", "2": "PCM_DOUT", "6": "PCM_D", "4": "GND", "5": "PCM_COUT", "3": "PCM_D"},
+     {"units": 2}),
+    ("R7", "Device:R_Small", "Resistor_SMD:R_0402_1005Metric", "330R",
+     {"1": "VBAT", "2": "PCM_BAT"}, {}),
+    ("R8", "Device:R_Small", "Resistor_SMD:R_0402_1005Metric", "2.2k",
+     {"1": "PCM_VM", "2": "GND"}, {}),
+    ("C8", "Device:C_Small", "Capacitor_SMD:C_0402_1005Metric", "100n",
+     {"1": "PCM_BAT", "2": "BAT_N"}, {}),
     ("JP1", "Jumper:SolderJumper_2_Bridged", "Jumper:SolderJumper-2_P1.3mm_Bridged_Pad1.0x1.5mm",
      "I_MEAS (cut to measure)", {"1": "BAT_P", "2": "VBAT"}, {}),
-    ("J1", "Connector_Generic:Conn_01x02", "ShotPuck:MagPogo_2P", "Magnetic pogo 2P (female)",
+    ("J1", "Connector_Generic:Conn_01x02", "ShotPuck:MagPogo_Samzo_2P", "Samzo PR5L4015-2P-C-F",
      {"1": "VIN_RAW", "2": "GND"}, {}),
     ("J2", "Connector:Conn_ARM_SWD_TagConnect_TC2030-NL",
      "Connector:Tag-Connect_TC2030-IDC-NL_2x03_P1.27mm_Vertical", "TC2030-NL",
@@ -88,10 +104,11 @@ PARTS = [
     ("H3", "Mechanical:MountingHole", "ShotPuck:MountingHole_1.8mm_NPTH", "M1.6", {}, {}),
 ]
 
-POWER_FLAG_NETS = ["GND", "VDD", "VIN", "VIN_RAW"]
+POWER_FLAG_NETS = ["GND", "VDD", "VIN", "VIN_RAW", "BAT_N"]
 
 # Nets that carry charge current / supply: wider tracks on the PCB
-POWER_NETS = {"BAT_P": 0.4, "VIN_RAW": 0.4, "VIN": 0.4, "VBAT": 0.4, "GND": 0.4, "VDD": 0.3}
+POWER_NETS = {"BAT_P": 0.4, "BAT_N": 0.4, "PCM_D": 0.4, "VIN_RAW": 0.4, "VIN": 0.4, "VBAT": 0.4,
+              "GND": 0.4, "VDD": 0.3}
 
 
 def nets():

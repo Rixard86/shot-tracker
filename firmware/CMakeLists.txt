@@ -14,6 +14,7 @@ target_sources(app PRIVATE
   src/event_tx.c
   src/claim.c
   src/identity.c
+  src/ota.c
   src/power.c
   src/store.c
   src/ble.c

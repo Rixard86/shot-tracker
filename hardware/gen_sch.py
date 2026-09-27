@@ -102,12 +102,13 @@ def main():
     # ------------------------------------------------ placement (flow)
     # (title, refs, region x0, y0, x_max) - A3 frame is ~410 x 287 mm
     groups = [
-        ("MCU / radio (nRF52833 high-voltage mode)", ["U1", "C4", "C5"], 22.86, 35.56, 190.5),
+        ("MCU / radio (nRF52840 high-voltage mode)", ["U1", "C4", "C5"], 22.86, 35.56, 190.5),
         ("Programming & status LED", ["J2", "R4", "D4"], 22.86, 170.18, 190.5),
         ("Charging input & charger", ["J1", "D3", "D1", "C1", "U3", "R1"],
          203.2, 35.56, 405.0),
         ("Charge inhibit / status", ["R2", "Q1", "R3", "D2"], 203.2, 81.28, 405.0),
-        ("Battery", ["BT1", "JP1", "C2", "C3"], 203.2, 124.46, 405.0),
+        ("Battery + protection (PCM)", ["BT1", "JP1", "C2", "C3", "U4", "Q2", "R7", "R8", "C8"],
+         203.2, 124.46, 405.0),
         ("IMU (accelerometer + gyroscope)", ["U2", "C6", "C7", "R5", "R6"], 203.2, 160.02, 405.0),
         ("Mechanical", ["H1", "H2", "H3"], 203.2, 203.2, 405.0),
     ]

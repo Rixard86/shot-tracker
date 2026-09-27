@@ -9,7 +9,7 @@ VIA_SPACING_MM = 0.6
 PAD_MARGIN_MM = 0.3
 RING_POINTS = 8
 VIA_DIA_MM = 0.5
-VIA_DRILL_MM = 0.25
+VIA_DRILL_MM = 0.3
 COPPER = (pcbnew.F_Cu, pcbnew.B_Cu)
 
 

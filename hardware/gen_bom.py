@@ -6,7 +6,7 @@ import os
 import design
 
 MPN = {
-    "MDBT50Q-512K": ("Raytac", "MDBT50Q-512K"),
+    "MDBT50Q-1MV2": ("Raytac", "MDBT50Q-1MV2"),
     "LSM6DSO32TR": ("STMicroelectronics", "LSM6DSO32TR"),
     "MCP73831T-2ACI/OT": ("Microchip", "MCP73831T-2ACI/OT"),
     "DMN63D8LDW": ("Diodes Inc", "DMN63D8LDW-7"),
@@ -20,8 +20,12 @@ MPN = {
     "1M": ("Yageo", "RC0402FR-071ML"),
     "100k": ("Yageo", "RC0402FR-07100KL"),
     "1k": ("Yageo", "RC0402FR-071KL"),
-    "Varta CP1654 A3 (tabbed)": ("VARTA", "CP 1654 A3 with solder tabs - confirm variant"),
-    "Magnetic pogo 2P (female)": ("generic", "2-pin magnetic pogo, female - SELECT PART"),
+    "Varta CP1654 A3 (wire or tag version)": ("VARTA", "CP 1654 A3, wire or tag version - hand-solder, never reflow"),
+    "Samzo PR5L4015-2P-C-F": ("Samzo", "PR5L4015-2P-C-F (Electrokit 41035992) - hand-solder"),
+    "BQ29700DSER": ("Texas Instruments", "BQ29700DSER"),
+    "DMN2004DWK": ("Diodes Inc", "DMN2004DWK-7"),
+    "330R": ("Yageo", "RC0402FR-07330RL"),
+    "2.2k": ("Yageo", "RC0402FR-072K2L"),
     "TC2030-NL": ("Tag-Connect", "pads only (cable TC2030-CTX-NL)"),
 }
 

@@ -1,13 +1,13 @@
-(footprint "CP1654_Tabbed"
+(footprint "CP1654_Pads"
 	(version 20260206)
 	(generator "pcbnew")
 	(generator_version "10.0")
 	(layer "F.Cu")
-	(descr "Varta CP1654 A3 with solder tabs; + at -y, - at +y. VERIFY tab positions against the tabbed variant drawing.")
+	(descr "Varta CP1654 A3: plated holes with large pads that take wires, tag pins or bent tabs; - at layout cell.neg_pad, + opposite. Hand-solder only, never reflow the cell.")
 	(property "Reference" ""
 		(at 0 0 0)
 		(layer "F.Fab")
-		(uuid "0e350d91-cb72-4be3-b7a5-8d1fcd16d3b9")
+		(uuid "c46dc9ed-4b25-4f50-bc27-7cc9c6b0be7f")
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -17,7 +17,7 @@
 	(property "Value" ""
 		(at 0 0 0)
 		(layer "F.Fab")
-		(uuid "cb30db9c-f37a-406b-a23e-a9abe82584c1")
+		(uuid "60e68c0b-a2f4-4613-8881-1c91b088f01d")
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -28,7 +28,7 @@
 		(at 0 0 0)
 		(layer "F.Fab")
 		(hide yes)
-		(uuid "e5c8512b-ae50-4b67-8c1f-e5a42dcc697d")
+		(uuid "f1b9cbc9-8985-44e2-b0d8-af2d7a362afc")
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -39,7 +39,7 @@
 		(at 0 0 0)
 		(layer "F.Fab")
 		(hide yes)
-		(uuid "3af0998e-88c2-4178-b3b3-08a4c90f30bd")
+		(uuid "75611735-311e-48db-9b2a-2fe08b27e262")
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -48,71 +48,75 @@
 	)
 	(duplicate_pad_numbers_are_jumpers no)
 	(fp_line
-		(start -0.6 7.4)
-		(end 0.6 7.4)
+		(start -0.6 -7.4)
+		(end 0.6 -7.4)
 		(stroke
 			(width 0.12)
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "76ec0b68-97c5-4fd6-b229-2b5d9d43f3f7")
+		(uuid "3f2b4190-78c3-4de7-84a6-00b7454111b1")
 	)
 	(fp_line
-		(start 0 6.8)
-		(end 0 8)
+		(start 0 -8)
+		(end 0 -6.8)
 		(stroke
 			(width 0.12)
 			(type default)
 		)
 		(layer "F.SilkS")
-		(uuid "fe93e6dc-10c1-4aee-afc1-2a463facdb7a")
+		(uuid "6d58ab8e-1af9-4fac-8d9d-c5165d5be4be")
 	)
 	(fp_circle
 		(center 0 0)
-		(end 8.1 0)
+		(end 8.15 0)
 		(stroke
 			(width 0.12)
 			(type default)
 		)
 		(fill no)
 		(layer "F.SilkS")
-		(uuid "4b3d4f61-35ef-43ff-9939-e1036fb99fd3")
+		(uuid "613ac714-6f6e-486d-a827-6b7140db0643")
 	)
 	(fp_circle
 		(center 0 0)
-		(end 8.3 0)
+		(end 8.35 0)
 		(stroke
 			(width 0.05)
 			(type default)
 		)
 		(fill no)
 		(layer "F.CrtYd")
-		(uuid "3cd03cd7-581a-42f0-8d4f-e77cdba17bef")
+		(uuid "6600472f-e869-4f49-9685-4b19b9a1d87e")
 	)
 	(fp_circle
 		(center 0 0)
-		(end 8 0)
+		(end 8.05 0)
 		(stroke
 			(width 0.1)
 			(type default)
 		)
 		(fill no)
 		(layer "F.Fab")
-		(uuid "3a7a1d48-de06-455d-bea6-780125a7e465")
+		(uuid "922f3be7-36e4-4872-9d8b-491b6b2251c8")
 	)
-	(pad "1" smd rect
-		(at 0 9.4)
-		(size 3 2.2)
-		(layers "F.Cu" "F.Mask" "F.Paste")
-		(thermal_bridge_angle 45)
-		(uuid "a1646258-398c-4ee7-bb1f-3ebf8fce5c10")
-	)
-	(pad "2" smd rect
+	(pad "1" thru_hole rect
 		(at 0 -9.4)
 		(size 3 2.2)
-		(layers "F.Cu" "F.Mask" "F.Paste")
+		(drill 1)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
 		(thermal_bridge_angle 45)
-		(uuid "25caec06-2f73-4b25-92b1-4c5e1dda2219")
+		(uuid "578223a2-9d2f-47a6-862f-34883d8d7792")
+	)
+	(pad "2" thru_hole rect
+		(at 0 9.4)
+		(size 3 2.2)
+		(drill 1)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(thermal_bridge_angle 45)
+		(uuid "d5a3e2b0-e340-487d-8ff7-bfa7d52f4ff5")
 	)
 	(embedded_fonts no)
 )

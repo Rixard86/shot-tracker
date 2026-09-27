@@ -39,6 +39,16 @@ JAR = os.environ.get("FREEROUTING_JAR", os.path.expanduser("~/tools/freerouting-
 JAVA = os.environ.get("JAVA", os.path.expanduser("~/tools/jre21/bin/java.exe"))
 
 MM = pcbnew.FromMM
+CELL_PAD_W = 3.0
+CELL_PAD_H = 2.2
+CELL_PAD_DRILL = 1.0
+CONN_COURTYARD_MARGIN = 0.5
+LOW_PIN_CLEAR_MM = 2.0
+PLUS_MARK_OFFSET = 2.0
+PLUS_MARK_HALF = 0.6
+PRE_ROUTED = [("Q2", "3", "6"), ("Q1", "4", "1")]
+PRE_ROUTE_WIDTH_MM = 0.2
+BOARD_ATTEMPTS = 4
 
 
 def V(x, y):
@@ -50,16 +60,20 @@ def V(x, y):
 PLACE = {
     # supply decoupling at the module's power pads (VDD y=1.6, VDDH y=2.4)
     "C4": (-1.3, 6.9, 0), "C5": (-1.3, 8.1, 0), "C3": (1.1, 6.9, 0),
-    # status LED next to P0.13
-    "R4": (-6.9, 7.4, 0), "D4": (-4.9, 7.4, 180),
-    # SWD pads next to SWDIO/SWDCLK
-    "J2": (-9.0, 11.0, 0),
-    # charging input around the magnetic connector
-    "D3": (-2.5, 15.5, 0), "D1": (6.9, 12.9, 180), "C1": (10.2, 13.2, 0),
-    # charger + inhibit, below the cell next to the + tab
-    "JP1": (5.3, -10.0, 0), "C2": (2.4, -10.2, 90), "U3": (3.9, -13.4, 0),
+    # SWD pads next to SWDIO/SWDCLK, clear of the 148 deg boss
+    "J2": (-8.0, 8.4, 0),
+    # one row under the magnetic connector: TVS, reverse diode, VIN cap, status LED
+    "D3": (-3.0, 10.3, 0), "D1": (0.0, 10.3, 180), "C1": (3.2, 10.2, 0),
+    "D4": (5.9, 10.2, 0), "R4": (5.9, 8.9, 0),
+    # current-measurement jumper in the top-right corner, next to the cell's + pad
+    "JP1": (9.4, 12.4, 0),
+    # cell protection (PCM) in the free pocket below the module, outside the antenna zone
+    "Q2": (-9.0, -8.0, 0), "U4": (-12.2, -8.2, 0), "C8": (-12.2, -10.2, 0),
+    "R7": (-12.2, -11.6, 0), "R8": (-9.2, -10.0, 0),
+    # charger + inhibit, below the cell next to the - pad
+    "C2": (2.4, -10.2, 90), "U3": (3.9, -13.4, 0),
     "R1": (6.9, -13.6, 90), "Q1": (9.2, -12.6, 0), "R2": (8.8, -14.6, 0),
-    "R3": (11.5, -12.6, 90), "D2": (13.0, -10.0, 90),
+    "R3": (5.4, -10.3, 90), "D2": (12.7, -10.0, 90),
     # IMU by the I2C pads: SCL/SDA/CS edge faces the module-cell channel, C6 at VDDIO, C7 at VDD
     "U2": (-3.6, -8.2, 270), "C6": (-6.1, -7.2, 180), "C7": (-4.35, -10.5, 0), "R5": (-1.0, -9.3, 90),
     "R6": (0.1, -10.8, 90),
@@ -124,27 +138,29 @@ def new_fp(name, descr):
 def make_lib():
     os.makedirs(LIB, exist_ok=True)
     c = L["cell"]
-    # CP1654 with radial solder tabs. Footprint origin = cell centre.
-    # + tab (can, bottom) exits at -y, - tab (cap, top, bent down) at +y.
-    fp = new_fp("CP1654_Tabbed", "Varta CP1654 A3 with solder tabs; + at -y, - at +y. "
-                "VERIFY tab positions against the tabbed variant drawing.")
+    # CP1654 pads. Footprint origin = cell centre. + at -y, - at +y.
+    fp = new_fp("CP1654_Pads", "Varta CP1654 A3: plated holes with large pads that take wires, "
+                "tag pins or bent tabs; - at layout cell.neg_pad, + opposite. Hand-solder only, never reflow the cell.")
     dy = c["neg_pad"]["y"] - c["y"]
-    pad(fp, "1", pcbnew.PAD_SHAPE_RECT, 0, dy, 3.0, 2.2)      # + (y flipped: -y board)
-    pad(fp, "2", pcbnew.PAD_SHAPE_RECT, 0, -dy, 3.0, 2.2)     # -
+    pad(fp, "1", pcbnew.PAD_SHAPE_RECT, 0, dy, CELL_PAD_W, CELL_PAD_H, smd=False, drill=CELL_PAD_DRILL)
+    pad(fp, "2", pcbnew.PAD_SHAPE_RECT, 0, -dy, CELL_PAD_W, CELL_PAD_H, smd=False, drill=CELL_PAD_DRILL)
     circle(fp, pcbnew.F_SilkS, c["dia"] / 2 + 0.1, 0.12)
     circle(fp, pcbnew.F_Fab, c["dia"] / 2, 0.1)
     circle(fp, pcbnew.F_CrtYd, c["dia"] / 2 + 0.3)   # tabs: see pads
-    line(fp, pcbnew.F_SilkS, -0.6, dy - 2.0, 0.6, dy - 2.0)             # +
-    line(fp, pcbnew.F_SilkS, 0, dy - 2.6, 0, dy - 1.4)
+    my = dy - math.copysign(PLUS_MARK_OFFSET, dy)
+    line(fp, pcbnew.F_SilkS, -PLUS_MARK_HALF, my, PLUS_MARK_HALF, my)
+    line(fp, pcbnew.F_SilkS, 0, my - PLUS_MARK_HALF, 0, my + PLUS_MARK_HALF)
     pcbnew.FootprintSave(LIB, fp)
 
     k = L["connector"]
-    fp = new_fp("MagPogo_2P", "2-pin magnetic pogo receptacle, pitch %.2f mm. PLACEHOLDER: "
-                "replace pads/outline with the purchased part's drawing." % k["pitch"])
-    pad(fp, "1", pcbnew.PAD_SHAPE_RECT, -k["pitch"] / 2, 0, 1.5, 1.5, smd=False, drill=k["pin_drill"])
-    pad(fp, "2", pcbnew.PAD_SHAPE_CIRCLE, k["pitch"] / 2, 0, 1.5, 1.5, smd=False, drill=k["pin_drill"])
+    fp = new_fp("MagPogo_Samzo_2P", "Samzo PR5L4015-2P-C-F magnetic receptacle (drawing GZ0254-P001): "
+                "2 contacts at %.2f mm, magnets %.1f mm apart; pin 1 = + (VIN_RAW)."
+                % (k["pitch"], k["magnet_pitch"]))
+    pd = k["pad_dia"]
+    pad(fp, "1", pcbnew.PAD_SHAPE_RECT, -k["pitch"] / 2, 0, pd, pd, smd=False, drill=k["pin_drill"])
+    pad(fp, "2", pcbnew.PAD_SHAPE_CIRCLE, k["pitch"] / 2, 0, pd, pd, smd=False, drill=k["pin_drill"])
     rect(fp, pcbnew.F_SilkS, k["body_w"], k["body_l"], 0.12)
-    rect(fp, pcbnew.F_CrtYd, k["body_w"] + 0.5, k["body_l"] + 0.5)
+    rect(fp, pcbnew.F_CrtYd, k["body_w"] + CONN_COURTYARD_MARGIN, k["body_l"] + CONN_COURTYARD_MARGIN)
     rect(fp, pcbnew.F_Fab, k["body_w"], k["body_l"], 0.1)
     pcbnew.FootprintSave(LIB, fp)
 
@@ -225,7 +241,7 @@ def build():
     nc.SetTrackWidth(MM(0.2))
     nc.SetClearance(MM(0.15))
     nc.SetViaDiameter(MM(0.5))
-    nc.SetViaDrill(MM(0.25))
+    nc.SetViaDrill(MM(0.3))
 
     # nets
     nets = {}
@@ -287,9 +303,10 @@ def build():
     poly_zone(board, layer_set([pcbnew.F_Cu]), circ(c["x"], c["y"], c["dia"] / 2 + 0.3),
               rule="tracks vias pour", name="under_cell_top")
     for i, t in enumerate(TRIM):
-        if t["clear_above_pcb"] < 2.0:           # pin reaches low: no parts below it
+        if t["clear_above_pcb"] < LOW_PIN_CLEAR_MM:   # pin reaches low: no parts below it
             poly_zone(board, layer_set([pcbnew.F_Cu]), circ(t["x"], t["y"], t["keepout_r"]),
                       rule="footprints", name=f"trim_pin_{i + 1}")
+    pre_route(board)
     add_pours(board)
     gnd_fanout(board)
     # 0.35 mm copper-free ring at the rim (router keeps only 0.15 otherwise)
@@ -311,6 +328,23 @@ def build():
     t.SetTextSize(pcbnew.VECTOR2I(MM(1.0), MM(1.0)))
     board.Add(t)
     return board
+
+
+def pre_route(board):
+    for ref, a, b in PRE_ROUTED:
+        fp = board.FindFootprintByReference(ref)
+        pa, pb = fp.FindPadByNumber(a), fp.FindPadByNumber(b)
+        cx = fp.GetPosition().x
+        pts = [pa.GetPosition(), pcbnew.VECTOR2I(cx, pa.GetPosition().y),
+               pcbnew.VECTOR2I(cx, pb.GetPosition().y), pb.GetPosition()]
+        for start, end in zip(pts, pts[1:]):
+            tr = pcbnew.PCB_TRACK(board)
+            tr.SetStart(start)
+            tr.SetEnd(end)
+            tr.SetWidth(MM(PRE_ROUTE_WIDTH_MM))
+            tr.SetLayer(pcbnew.F_Cu)
+            tr.SetNet(pa.GetNet())
+            board.Add(tr)
 
 
 def gnd_fanout(board):
@@ -378,7 +412,7 @@ def gnd_fanout(board):
                         via = pcbnew.PCB_VIA(board)
                         via.SetPosition(V(vx, vy))
                         via.SetWidth(MM(0.5))
-                        via.SetDrill(MM(0.25))
+                        via.SetDrill(MM(0.3))
                         via.SetLayerPair(pcbnew.F_Cu, pcbnew.B_Cu)
                         via.SetNet(gnd)
                         board.Add(via)
@@ -454,12 +488,13 @@ def stitch(board, pitch=1.6):
                 continue
             if any(dseg(x, y, s) < s[4] + 0.25 + 0.2 for s in segs):
                 continue
-            if any(math.hypot(x - t["x"], y - t["y"]) < t["keepout_r"] for t in TRIM):
+            if any(math.hypot(x - t["x"], y - t["y"]) < t["keepout_r"] for t in TRIM
+                   if t["clear_above_pcb"] < LOW_PIN_CLEAR_MM):
                 continue
             via = pcbnew.PCB_VIA(board)
             via.SetPosition(V(x, y))
             via.SetWidth(MM(0.5))
-            via.SetDrill(MM(0.25))
+            via.SetDrill(MM(0.3))
             via.SetLayerPair(pcbnew.F_Cu, pcbnew.B_Cu)
             via.SetNet(gnd)
             board.Add(via)
@@ -478,6 +513,7 @@ def add_pours(board):
 
 
 def fill(board):
+    board.BuildConnectivity()
     pcbnew.ZONE_FILLER(board).Fill(board.Zones())
 
 
@@ -494,8 +530,8 @@ def route(board, path, timeout=900):
         return False
     if os.path.exists(ses):
         os.remove(ses)
-    cmd = [JAVA, "-jar", JAR, "--gui.enabled=false", "-de", dsn, "-do", ses, "-mp", "40",
-           "-mt", "1"]
+    cmd = [JAVA, "-jar", JAR, "--gui.enabled=false", "-de", dsn, "-do", ses, "--router.max_passes=100",
+           "--router.optimizer.enabled=false", "--router.max_threads=1"]
     print(" ".join(cmd))
     try:
         subprocess.run(cmd, stdout=open(os.path.join(KI, "freerouting.log"), "w"),
@@ -554,7 +590,7 @@ def import_ses(board, ses):
                 n_tr += 1
         for v in find(net, "via"):
             m = re.search(r"_(\d+):(\d+)_um", str(v[1]))
-            dia, drill = (int(m.group(1)), int(m.group(2))) if m else (500, 250)
+            dia, drill = (int(m.group(1)), int(m.group(2))) if m else (500, 300)
             pos = pcbnew.VECTOR2I(int(float(v[2]) * k), int(-float(v[3]) * k))
             if (round(pcbnew.ToMM(pos.x), 2), round(pcbnew.ToMM(pos.y), 2)) in have:
                 continue                      # fanout via echoed back by the router
@@ -579,24 +615,38 @@ def drc(path):
     return lines
 
 
-def main():
-    path = os.path.join(KI, "shotpuck.kicad_pcb")
+def unconnected(board):
+    board.BuildConnectivity()
+    return board.GetConnectivity().GetUnconnectedCount(False)
+
+
+def attempt(path):
     board = build()
     pcbnew.SaveBoard(path, board)
     board = pcbnew.LoadBoard(path)
     if "--no-route" not in sys.argv:
-        print("routed:", route(board, path, timeout=240))
-        stitch(board)
+        routed = route(board, path, timeout=240)
+        print("routed:", routed)
         fill(board)
-        board.BuildConnectivity()
-        left = board.GetConnectivity().GetUnconnectedCount(False)
-        if left:
+        left = unconnected(board)
+        if routed and left:
             print(f"second pass for {left} connection(s):", route(board, path, timeout=200))
-            stitch(board)
+        stitch(board)
     fill(board)
     if islands.bridge_islands(board):
         fill(board)
     pcbnew.SaveBoard(path, board)
+    return unconnected(board)
+
+
+def main():
+    path = os.path.join(KI, "shotpuck.kicad_pcb")
+    single = "--no-route" in sys.argv or "--reuse-ses" in sys.argv
+    for n in range(1, BOARD_ATTEMPTS + 1):
+        left = attempt(path)
+        print(f"attempt {n}: {left} unconnected")
+        if left == 0 or single:
+            break
     drc(path)
 
 

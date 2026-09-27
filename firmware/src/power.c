@@ -1,8 +1,8 @@
 /*
  * power.c - battery, charger and supply management.
  *
- * Supply: Varta CP1654 -> MDBT50Q VDDH (nRF52833 high-voltage mode, REG0).
- *         REG0 output (VDD) is programmed to 3.0 V and powers the LIS2DE12
+ * Supply: Varta CP1654 -> MDBT50Q VDDH (nRF52840 high-voltage mode, REG0).
+ *         REG0 output (VDD) is programmed to 3.0 V and powers the LSM6DSO32
  *         and the LED.
  * Battery voltage: SAADC internal VDDH/5 input, no external divider.
  * Charger: MCP73831 (4.20 V). STAT is read through a diode (low = charging).
@@ -179,7 +179,7 @@ bool power_should_cutoff(void)
 void power_off_until_charger(void)
 {
 	LOG_WRN("battery %u mV: system off until charger connected", st.battery_mv);
-	/* nRF52833 wakes from System OFF on VBUS detect (USBDETECTED), i.e. when
+	/* nRF52840 wakes from System OFF on VBUS detect (USBDETECTED), i.e. when
 	 * the charging cable is attached. Leave the inhibit pin low so charging
 	 * is allowed. */
 	gpio_pin_configure_dt(&chg_stat, GPIO_INPUT);

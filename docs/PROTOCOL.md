@@ -14,8 +14,8 @@ Source of truth: `firmware/src/protocol.h`. All multi-byte values are **little-e
 
 - Advertised name: **`ShotPuck-XXXX`**, where `XXXX` is the last 4 hex digits of the serial number. The advertising data includes the service UUID below, so scan with a service filter.
 - **Device Information Service** (0x180A), readable **without pairing**:
-  - Serial Number String (0x2A25): 16 hex characters, the nRF52833's factory-unique device ID. **Use it as `device_id`** in the app and in PowerSync. It is identical on every phone; the iOS peripheral identifier is not.
-  - Model Number String (0x2A24) `ShotPuck`, Firmware Revision String (0x2A26) `0.2`.
+  - Serial Number String (0x2A25): 16 hex characters, the nRF52840's factory-unique device ID. **Use it as `device_id`** in the app and in PowerSync. It is identical on every phone; the iOS peripheral identifier is not.
+  - Model Number String (0x2A24) `ShotPuck`, Firmware Revision String (0x2A26), e.g. `0.2.0+0` (from `firmware/VERSION`).
 - The puck advertises while it is **ACTIVE** (from motion wake until 30 s of stillness, plus a 120 s linger) and while its **pairing window** is open. A puck lying still in a bag is invisible, so pick up the bow to make it connectable.
 - One connection at a time.
 - **MTU:** a single event is 24 bytes, so the ATT MTU must be at least 27. The puck requests 247 on connect (and supports LE data length extension). A larger MTU makes transfers faster: up to 10 events or 19 capture samples per packet at MTU 247. flutter_blue_plus on Android requests 512 by default. On iOS the MTU is negotiated automatically (185+).
@@ -147,3 +147,15 @@ Flags: bit0 VBUS (cable present), bit1 CHARGING, bit2 CHG_INHIBIT (too cold or h
 7. Store captures keyed by `(device_id, seq)` as well. For accepted events without a complete capture, write `GET_CAPTURE(seq)`: the puck still holds the last 4.
 
 Map shots to ends in the app: the puck has no notion of ends or arrows-per-end, and seq gaps are not errors.
+
+## Firmware update (OTA)
+
+The puck runs **MCUboot** and exposes the standard **MCUmgr SMP** service, so no custom update protocol is needed.
+
+- SMP service `8D53DC1D-1DB7-4CD3-868B-8A527460AA84`, characteristic `DA2E7828-FBCE-4E01-AE9E-261174997C48`. It requires the same encrypted (paired) link as everything else.
+- In the Flutter app, use Nordic's **`mcumgr_flutter`** plugin (wraps the iOS/Android nRF Connect Device Manager libraries) with the file `shotpuck_update.bin`. The nRF Connect Device Manager app works for manual updates.
+- Recommended mode **Test and confirm**: upload (roughly 20–40 s at MTU 247), mark as test, reset. MCUboot then swaps the images (the puck is unavailable for about 10–20 s), the new version boots and advertises, and the phone reconnects and confirms it.
+- The puck also confirms a new image by itself after 10 s of healthy running. If the new image crashes or hangs before that (the watchdog resets a hang after 10 s), MCUboot **rolls back** to the previous version on the next boot.
+- Only images signed with the ShotPuck private key are accepted: MCUboot checks the ECDSA-P256 signature before it boots anything.
+- Check the result with the DIS Firmware Revision String or STATUS `fw_major`/`fw_minor`. SMP `image list` shows both slots with their versions and flags.
+- Shots, counts, config and pairings are kept across updates (separate flash partitions).

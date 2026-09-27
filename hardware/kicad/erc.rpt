@@ -1,7 +1,10 @@
-ERC report (2026-09-26T23:09:11, Encoding UTF8)
+ERC report (2026-09-27T09:09:12, Encoding UTF8)
 Report includes: Errors, Warnings, Exclusions
 
 ***** Sheet /
+[footprint_link_issues]: Footprint 'CP1654_Pads' not found in library 'ShotPuck'
+    ; warning
+    @(215.90 mm, 137.16 mm): Symbol BT1 [Battery_Cell]
 [pin_to_pin]: Pins of type Bidirectional and Power output are connected
     ; warning
     @(218.44 mm, 175.26 mm): Symbol U2 Pin 1 [SDO/SA0, Bidirectional, Line]
@@ -10,8 +13,11 @@ Report includes: Errors, Warnings, Exclusions
     ; warning
     @(218.44 mm, 177.80 mm): Symbol U2 Pin 2 [SDX, Bidirectional, Line]
     @(22.86 mm, 215.90 mm): Symbol #FLG01 Pin 1 [Power output, Line]
+[footprint_link_issues]: Footprint 'MagPogo_Samzo_2P' not found in library 'ShotPuck'
+    ; warning
+    @(220.98 mm, 43.18 mm): Symbol J1 [Conn_01x02]
 
- ** ERC messages: 2  Errors 0  Warnings 2
+ ** ERC messages: 4  Errors 0  Warnings 4
 
  ** Ignored checks:
     - Global label only appears once in the schematic

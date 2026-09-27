@@ -1,5 +1,5 @@
 /*
- * ShotPuck - nRF52833 (Raytac MDBT50Q-512K), VDDH = Li-ion cell.
+ * ShotPuck - nRF52840 (Raytac MDBT50Q-1MV2), VDDH = Li-ion cell.
  *
  * Pin map (MDBT50Q pad -> signal):
  *   P0.04 (20) I2C SCL      -> LSM6DSO32 SCL
@@ -11,12 +11,12 @@
  *   VBUS  (32)              <- charger input after reverse-polarity diode
  */
 /dts-v1/;
-#include <nordic/nrf52833_qiaa.dtsi>
-#include "shotpuck_nrf52833-pinctrl.dtsi"
+#include <nordic/nrf52840_qiaa.dtsi>
+#include "shotpuck_nrf52840-pinctrl.dtsi"
 
 / {
-	model = "ShotPuck nRF52833";
-	compatible = "shotpuck,shotpuck-nrf52833";
+	model = "ShotPuck nRF52840";
+	compatible = "shotpuck,shotpuck-nrf52840";
 
 	chosen {
 		zephyr,sram = &sram0;
@@ -63,6 +63,10 @@
 	status = "okay";
 };
 
+&wdt0 {
+	status = "okay";
+};
+
 &gpiote {
 	status = "okay";
 };
@@ -92,23 +96,23 @@
 
 		boot_partition: partition@0 {
 			label = "mcuboot";
-			reg = <0x00000000 0xC000>;
+			reg = <0x00000000 0x0000C000>;
 		};
 		slot0_partition: partition@c000 {
 			label = "image-0";
-			reg = <0x0000C000 0x37000>;
+			reg = <0x0000C000 0x00073000>;
 		};
-		slot1_partition: partition@43000 {
+		slot1_partition: partition@7f000 {
 			label = "image-1";
-			reg = <0x00043000 0x2F000>;
+			reg = <0x0007F000 0x00073000>;
 		};
-		eventlog_partition: partition@72000 {
+		eventlog_partition: partition@f2000 {
 			label = "eventlog";
-			reg = <0x00072000 0x00008000>;
+			reg = <0x000F2000 0x00008000>;
 		};
-		storage_partition: partition@7a000 {
+		storage_partition: partition@fa000 {
 			label = "storage";
-			reg = <0x0007A000 0x00006000>;
+			reg = <0x000FA000 0x00006000>;
 		};
 	};
 };
