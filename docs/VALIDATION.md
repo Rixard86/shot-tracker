@@ -12,7 +12,7 @@
 | Schematic | KiCad netlist export vs `design.py` (`check_netlist.py`), KiCad 10 ERC | 99/99 pin assignments, 25 nets; ERC 0 errors (2 intentional strap warnings) |
 | PCB | Freerouting + KiCad 10 DRC | 0 violations, 0 unconnected (vias 0.5/0.3 mm) |
 | Panel | KiKit 2×2, KiCad 10 DRC on the panel | 0 violations, 0 unconnected; mouse bites clear of the antenna, cap bosses and all courtyards |
-| Balance / swell space | CadQuery (`puck.py`) with Varta's 7.0 mm swollen-cell height | 11.25 mm tall; 20.92 g, COM 0.001 mm off axis with the optional brass pins (≥ 2 mm from the antenna zone), 18.68 g, COM 1.0 mm without |
+| Balance / swell space | CadQuery (`puck.py`) with Varta's 7.0 mm swollen-cell height | 10.45 mm tall (cell in a PCB notch); 19.81 g, COM 0.001 mm off axis with the optional brass pins (≥ 2 mm from the antenna zone), 18.03 g, COM 0.9 mm without |
 | Balance | CadQuery mass properties, trim solver | COM < 0.01 mm off axis with the optional pins (estimated masses) |
 
 The simulation validates **logic and robustness margins**, not the physics of your bow. The signal model (release shock of 8–40 g, 15–80° rotation into the sling) is an assumption.
@@ -34,6 +34,7 @@ Do these in order: each step de-risks the next. **Bold** items are blockers.
 ### 2. Assembled puck
 - [ ] **Cell protection (PCM):** with a current-limited bench supply in place of the cell, check over-discharge cut-off at about 2.8 V, over-charge cut-off at about 4.28 V, and that a load above about 0.1 A (e.g. 30 Ω across VBAT–GND) trips the over-current protection within about 20 ms and recovers when removed. Check the drop across Q2 at 50 mA charging (expected under 60 mV).
 - [ ] **Magnetic connector:** it mates only one way; the cable's + reaches pin 1 (square pad). A reversed cable must not charge or damage anything.
+- [ ] **Cell notch:** the cell drops freely into the notch and sits flush with the board's underside; its bottom (+) tab or wire bends up through the relief to the + pad without touching the board edge; the Kapton disc covers the whole base under the cell; with the cap on and the foam/RTV in place, the cell cannot shift toward the rim (check the tab joints after the 2,000-shot test).
 - [ ] **Swell space:** with the cap on, a 7.0 mm gauge block in place of the cell fits without load (Varta's max including deflection).
 - [ ] **Identity:** the puck advertises as `ShotPuck-XXXX`; the DIS serial number (readable without pairing) ends in the same 4 characters and is identical on two different phones.
 - [ ] **Pairing window:** attach the charger: the LED blinks once a second for 60 s. Pair from iOS and from Android inside the window (LED blinks twice on success). After the window, a new phone's pairing is rejected and it cannot read COUNT or subscribe; the paired phone still reconnects and works.

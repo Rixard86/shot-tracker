@@ -40,12 +40,16 @@ JAVA = os.environ.get("JAVA", os.path.expanduser("~/tools/jre21/bin/java.exe"))
 
 MM = pcbnew.FromMM
 CELL_PAD_W = 3.0
-CELL_PAD_H = 2.2
+CELL_PAD_H = 2.0
 CELL_PAD_DRILL = 1.0
 CONN_COURTYARD_MARGIN = 0.5
 LOW_PIN_CLEAR_MM = 2.0
-PLUS_MARK_OFFSET = 2.0
+PLUS_MARK_GAP = 0.3
 PLUS_MARK_HALF = 0.6
+CUTOUT_COPPER_KEEP = 0.35
+CUTOUT_VIA_MARGIN = 0.65
+EDGE_WIDTH_MM = 0.1
+BACK_TEXT_POS = (-8.0, -4.0)
 PRE_ROUTED = [("Q2", "3", "6"), ("Q1", "4", "1")]
 PRE_ROUTE_WIDTH_MM = 0.2
 BOARD_ATTEMPTS = 4
@@ -66,14 +70,14 @@ PLACE = {
     "D3": (-3.0, 10.3, 0), "D1": (0.0, 10.3, 180), "C1": (3.2, 10.2, 0),
     "D4": (5.9, 10.2, 0), "R4": (5.9, 8.9, 0),
     # current-measurement jumper in the top-right corner, next to the cell's + pad
-    "JP1": (9.4, 12.4, 0),
+    "JP1": (9.2, 13.0, 90),
     # cell protection (PCM) in the free pocket below the module, outside the antenna zone
     "Q2": (-9.0, -8.0, 0), "U4": (-12.2, -8.2, 0), "C8": (-12.2, -10.2, 0),
     "R7": (-12.2, -11.6, 0), "R8": (-9.2, -10.0, 0),
     # charger + inhibit, below the cell next to the - pad
     "C2": (2.4, -10.2, 90), "U3": (3.9, -13.4, 0),
     "R1": (6.9, -13.6, 90), "Q1": (9.2, -12.6, 0), "R2": (8.8, -14.6, 0),
-    "R3": (5.4, -10.3, 90), "D2": (12.7, -10.0, 90),
+    "R3": (5.4, -10.3, 90), "D2": (-0.3, -12.9, 180),
     # IMU by the I2C pads: SCL/SDA/CS edge faces the module-cell channel, C6 at VDDIO, C7 at VDD
     "U2": (-3.6, -8.2, 270), "C6": (-6.1, -7.2, 180), "C7": (-4.35, -10.5, 0), "R5": (-1.0, -9.3, 90),
     "R6": (0.1, -10.8, 90),
@@ -139,17 +143,17 @@ def make_lib():
     os.makedirs(LIB, exist_ok=True)
     c = L["cell"]
     # CP1654 pads. Footprint origin = cell centre. + at -y, - at +y.
-    fp = new_fp("CP1654_Pads", "Varta CP1654 A3: plated holes with large pads that take wires, "
-                "tag pins or bent tabs; - at layout cell.neg_pad, + opposite. Hand-solder only, never reflow the cell.")
+    fp = new_fp("CP1654_Pads", "Varta CP1654 A3 sitting in the board cutout: large pads for wires or bent tabs "
+                "(the bottom + tab bends up through the relief); - at layout cell.neg_pad, + opposite. "
+                "Hand-solder only, never reflow the cell.")
     dy = c["neg_pad"]["y"] - c["y"]
     pad(fp, "1", pcbnew.PAD_SHAPE_RECT, 0, dy, CELL_PAD_W, CELL_PAD_H, smd=False, drill=CELL_PAD_DRILL)
     pad(fp, "2", pcbnew.PAD_SHAPE_RECT, 0, -dy, CELL_PAD_W, CELL_PAD_H, smd=False, drill=CELL_PAD_DRILL)
-    circle(fp, pcbnew.F_SilkS, c["dia"] / 2 + 0.1, 0.12)
     circle(fp, pcbnew.F_Fab, c["dia"] / 2, 0.1)
     circle(fp, pcbnew.F_CrtYd, c["dia"] / 2 + 0.3)   # tabs: see pads
-    my = dy - math.copysign(PLUS_MARK_OFFSET, dy)
-    line(fp, pcbnew.F_SilkS, -PLUS_MARK_HALF, my, PLUS_MARK_HALF, my)
-    line(fp, pcbnew.F_SilkS, 0, my - PLUS_MARK_HALF, 0, my + PLUS_MARK_HALF)
+    mx = CELL_PAD_W / 2 + PLUS_MARK_GAP + PLUS_MARK_HALF
+    line(fp, pcbnew.F_SilkS, mx - PLUS_MARK_HALF, dy, mx + PLUS_MARK_HALF, dy)
+    line(fp, pcbnew.F_SilkS, mx, dy - PLUS_MARK_HALF, mx, dy + PLUS_MARK_HALF)
     pcbnew.FootprintSave(LIB, fp)
 
     k = L["connector"]
@@ -226,6 +230,70 @@ def circ(cx, cy, r, n=48):
             for i in range(n)]
 
 
+def cell_cutout():
+    c = L["cell"]
+    r = c["dia"] / 2 + c["pcb_hole_clear"]
+    t = c["tab_relief"]
+    side = -math.copysign(1, c["neg_pad"]["y"] - c["y"])
+    return [(c["x"], c["y"], r), (c["x"], c["y"] + side * (r + t["depth"] - t["r"]), t["r"])]
+
+
+def in_cutout(pt, margin):
+    (hx, hy, hr), _ = cell_cutout()
+    if pt[0] >= hx and abs(pt[1] - hy) < hr + margin:
+        return True
+    return any(math.hypot(pt[0] - cx, pt[1] - cy) < r + margin for cx, cy, r in cell_cutout())
+
+
+def add_arc(board, pts):
+    s = pcbnew.PCB_SHAPE(board)
+    s.SetShape(pcbnew.SHAPE_T_ARC)
+    s.SetArcGeometry(*(V(*p) for p in pts))
+    s.SetLayer(pcbnew.Edge_Cuts)
+    s.SetWidth(MM(EDGE_WIDTH_MM))
+    board.Add(s)
+
+
+def add_line(board, pts):
+    s = pcbnew.PCB_SHAPE(board)
+    s.SetShape(pcbnew.SHAPE_T_SEGMENT)
+    s.SetStart(V(*pts[0]))
+    s.SetEnd(V(*pts[1]))
+    s.SetLayer(pcbnew.Edge_Cuts)
+    s.SetWidth(MM(EDGE_WIDTH_MM))
+    board.Add(s)
+
+
+def notch_points():
+    (hx, hy, hr), (bx, by, br) = cell_cutout()
+    side = math.copysign(1, by - hy)
+    d = abs(by - hy)
+    ty = (hr * hr - br * br + d * d) / (2 * d)
+    tx = math.sqrt(hr * hr - ty * ty)
+    ux = math.sqrt(br * br - (hr - d) ** 2)
+    rim_r = L["pcb_dia"] / 2
+    plus, minus = hy + side * hr, hy - side * hr
+    return {
+        "rim_plus": (math.sqrt(rim_r ** 2 - plus ** 2), plus),
+        "rim_minus": (math.sqrt(rim_r ** 2 - minus ** 2), minus),
+        "rim_back": (-rim_r, 0.0),
+        "hole_minus": (hx, minus),
+        "hole_back": (hx - hr, hy),
+        "cusp": (hx - tx, hy + side * ty),
+        "apex": (hx, hy + side * (d + br)),
+        "relief_end": (hx + ux, plus),
+    }
+
+
+def add_outline(board):
+    p = notch_points()
+    add_arc(board, (p["rim_plus"], p["rim_back"], p["rim_minus"]))
+    add_line(board, (p["rim_minus"], p["hole_minus"]))
+    add_arc(board, (p["hole_minus"], p["hole_back"], p["cusp"]))
+    add_arc(board, (p["cusp"], p["apex"], p["relief_end"]))
+    add_line(board, (p["relief_end"], p["rim_plus"]))
+
+
 # ---------------------------------------------------------------------- main
 def build():
     make_lib()
@@ -254,13 +322,7 @@ def build():
 
     # outline
     R = L["pcb_dia"] / 2
-    s = pcbnew.PCB_SHAPE(board)
-    s.SetShape(pcbnew.SHAPE_T_CIRCLE)
-    s.SetCenter(V(0, 0))
-    s.SetEnd(V(R, 0))
-    s.SetLayer(pcbnew.Edge_Cuts)
-    s.SetWidth(MM(0.1))
-    board.Add(s)
+    add_outline(board)
 
     # footprints
     bosses = [(L["bosses"]["radius"] * math.cos(math.radians(a)),
@@ -299,9 +361,13 @@ def build():
     ant_x = m["x"] - m["l"] / 2 + 3.9          # inner edge of antenna region
     poly_zone(board, allcu, [(-R - 1, -6.3), (ant_x, -6.3), (ant_x, 6.3), (-R - 1, 6.3)],
               rule="tracks vias pour", name="antenna_to_rim")
-    c = L["cell"]
-    poly_zone(board, layer_set([pcbnew.F_Cu]), circ(c["x"], c["y"], c["dia"] / 2 + 0.3),
-              rule="tracks vias pour", name="under_cell_top")
+    for i, (cx, cy, r) in enumerate(cell_cutout()):
+        poly_zone(board, allcu, circ(cx, cy, r + CUTOUT_COPPER_KEEP),
+                  rule="tracks vias pour", name=f"cell_cutout_{i + 1}")
+    (hx, hy, hr), _ = cell_cutout()
+    w = hr + CUTOUT_COPPER_KEEP
+    poly_zone(board, allcu, [(hx, hy - w), (R + CUTOUT_COPPER_KEEP, hy - w), (R + CUTOUT_COPPER_KEEP, hy + w),
+                             (hx, hy + w)], rule="tracks vias pour", name="cell_notch")
     for i, t in enumerate(TRIM):
         if t["clear_above_pcb"] < LOW_PIN_CLEAR_MM:   # pin reaches low: no parts below it
             poly_zone(board, layer_set([pcbnew.F_Cu]), circ(t["x"], t["y"], t["keepout_r"]),
@@ -322,7 +388,7 @@ def build():
     # silkscreen label
     t = pcbnew.PCB_TEXT(board)
     t.SetText("ShotPuck rev A")
-    t.SetPosition(V(0, -4.0))
+    t.SetPosition(V(*BACK_TEXT_POS))
     t.SetLayer(pcbnew.B_SilkS)
     t.SetMirrored(True)
     t.SetTextSize(pcbnew.VECTOR2I(MM(1.0), MM(1.0)))
@@ -352,7 +418,6 @@ def gnd_fanout(board):
     R = L["pcb_dia"] / 2
     gnd = board.FindNet("GND")
     vias = []
-    c = L["cell"]
     m = L["module"]
     ant_x = m["x"] - m["l"] / 2 + 3.9
     bosses = [(L["bosses"]["radius"] * math.cos(math.radians(a)),
@@ -367,7 +432,7 @@ def gnd_fanout(board):
     def free(x, y, own):
         if math.hypot(x, y) > R - 0.9:
             return False
-        if math.hypot(x - c["x"], y - c["y"]) < c["dia"] / 2 + 0.9:
+        if in_cutout((x, y), CUTOUT_VIA_MARGIN):
             return False
         if x < ant_x + 0.6 and abs(y) < 6.9:
             return False
@@ -439,7 +504,6 @@ def stitch(board, pitch=1.6):
     of the top pour is tied to the bottom plane."""
     R = L["pcb_dia"] / 2
     gnd = board.FindNet("GND")
-    c = L["cell"]
     m = L["module"]
     ant_x = m["x"] - m["l"] / 2 + 3.9
     bosses = [(L["bosses"]["radius"] * math.cos(math.radians(a)),
@@ -476,7 +540,7 @@ def stitch(board, pitch=1.6):
             x, y = i * pitch, j * pitch
             if math.hypot(x, y) > R - 1.0:
                 continue
-            if math.hypot(x - c["x"], y - c["y"]) < c["dia"] / 2 + 0.9:
+            if in_cutout((x, y), CUTOUT_VIA_MARGIN):
                 continue
             if x < ant_x + 0.8 and abs(y) < 7.0:
                 continue

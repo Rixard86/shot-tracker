@@ -20,11 +20,11 @@
   "bosses": {
     "radius": 16.5,
     "angles_deg": [
-      35,
+      40,
       148,
       270
     ],
-    "_angles": "35 deg keeps the boss 0.8 mm from the cell, 148 deg keeps it out of the module's antenna keep-out.",
+    "_angles": "40 deg keeps the boss face on the board beside the cell notch and 1.4 mm from the cell, 148 deg keeps it out of the module's antenna keep-out.",
     "boss_dia": 3.8,
     "pcb_hole": 1.8
   },
@@ -40,8 +40,14 @@
     "_swell": "Varta drawing: max 7.0 mm including cell deflection (1.5 mm free space for abuse conditions). A soft foam pad may fill the gap.",
     "neg_pad": {
       "x": 8.5,
-      "y": -9.4
-    }
+      "y": -10.2
+    },
+    "pcb_hole_clear": 0.25,
+    "tab_relief": {
+      "r": 3.0,
+      "depth": 0.4
+    },
+    "_pcb_hole": "The cell sits in a notch in the PCB that is open to the rim, on the insulator over the base (saves the 0.8 mm board). The relief (a circle of radius r bulging depth mm past the notch edge, on the + pad side) lets the bottom (+ can) tab or wire bend up onto the + pad."
   },
   "module": {
     "part": "Raytac MDBT50Q-1MV2",
