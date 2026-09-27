@@ -1,0 +1,107 @@
+(footprint "LIR1254_Contacts"
+	(version 20260206)
+	(generator "pcbnew")
+	(generator_version "10.0")
+	(layer "F.Cu")
+	(descr "LIR1254 in the board notch, no tabs: pad 1 = + spring contact on the can side, pad 2 = - strap across the top cap (Kapton where it passes the can). Hand-solder the contacts.")
+	(property "Reference" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(uuid "88c31c2e-60fb-4887-8db1-81ed061d591f")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Value" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(uuid "8faf18d6-7e8b-4229-831f-d3536013885d")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "145ce155-82bf-4206-ab67-5a2bac2a813e")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "35d1a1db-dca4-4508-8e60-cfc507d5cadd")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start -8.945511 -2.33834)
+		(end -7.745511 -2.33834)
+		(stroke
+			(width 0.12)
+			(type default)
+		)
+		(layer "F.SilkS")
+		(uuid "54fa60e2-7145-430d-87f0-079cd2949de7")
+	)
+	(fp_line
+		(start -8.345511 -2.93834)
+		(end -8.345511 -1.73834)
+		(stroke
+			(width 0.12)
+			(type default)
+		)
+		(layer "F.SilkS")
+		(uuid "d92f18d0-f377-418b-8b1a-379ab843d7dc")
+	)
+	(fp_circle
+		(center 0 0)
+		(end 6.55 0)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(fill no)
+		(layer "F.CrtYd")
+		(uuid "c69f87a1-8d22-49e7-a7e7-11dac1de46f1")
+	)
+	(fp_circle
+		(center 0 0)
+		(end 6.25 0)
+		(stroke
+			(width 0.1)
+			(type default)
+		)
+		(fill no)
+		(layer "F.Fab")
+		(uuid "7f5dc367-01c1-485c-90c6-6d136496f6f5")
+	)
+	(pad "1" smd rect
+		(at -7.27 -4.2 239.9842587)
+		(size 2.5 2)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(thermal_bridge_angle 45)
+		(uuid "4aae5db7-2997-4e36-ac86-79e2d2e211ae")
+	)
+	(pad "2" smd rect
+		(at -8.27 1.449999 279.9447307)
+		(size 2.5 2)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(thermal_bridge_angle 45)
+		(uuid "d997ae5c-4216-4dcd-9b24-7e558ecad39d")
+	)
+	(embedded_fonts no)
+)

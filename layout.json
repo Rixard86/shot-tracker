@@ -1,19 +1,17 @@
 {
-  "_doc": "Single source of truth shared by mechanical/puck.py and hardware/gen_pcb.py. Units mm. Board coordinates: origin on the puck axis, +x right, +y up, viewed from the cap (top). z = 0 at the face that seats on the Avalon weight.",
+  "_doc": "Single source of truth shared by mechanical/puck.py, mechanical/blender and hardware/gen_pcb.py. Units mm. Board coordinates: origin on the puck axis, +x right, +y up, viewed from the cap (top). z = 0 at the plate face that seats on the Avalon weight.",
   "puck": {
     "od": 40.0,
-    "base_thickness": 2.0,
+    "plate_thickness": 2.0,
     "insulator": 0.1,
     "pcb_thickness": 0.8,
     "cap_wall": 1.5,
     "cap_top": 1.2,
-    "well_wall": 0.8,
-    "stud_thread": "5/16-24 UNF-2A",
-    "stud_major_dia": 7.9,
-    "stud_length": 8.0,
-    "oring_cs": 0.8,
-    "screw": "M1.6x5 ISO 10642 countersunk, nylon-patch",
-    "insert": "M1.6 heat-set brass insert, OD 2.4, L 3.0"
+    "gasket_t": 0.3,
+    "plate": "6061-T6 flat plate, laser or waterjet cut: centre hole for the bolt, 3x M2 tapped",
+    "gasket": "die-cut 0.5 mm silicone ring under the cap wall, ~0.3 mm compressed",
+    "screw": "M2x8 cheese head (ISO 14580, Torx) from above, through the cap, PCB and standoff into the tapped plate",
+    "pcb_standoff": 3.0
   },
   "pcb_dia": 36.0,
   "_pcb_dia": "Puck OD = Avalon barebow weight OD (40 mm). Cavity 37 mm (cap_wall 1.5) minus 0.5 mm clearance per side.",
@@ -21,49 +19,58 @@
     "radius": 16.5,
     "angles_deg": [
       40,
-      148,
-      270
+      160,
+      305
     ],
-    "_angles": "40 deg keeps the boss face on the board beside the cell notch and 1.4 mm from the cell, 148 deg keeps it out of the module's antenna keep-out.",
+    "_angles": "Spread around the sleeve, clear of the module, the cell notch and the connector.",
     "boss_dia": 3.8,
-    "pcb_hole": 1.8
+    "pcb_hole": 2.4,
+    "screw_hole": 2.2,
+    "tap_drill": 1.6,
+    "head_dia": 3.8,
+    "head_h": 1.3,
+    "counterbore_clear": 0.4,
+    "screw_len": 8.0,
+    "tip_inset": 0.1,
+    "_screw": "The counterbore depth puts the screw tip tip_inset above the plate's underside, so it never touches the weight."
   },
   "cell": {
-    "part": "Varta CP1654 A3 (wire or tag version, hand-soldered, never reflowed)",
-    "x": 8.5,
-    "y": 0.0,
-    "dia": 16.1,
+    "part": "LIR1254 Li-ion coin cell, plain (no tabs), 3.6-3.7 V, 45-65 mAh",
+    "x": 0.0,
+    "y": -11.75,
+    "dia": 12.5,
     "h": 5.4,
-    "swell_h": 7.0,
-    "tab_h": 0.15,
-    "mass_g": 3.2,
-    "_swell": "Varta drawing: max 7.0 mm including cell deflection (1.5 mm free space for abuse conditions). A soft foam pad may fill the gap.",
-    "neg_pad": {
-      "x": 8.5,
-      "y": -10.2
-    },
+    "swell_h": 6.6,
+    "tab_h": 0.0,
+    "mass_g": 1.9,
+    "_swell": "No swell spec for LIR cells: 1.2 mm free above the 5.4 mm cell (Varta asks 1.5 mm for its cells), set so the connector is flush with the cap top. The cap's foam pad fills it and clamps the cell.",
     "pcb_hole_clear": 0.25,
-    "tab_relief": {
-      "r": 3.0,
-      "depth": 0.4
+    "pos_pad": {
+      "x": -7.27,
+      "y": -7.55
     },
-    "_pcb_hole": "The cell sits in a notch in the PCB that is open to the rim, on the insulator over the base (saves the 0.8 mm board). The relief (a circle of radius r bulging depth mm past the notch edge, on the + pad side) lets the bottom (+ can) tab or wire bend up onto the + pad."
+    "neg_pad": {
+      "x": -8.27,
+      "y": -13.2
+    },
+    "_contacts": "+ : spring contact from pos_pad against the can side. - : strap from neg_pad across the top cap, Kapton where it passes the can. The cap's foam pad presses the strap and the cell onto the Kapton on the plate."
   },
   "module": {
     "part": "Raytac MDBT50Q-1MV2",
-    "x": -9.25,
-    "y": 0.0,
-    "rot_deg": 90,
+    "x": 0.05,
+    "y": 10.75,
+    "rot_deg": 270,
     "w": 10.0,
     "l": 15.5,
     "h": 2.2,
     "mass_g": 0.9,
-    "_rot": "antenna end points to -x (board rim)"
+    "_rot": "Long axis tangential above the sleeve; antenna end points to +x, copper-free from there to the rim.",
+    "antenna_dir_deg": 0
   },
   "connector": {
     "part": "Samzo PR5L4015-2P-C-F magnetic receptacle (Electrokit 41035992); cable side PR5L5015-2P-C-H (Electrokit 41035991)",
-    "x": 0.0,
-    "y": 13.5,
+    "x": 13.52,
+    "y": -3.62,
     "pitch": 2.5,
     "magnet_pitch": 8.0,
     "body_w": 14.5,
@@ -72,14 +79,35 @@
     "pin_drill": 0.85,
     "pad_dia": 1.3,
     "mass_g": 0.6,
-    "_note": "Samzo drawing GZ0254-P001. Mounted on the PCB; the cap has a chimney down to the connector top so the plug reaches it. mass_g is an estimate: weigh the part."
+    "rot_deg": 75,
+    "_note": "Samzo drawing GZ0254-P001. Mounted on the PCB; puck.pcb_standoff puts its top flush with the cap top, which has an opening around it (RTV seal). mass_g is an estimate: weigh the part."
   },
-  "trim": {
-    "material": "brass",
-    "density": 8.5,
-    "pin_dia": 8.0,
-    "optional": true,
-    "_note": "Positions and lengths are solved by puck.py (1-2 pins) to put the centre of mass on the axis. Optional: the cap always has the pockets; without pins the puck works, only ~1 mm off-balance. Brass, not steel: steel is pulled by the connector magnets."
+  "other_components_g": 0.6,
+  "bolt": {
+    "thread": "5/16-24 UNF",
+    "clearance_dia": 8.4,
+    "dia": 7.94,
+    "head": "button head socket cap screw, 3/16 in hex",
+    "head_dia": 16.7,
+    "head_h": 4.4,
+    "washer_od": 14.0,
+    "washer_t": 1.5,
+    "_note": "The Avalon weight bolt as a button head, longer by the puck height plus the sealing washer: it goes through the sleeve and the weight into the riser. Bonded sealing washer under the head."
   },
-  "other_components_g": 0.6
+  "sleeve": {
+    "od": 10.0,
+    "id": 8.4,
+    "pcb_clear": 0.1,
+    "material": "stainless 304 tube 10 x 0.8, cold-drawn (yield >= 500 MPa)",
+    "density": 7.9,
+    "_note": "One tube from the plate through the Kapton and the PCB to 0.1 mm above the cap top; bonded into the cap. Steel on aluminium carries the whole bolt clamp load, so the PCB and the PC cap stay out of it. The PCB hole (od + 2 x pcb_clear) is merged with the cell notch by a straight slot; the right half of the board reaches the rest only across the top. Kapton tape on the tube where it faces the cell can.",
+    "proud": 0.1
+  },
+  "standoffs": {
+    "od": 4.0,
+    "id": 2.2,
+    "density": 2.7,
+    "part": "M2 round spacer, 3 mm long, OD 4 mm, aluminium",
+    "_note": "One under the PCB at each screw; OD within the copper-free boss ring (3.8 + 2 x 0.3 mm) on both layers."
+  }
 }

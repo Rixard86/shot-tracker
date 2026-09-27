@@ -9,11 +9,10 @@
 | Shot log in flash | `firmware/sim/test_evlog.c` (run by `simulate.py`) against a fake NOR flash that rejects writes to unerased bytes: reboot recovery, wrap-around (952 of 3000 kept), `from_seq` filter, torn record, torn sector erase, appending during a replay | EVLOG TESTS: PASS (mutation-checked) |
 | Firmware | Zephyr 4.1 sysbuild (MCUboot + app), custom board `shotpuck/nrf52840`, release and log+assert variants | 0 compiler warnings; both fit the 452 KB slot |
 | OTA signing | `imgtool verify` on the signed image with the private key and with MCUboot's public dev key; MCUboot's embedded public key compared with the private key; build without the key | Valid with ours, rejected with the dev key, keys match, keyless build refused |
-| Schematic | KiCad netlist export vs `design.py` (`check_netlist.py`), KiCad 10 ERC | 99/99 pin assignments, 25 nets; ERC 0 errors (2 intentional strap warnings) |
-| PCB | Freerouting + KiCad 10 DRC | 0 violations, 0 unconnected (vias 0.5/0.3 mm) |
-| Panel | KiKit 2×2, KiCad 10 DRC on the panel | 0 violations, 0 unconnected; mouse bites clear of the antenna, cap bosses and all courtyards |
-| Balance / swell space | CadQuery (`puck.py`) with Varta's 7.0 mm swollen-cell height | 10.45 mm tall (cell in a PCB notch); 19.81 g, COM 0.001 mm off axis with the optional brass pins (≥ 2 mm from the antenna zone), 18.03 g, COM 0.9 mm without |
-| Balance | CadQuery mass properties, trim solver | COM < 0.01 mm off axis with the optional pins (estimated masses) |
+| Schematic | KiCad netlist export vs `design.py` (`check_netlist.py`), KiCad 10 ERC | 95/95 pin assignments, 25 nets; ERC 0 errors (2 intentional strap warnings) |
+| PCB | Freerouting + KiCad 10 DRC | 0 violations, 0 unconnected (2 layers, vias 0.55/0.3 mm) |
+| Panel | KiKit 2×2, KiCad 10 DRC on the panel | 0 violations, 0 unconnected; 4 tabs per board, mouse bites clear of the antenna, the cell notch, the screw holes and all courtyards |
+| Height / balance | CadQuery (`puck.py`) | 9.90 mm tall (PCB on 3 mm standoffs, connector top flush with the cap top, 1.2 mm free above the cell); 16.27 g, COM 0.85 mm off axis (no trim weight; estimated masses) |
 
 The simulation validates **logic and robustness margins**, not the physics of your bow. The signal model (release shock of 8–40 g, 15–80° rotation into the sling) is an assumption.
 
@@ -21,21 +20,22 @@ The simulation validates **logic and robustness margins**, not the physics of yo
 
 Do these in order: each step de-risks the next. **Bold** items are blockers.
 
-### 1. Bench, cap off (programmer on the Tag-Connect)
+### 1. Bench, cap off (programmer on the SWD test pads)
 - [ ] **First boot:** the LED blinks 200 ms, the puck advertises as ShotPuck, and the UICR REGOUT0 write causes one extra reset.
 - [ ] **VDD measures 3.0 V** (REG0 programmed) and the IMU answers (WHO_AM_I 0x6C at I2C 0x6A; no 1 Hz error blinking).
-- [ ] **Standby current** with JP1 cut: IDLE and not advertising should be about 17 µA (LSM6DSO32 accelerometer in low-power mode at 12.5 Hz is about 10 µA, interpolated from the datasheet; BQ29700 4 µA; measure it). ACTIVE at 416 Hz with the gyroscope should be about 0.7–0.8 mA. Advertising at 500 ms should add about 10–15 µA. These set the battery life (README: about 2 months at 2 h/day).
+- [ ] **Standby current** with JP1 cut: IDLE and not advertising should be about 17 µA (LSM6DSO32 accelerometer in low-power mode at 12.5 Hz is about 10 µA, interpolated from the datasheet; BQ29700 4 µA; measure it). ACTIVE at 416 Hz with the gyroscope should be about 0.7–0.8 mA. Advertising at 500 ms should add about 10–15 µA. These set the battery life (README: about 3.5–5 weeks at 2 h/day).
+- [ ] **I2C on internal pull-ups** (no R5/R6 any more): no I2C errors at 400 kHz over a long ACTIVE run; if in doubt, scope SCL (rise time under 300 ns).
 - [ ] **Wake-on-motion** from IDLE at the default 150 mg threshold (±8 g, 31.25 mg steps): picking up the bow wakes it; the bow lying still does not.
-- [ ] **Charging:** about 50 mA (from R1 = 20k), and termination at 4.20 V ±0.75 %. Confirm both against the CP1654 datasheet limits before first charge.
+- [ ] **Charging:** about 21 mA (from R1 = 47k), and termination at 4.20 V ±0.75 %. Confirm both against the LIR1254 datasheet limits before first charge.
 - [ ] **CHG_STAT and VBUS flags** in STATUS follow the cable.
 - [ ] **Charge inhibit:** freezer at −5 °C sets CHG_INHIBIT and the charge current drops to about 0. Warm to 20 °C and charging resumes.
 - [ ] **Low-battery cut-off:** with a bench supply on the cell pads below 3.3 V, the puck enters System OFF (current under 1 µA). **Attaching the charger must wake it** (nRF52840 VBUS wake from System OFF: verify, it is load-bearing).
 
 ### 2. Assembled puck
-- [ ] **Cell protection (PCM):** with a current-limited bench supply in place of the cell, check over-discharge cut-off at about 2.8 V, over-charge cut-off at about 4.28 V, and that a load above about 0.1 A (e.g. 30 Ω across VBAT–GND) trips the over-current protection within about 20 ms and recovers when removed. Check the drop across Q2 at 50 mA charging (expected under 60 mV).
+- [ ] **Cell protection (PCM):** with a current-limited bench supply in place of the cell, check over-discharge cut-off at about 2.8 V, over-charge cut-off at about 4.28 V, and that a load above about 0.1 A (e.g. 30 Ω across VBAT–GND) trips the over-current protection within about 20 ms and recovers when removed. Check the drop across Q2 at 21 mA charging (expected under 30 mV).
 - [ ] **Magnetic connector:** it mates only one way; the cable's + reaches pin 1 (square pad). A reversed cable must not charge or damage anything.
-- [ ] **Cell notch:** the cell drops freely into the notch and sits flush with the board's underside; its bottom (+) tab or wire bends up through the relief to the + pad without touching the board edge; the Kapton disc covers the whole base under the cell; with the cap on and the foam/RTV in place, the cell cannot shift toward the rim (check the tab joints after the 2,000-shot test).
-- [ ] **Swell space:** with the cap on, a 7.0 mm gauge block in place of the cell fits without load (Varta's max including deflection).
+- [ ] **Cell and contacts:** the cell drops freely into the notch onto the Kapton; the + spring presses on the can side and the − strap on the top cap without touching the can edge; with the cap on, the foam clamps the cell and it cannot shift. **No resets from shot shock:** shoot a session and check that the puck never rebooted (a reboot shows as `t_uptime_ms` falling between consecutive EVENTs and `seq` jumping ahead).
+- [ ] **Swell space:** with the cap on, a 6.6 mm gauge block in place of the cell fits without load (1.2 mm above the 5.4 mm cell), and the foam pad still clamps a real cell.
 - [ ] **Identity:** the puck advertises as `ShotPuck-XXXX`; the DIS serial number (readable without pairing) ends in the same 4 characters and is identical on two different phones.
 - [ ] **Pairing window:** attach the charger: the LED blinks once a second for 60 s. Pair from iOS and from Android inside the window (LED blinks twice on success). After the window, a new phone's pairing is rejected and it cannot read COUNT or subscribe; the paired phone still reconnects and works.
 - [ ] **FORGET_BONDS** removes all phones; pairing works again only through the charger window.
@@ -44,8 +44,10 @@ Do these in order: each step de-risks the next. **Bold** items are blockers.
 - [ ] **IMU axes:** record a capture with the puck lying cap-up (+Z ≈ +1000 mg), then on its edge in two directions, and note which X/Y direction points along the arrow and which points up the riser. Put the mapping in `docs/PROTOCOL.md` for the app.
 - [ ] **Capture transfer:** after a shot, the app receives the header plus 624 samples within about 3 s; GET_CAPTURE re-sends it; the gyroscope shows the bow rotating forward into the sling.
 - [ ] **BLE range through the cap**, with the puck on the riser and the phone in a pocket about 1–2 m away, and at 10 m. If the link is weak, raise TX power (`CONFIG_BT_CTLR_TX_PWR_PLUS_4=y`) or check the antenna keep-out against the aluminium base.
-- [ ] Weigh each finished puck and compare with `mechanical/out/mass_report.txt`. Re-run `puck.py` with measured part masses before cutting the (optional) brass pins.
-- [ ] With the brass pins fitted: spin test (roll the puck on a flat surface or balance it on a pin; no preferred rest position). Check BLE range with and without pin 1.
+- [ ] **Bolt mounting:** the button head bolt with its sealing washer clamps the puck on the tube alone: the PCB and the cap are not squeezed, and the tube does not shorten; the cap screws still sit tight afterwards. Check BLE range with the bolt head in place (it overlaps the antenna zone's inner corner).
+- [ ] **Tube insulation:** the Kapton tape on the tube faces the cell; with the puck shaken hard, the cell can never touches bare steel.
+- [ ] **Magnetic plug at the surface:** the charging plug snaps onto the flush connector from any approach, charges reliably, and the RTV seal around the connector stays intact after 50 plug cycles.
+- [ ] Weigh each finished puck and compare with `mechanical/out/mass_report.txt`; re-run `puck.py` with measured part masses.
 - [ ] Magnetic connector hold, and that it cannot mate reversed.
 
 ### 2b. Firmware update (OTA)
@@ -65,6 +67,6 @@ Do these in order: each step de-risks the next. **Bold** items are blockers.
 - [ ] Non-shot checks, 20 each: bow set on the stand, knock on the stand, walking with the bow, drop onto grass, let-down.
 
 ### 4. Durability
-- [ ] 2,000+ shots, then inspect: cell tab solder joints, connector solder, screw torque (nylon-patch M1.6), O-ring seat, trim pin adhesive (if fitted).
+- [ ] 2,000+ shots, then inspect: cell contacts (spring pressure, strap position), connector solder, screw torque (nylon-patch M2), gasket seat, standoffs, bolt torque.
 - [ ] Count accuracy unchanged after the durability run.
 - [ ] Battery life over 2–4 weeks of normal training vs the estimate in the README.

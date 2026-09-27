@@ -8,7 +8,7 @@ VIA_KEEP_MM = 0.26
 VIA_SPACING_MM = 0.6
 PAD_MARGIN_MM = 0.3
 RING_POINTS = 8
-VIA_DIA_MM = 0.5
+VIA_DIA_MM = 0.55
 VIA_DRILL_MM = 0.3
 COPPER = (pcbnew.F_Cu, pcbnew.B_Cu)
 
@@ -57,7 +57,18 @@ def fits(frag, pt):
     return all(polys.Contains(p, i) for p in ring + [pt])
 
 
+def in_via_keepout(board, pt):
+    r = pcbnew.FromMM(VIA_DIA_MM / 2)
+    ring = [pcbnew.VECTOR2I(pt.x + int(r * math.cos(2 * math.pi * k / RING_POINTS)),
+                            pt.y + int(r * math.sin(2 * math.pi * k / RING_POINTS)))
+            for k in range(RING_POINTS)] + [pt]
+    return any(z.GetIsRuleArea() and z.GetDoNotAllowVias() and any(z.Outline().Contains(p) for p in ring)
+               for z in board.Zones())
+
+
 def clear_of_parts(board, pt):
+    if in_via_keepout(board, pt):
+        return False
     near = pcbnew.FromMM(VIA_SPACING_MM)
     for v in board.GetTracks():
         vp = v.GetPosition()

@@ -6,7 +6,7 @@ shotpuck.kicad_pcb. Change the circuit here, then re-run both.
 
 Power path
   J1 Samzo PR5L4015 magnetic receptacle (VIN_RAW) -> D1 BAT54J (reverse polarity) -> VIN
-  VIN -> U3 MCP73831-2 (4.20 V, 50 mA via R1 = 20k) -> VBAT (CP1654)
+  VIN -> U3 MCP73831-2 (4.20 V, 21 mA via R1 = 47k) -> VBAT (LIR1254, 45-65 mAh)
   VBAT -> U1 VDDH (nRF52840 high-voltage mode, REG0 -> VDD 3.0 V)
   VDD  -> U2 LSM6DSO32 (VDD + VDDIO), LED, SWD VCC sense
 IMU
@@ -34,7 +34,7 @@ PARTS = [
     ("U1", "RF_Module:MDBT50Q-1MV2", "RF_Module:Raytac_MDBT50Q", "MDBT50Q-1MV2",
      {"1": "GND", "2": "GND", "15": "GND", "33": "GND", "55": "GND",
       "28": "VDD", "30": "VBAT", "32": "VIN",
-      "20": "SCL", "22": "SDA", "24": "ACC_INT1", "26": "CHG_STAT", "16": "CHG_INH",
+      "20": "SDA", "22": "SCL", "24": "ACC_INT1", "26": "CHG_STAT", "16": "CHG_INH",
       "37": "LED_IO", "51": "SWDIO", "53": "SWDCLK"}, {}),
     ("U2", "Sensor_Motion:LSM6DSL", "Package_LGA:LGA-14_3x2.5mm_P0.5mm_LayoutBorder3x4y",
      "LSM6DSO32TR",
@@ -45,7 +45,7 @@ PARTS = [
     ("Q1", "Transistor_FET:Q_Dual_NMOS_S1G1D2S2G2D1", "Package_TO_SOT_SMD:SOT-363_SC-70-6", "DMN63D8LDW",
      {"1": "GND", "2": "Q1_GATE", "6": "PROG_SW", "4": "GND", "5": "CHG_INH", "3": "Q1_GATE"},
      {"units": 2}),
-    ("R1", "Device:R_Small", "Resistor_SMD:R_0402_1005Metric", "20k 1%",
+    ("R1", "Device:R_Small", "Resistor_SMD:R_0402_1005Metric", "47k 1%",
      {"1": "PROG", "2": "PROG_SW"}, {}),
     ("R2", "Device:R_Small", "Resistor_SMD:R_0402_1005Metric", "1M",
      {"1": "VIN", "2": "Q1_GATE"}, {}),
@@ -53,10 +53,6 @@ PARTS = [
      {"1": "CHG_INH", "2": "GND"}, {}),
     ("R4", "Device:R_Small", "Resistor_SMD:R_0402_1005Metric", "1k",
      {"1": "LED_IO", "2": "LED_A"}, {}),
-    ("R5", "Device:R_Small", "Resistor_SMD:R_0402_1005Metric", "4.7k DNP",
-     {"1": "VDD", "2": "SCL"}, {"dnp": True}),
-    ("R6", "Device:R_Small", "Resistor_SMD:R_0402_1005Metric", "4.7k DNP",
-     {"1": "VDD", "2": "SDA"}, {"dnp": True}),
     ("D1", "Diode:BAT54J", "Diode_SMD:D_SOD-323F", "BAT54J",
      {"1": "VIN", "2": "VIN_RAW"}, {}),
     ("D2", "Diode:BAT54J", "Diode_SMD:D_SOD-323F", "BAT54J",
@@ -79,7 +75,7 @@ PARTS = [
      {"1": "VDD", "2": "GND"}, {}),
     ("C7", "Device:C_Small", "Capacitor_SMD:C_0402_1005Metric", "100n",
      {"1": "VDD", "2": "GND"}, {}),
-    ("BT1", "Device:Battery_Cell", "ShotPuck:CP1654_Pads", "Varta CP1654 A3 (wire or tag version)",
+    ("BT1", "Device:Battery_Cell", "ShotPuck:LIR1254_Contacts", "LIR1254 (plain, spring contacts)",
      {"1": "BAT_P", "2": "BAT_N"}, {}),
     ("U4", "Battery_Management:BQ297xy", "Package_SON:WSON-6_1.5x1.5mm_P0.5mm", "BQ29700DSER",
      {"2": "PCM_COUT", "3": "PCM_DOUT", "4": "BAT_N", "5": "PCM_BAT", "6": "PCM_VM"}, {}),
@@ -96,12 +92,11 @@ PARTS = [
      "I_MEAS (cut to measure)", {"1": "BAT_P", "2": "VBAT"}, {}),
     ("J1", "Connector_Generic:Conn_01x02", "ShotPuck:MagPogo_Samzo_2P", "Samzo PR5L4015-2P-C-F",
      {"1": "VIN_RAW", "2": "GND"}, {}),
-    ("J2", "Connector:Conn_ARM_SWD_TagConnect_TC2030-NL",
-     "Connector:Tag-Connect_TC2030-IDC-NL_2x03_P1.27mm_Vertical", "TC2030-NL",
-     {"1": "VDD", "2": "SWDIO", "4": "SWDCLK", "5": "GND"}, {}),
-    ("H1", "Mechanical:MountingHole", "ShotPuck:MountingHole_1.8mm_NPTH", "M1.6", {}, {}),
-    ("H2", "Mechanical:MountingHole", "ShotPuck:MountingHole_1.8mm_NPTH", "M1.6", {}, {}),
-    ("H3", "Mechanical:MountingHole", "ShotPuck:MountingHole_1.8mm_NPTH", "M1.6", {}, {}),
+    ("J2", "Connector_Generic:Conn_01x04", "ShotPuck:SWD_Pads_1x4_P2.54", "SWD pads",
+     {"1": "VDD", "2": "SWDIO", "3": "SWDCLK", "4": "GND"}, {}),
+    ("H1", "Mechanical:MountingHole", "ShotPuck:MountingHole_2.4mm_NPTH", "M2", {}, {}),
+    ("H2", "Mechanical:MountingHole", "ShotPuck:MountingHole_2.4mm_NPTH", "M2", {}, {}),
+    ("H3", "Mechanical:MountingHole", "ShotPuck:MountingHole_2.4mm_NPTH", "M2", {}, {}),
 ]
 
 POWER_FLAG_NETS = ["GND", "VDD", "VIN", "VIN_RAW", "BAT_N"]

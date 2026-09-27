@@ -109,7 +109,7 @@ def main():
         ("Charge inhibit / status", ["R2", "Q1", "R3", "D2"], 203.2, 81.28, 405.0),
         ("Battery + protection (PCM)", ["BT1", "JP1", "C2", "C3", "U4", "Q2", "R7", "R8", "C8"],
          203.2, 124.46, 405.0),
-        ("IMU (accelerometer + gyroscope)", ["U2", "C6", "C7", "R5", "R6"], 203.2, 160.02, 405.0),
+        ("IMU (accelerometer + gyroscope)", ["U2", "C6", "C7"], 203.2, 160.02, 405.0),
         ("Mechanical", ["H1", "H2", "H3"], 203.2, 203.2, 405.0),
     ]
     by_ref = {p[0]: p for p in design.PARTS}

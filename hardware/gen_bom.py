@@ -16,17 +16,17 @@ MPN = {
     "4.7u 10V": ("Murata", "GRM188R61A475KE15D"),
     "4.7u 6.3V": ("Murata", "GRM155R60J475ME47D"),
     "100n": ("Murata", "GRM155R71C104KA88D"),
-    "20k 1%": ("Yageo", "RC0402FR-0720KL"),
+    "47k 1%": ("UNI-ROYAL", "0402WGF4702TCE"),
     "1M": ("Yageo", "RC0402FR-071ML"),
     "100k": ("Yageo", "RC0402FR-07100KL"),
     "1k": ("Yageo", "RC0402FR-071KL"),
-    "Varta CP1654 A3 (wire or tag version)": ("VARTA", "CP 1654 A3, wire or tag version - hand-solder, never reflow"),
+    "LIR1254 (plain, spring contacts)": ("generic", "LIR1254 3.6-3.7 V 45-65 mAh, no tabs - pick a maker with a datasheet"),
     "Samzo PR5L4015-2P-C-F": ("Samzo", "PR5L4015-2P-C-F (Electrokit 41035992) - hand-solder"),
     "BQ29700DSER": ("Texas Instruments", "BQ29700DSER"),
     "DMN2004DWK": ("Diodes Inc", "DMN2004DWK-7"),
     "330R": ("Yageo", "RC0402FR-07330RL"),
     "2.2k": ("Yageo", "RC0402FR-072K2L"),
-    "TC2030-NL": ("Tag-Connect", "pads only (cable TC2030-CTX-NL)"),
+    "SWD pads": ("-", "4 bottom test pads (VDD, SWDIO, SWDCLK, GND) at 2.54 mm: program with a 4-pin pogo jig"),
 }
 
 groups = {}

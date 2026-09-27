@@ -9,3 +9,9 @@ hardware/kicad/fp-info-cache
 hardware/kicad/*-backups/
 *.pem
 hardware/kicad/panel/*.lck
+mechanical/out/frames/
+mechanical/out/preview_*.png
+mechanical/out/board.glb
+mechanical/blender/__pycache__/
+hardware/kicad/*-best.kicad_pcb
+mechanical/out/*.blend1

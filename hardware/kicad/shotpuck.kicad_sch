@@ -1170,16 +1170,19 @@
                 (size 1.27 1.27))))))
       (embedded_fonts no))
     (symbol
-      "Connector:Conn_ARM_SWD_TagConnect_TC2030-NL"
+      "Connector_Generic:Conn_01x04"
+      (pin_names
+        (offset 1.016)
+        (hide yes))
       (exclude_from_sim no)
-      (in_bom no)
+      (in_bom yes)
       (on_board yes)
       (in_pos_files yes)
       (duplicate_pin_numbers_are_jumpers no)
       (property
         "Reference"
         "J"
-        (at 2.54 11.43 0)
+        (at 0 5.08 0)
         (show_name no)
         (do_not_autoplace no)
         (effects
@@ -1187,8 +1190,8 @@
             (size 1.27 1.27))))
       (property
         "Value"
-        "Conn_ARM_SWD_TagConnect_TC2030-NL"
-        (at 2.54 8.89 0)
+        "Conn_01x04"
+        (at 0 -7.62 0)
         (show_name no)
         (do_not_autoplace no)
         (effects
@@ -1196,8 +1199,8 @@
             (size 1.27 1.27))))
       (property
         "Footprint"
-        "Connector:Tag-Connect_TC2030-IDC-NL_2x03_P1.27mm_Vertical"
-        (at 0 -17.78 0)
+        ""
+        (at 0 0 0)
         (show_name no)
         (do_not_autoplace no)
         (hide yes)
@@ -1206,8 +1209,8 @@
             (size 1.27 1.27))))
       (property
         "Datasheet"
-        "https://www.tag-connect.com/wp-content/uploads/bsk-pdf-manager/TC2030-CTX_1.pdf"
-        (at 0 -15.24 0)
+        ""
+        (at 0 0 0)
         (show_name no)
         (do_not_autoplace no)
         (hide yes)
@@ -1216,7 +1219,7 @@
             (size 1.27 1.27))))
       (property
         "Description"
-        "Tag-Connect ARM Cortex SWD JTAG connector, 6 pin, no legs"
+        "Generic connector, single row, 01x04, script generated (kicad-library-utils/schlib/autogen/connector/)"
         (at 0 0 0)
         (show_name no)
         (do_not_autoplace no)
@@ -1226,7 +1229,7 @@
             (size 1.27 1.27))))
       (property
         "ki_keywords"
-        "Cortex Debug Connector ARM SWD JTAG"
+        "connector"
         (at 0 0 0)
         (show_name no)
         (do_not_autoplace no)
@@ -1236,7 +1239,7 @@
             (size 1.27 1.27))))
       (property
         "ki_fp_filters"
-        "*TC2030*"
+        "Connector*:*_1x??_*"
         (at 0 0 0)
         (show_name no)
         (do_not_autoplace no)
@@ -1245,14 +1248,54 @@
           (font
             (size 1.27 1.27))))
       (symbol
-        "Conn_ARM_SWD_TagConnect_TC2030-NL_0_0"
+        "Conn_01x04_1_1"
+        (rectangle
+          (start -1.27 3.81)
+          (end 1.27 -6.35)
+          (stroke
+            (width 0.254)
+            (type default))
+          (fill
+            (type background)))
+        (rectangle
+          (start -1.27 2.667)
+          (end 0 2.413)
+          (stroke
+            (width 0.1524)
+            (type default))
+          (fill
+            (type none)))
+        (rectangle
+          (start -1.27 0.127)
+          (end 0 -0.127)
+          (stroke
+            (width 0.1524)
+            (type default))
+          (fill
+            (type none)))
+        (rectangle
+          (start -1.27 -2.413)
+          (end 0 -2.667)
+          (stroke
+            (width 0.1524)
+            (type default))
+          (fill
+            (type none)))
+        (rectangle
+          (start -1.27 -4.953)
+          (end 0 -5.207)
+          (stroke
+            (width 0.1524)
+            (type default))
+          (fill
+            (type none)))
         (pin
-          power_in
+          passive
           line
-          (at -2.54 10.16 270)
-          (length 2.54)
+          (at -5.08 2.54 0)
+          (length 3.81)
           (name
-            "VCC"
+            "Pin_1"
             (effects
               (font
                 (size 1.27 1.27))))
@@ -1262,12 +1305,12 @@
               (font
                 (size 1.27 1.27)))))
         (pin
-          bidirectional
+          passive
           line
-          (at 7.62 -2.54 180)
-          (length 2.54)
+          (at -5.08 0 0)
+          (length 3.81)
           (name
-            "SWDIO"
+            "Pin_2"
             (effects
               (font
                 (size 1.27 1.27))))
@@ -1275,15 +1318,14 @@
             "2"
             (effects
               (font
-                (size 1.27 1.27))))
-          (alternate "TMS" bidirectional line))
+                (size 1.27 1.27)))))
         (pin
-          open_collector
+          passive
           line
-          (at 7.62 5.08 180)
-          (length 2.54)
+          (at -5.08 -2.54 0)
+          (length 3.81)
           (name
-            "~{RESET}"
+            "Pin_3"
             (effects
               (font
                 (size 1.27 1.27))))
@@ -1293,12 +1335,12 @@
               (font
                 (size 1.27 1.27)))))
         (pin
-          output
+          passive
           line
-          (at 7.62 0 180)
-          (length 2.54)
+          (at -5.08 -5.08 0)
+          (length 3.81)
           (name
-            "SWCLK"
+            "Pin_4"
             (effects
               (font
                 (size 1.27 1.27))))
@@ -1306,49 +1348,7 @@
             "4"
             (effects
               (font
-                (size 1.27 1.27))))
-          (alternate "TCK" output line))
-        (pin
-          power_in
-          line
-          (at -2.54 -10.16 90)
-          (length 2.54)
-          (name
-            "GND"
-            (effects
-              (font
-                (size 1.27 1.27))))
-          (number
-            "5"
-            (effects
-              (font
-                (size 1.27 1.27)))))
-        (pin
-          input
-          line
-          (at 7.62 -5.08 180)
-          (length 2.54)
-          (name
-            "SWO"
-            (effects
-              (font
-                (size 1.27 1.27))))
-          (number
-            "6"
-            (effects
-              (font
-                (size 1.27 1.27))))
-          (alternate "TDO" input line)))
-      (symbol
-        "Conn_ARM_SWD_TagConnect_TC2030-NL_0_1"
-        (rectangle
-          (start -5.08 7.62)
-          (end 5.08 -7.62)
-          (stroke
-            (width 0)
-            (type default))
-          (fill
-            (type background))))
+                (size 1.27 1.27))))))
       (embedded_fonts no))
     (symbol
       "Device:R_Small"
@@ -3577,7 +3577,7 @@
         (size 2 2)
         bold)
       (justify left bottom))
-    (uuid 8413fabb-0424-4a77-bba4-b885f482ebc9))
+    (uuid a0e58020-a5f6-4861-9931-9fffeea702b0))
   (text
     "Programming & status LED"
     (at 22.86 165.1 0)
@@ -3586,7 +3586,7 @@
         (size 2 2)
         bold)
       (justify left bottom))
-    (uuid f1fdee2d-dbb1-4cab-93f1-f7a9ee8e56b4))
+    (uuid 97f2b134-4a96-4567-be4a-8aeccafa9291))
   (text
     "Charging input & charger"
     (at 203.2 30.48 0)
@@ -3595,7 +3595,7 @@
         (size 2 2)
         bold)
       (justify left bottom))
-    (uuid fd94364f-e683-41f3-867c-1d145c403a01))
+    (uuid e93e0909-179a-4325-8ac3-e7dbff1c6f5a))
   (text
     "Charge inhibit / status"
     (at 203.2 76.2 0)
@@ -3604,7 +3604,7 @@
         (size 2 2)
         bold)
       (justify left bottom))
-    (uuid 6fb462a8-c2aa-4026-912f-ac7335c24fe6))
+    (uuid ee9b3029-0892-4c7c-80a6-c3054d73d3bc))
   (text
     "Battery + protection (PCM)"
     (at 203.2 119.38 0)
@@ -3613,7 +3613,7 @@
         (size 2 2)
         bold)
       (justify left bottom))
-    (uuid 8446b4e3-6cbc-4848-806c-d5812e9f6106))
+    (uuid 51e9f9d5-72e0-4ab1-b4bd-d1c8bf94104c))
   (text
     "IMU (accelerometer + gyroscope)"
     (at 203.2 154.94 0)
@@ -3622,7 +3622,7 @@
         (size 2 2)
         bold)
       (justify left bottom))
-    (uuid f004d257-44df-4af6-8b08-cb189b7b4e5e))
+    (uuid 9e3a7a97-ad99-4d87-98f2-9d535cae62f1))
   (text
     "Mechanical"
     (at 203.2 198.12 0)
@@ -3631,7 +3631,7 @@
         (size 2 2)
         bold)
       (justify left bottom))
-    (uuid 3497f68e-7f8f-4378-ba52-5cf26a7f2a39))
+    (uuid cada160c-6832-43b2-88c0-2cd94eee1cbb))
   (symbol
     (lib_id "RF_Module:MDBT50Q-1MV2")
     (at 58.42 88.9 0)
@@ -3924,7 +3924,7 @@
     (at 78.74 106.68)
     (uuid 56e65795-09b9-5a8f-8bcb-63616ced2575))
   (label
-    "SCL"
+    "SDA"
     (at 38.1 60.96 180)
     (fields_autoplaced)
     (effects
@@ -3936,7 +3936,7 @@
     (at 38.1 63.5)
     (uuid 718b955f-73b2-5827-9d5b-eca02b0ee24d))
   (label
-    "SDA"
+    "SCL"
     (at 78.74 60.96 0)
     (fields_autoplaced)
     (effects
@@ -4242,8 +4242,8 @@
       (justify right bottom))
     (uuid ff91db78-12e2-5f9f-a7f9-fd084de6e10d))
   (symbol
-    (lib_id "Connector:Conn_ARM_SWD_TagConnect_TC2030-NL")
-    (at 38.1 187.96 0)
+    (lib_id "Connector_Generic:Conn_01x04")
+    (at 40.64 180.34 0)
     (unit 1)
     (in_bom yes)
     (on_board yes)
@@ -4258,15 +4258,15 @@
           (size 1.27 1.27))))
     (property
       "Value"
-      "TC2030-NL"
-      (at 35.56 201.93 0)
+      "SWD pads"
+      (at 35.56 189.23 0)
       (effects
         (font
           (size 1.27 1.27))))
     (property
       "Footprint"
-      "Connector:Tag-Connect_TC2030-IDC-NL_2x03_P1.27mm_Vertical"
-      (at 38.1 187.96 0)
+      "ShotPuck:SWD_Pads_1x4_P2.54"
+      (at 40.64 180.34 0)
       (effects
         (font
           (size 1.27 1.27))
@@ -4274,7 +4274,7 @@
     (property
       "Datasheet"
       ""
-      (at 38.1 187.96 0)
+      (at 40.64 180.34 0)
       (effects
         (font
           (size 1.27 1.27))
@@ -4291,12 +4291,6 @@
     (pin
       "4"
       (uuid 972fb2fa-83c7-5fe8-bf05-9ab7f0d3dfd5))
-    (pin
-      "5"
-      (uuid 5b705a56-33e8-5152-8dc5-da2accd985d0))
-    (pin
-      "6"
-      (uuid 1edab3c8-c1a7-594f-b534-dd7664c277c6))
     (instances
       (project
         "shotpuck"
@@ -4306,49 +4300,43 @@
           (unit 1)))))
   (label
     "VDD"
-    (at 35.56 177.8 90)
-    (fields_autoplaced)
-    (effects
-      (font
-        (size 1.27 1.27))
-      (justify left bottom))
-    (uuid b382ba83-6431-5f4d-a751-bb99a0972f9c))
-  (label
-    "SWDIO"
-    (at 45.72 190.5 0)
-    (fields_autoplaced)
-    (effects
-      (font
-        (size 1.27 1.27))
-      (justify left bottom))
-    (uuid 2d3d12c4-4e85-5ee8-88f9-147f06a5812e))
-  (no_connect
-    (at 45.72 182.88)
-    (uuid d160c312-1fa4-540b-9ee2-97fdd2f1e895))
-  (label
-    "SWDCLK"
-    (at 45.72 187.96 0)
-    (fields_autoplaced)
-    (effects
-      (font
-        (size 1.27 1.27))
-      (justify left bottom))
-    (uuid f1da5318-364b-5844-8c88-5cce82b4f17b))
-  (label
-    "GND"
-    (at 35.56 198.12 270)
+    (at 35.56 177.8 180)
     (fields_autoplaced)
     (effects
       (font
         (size 1.27 1.27))
       (justify right bottom))
-    (uuid ff67bb0a-8afb-59b3-8f25-78cb0789474a))
-  (no_connect
-    (at 45.72 193.04)
-    (uuid f713007d-4a08-5d7f-b4e7-d575c945b941))
+    (uuid b382ba83-6431-5f4d-a751-bb99a0972f9c))
+  (label
+    "SWDIO"
+    (at 35.56 180.34 180)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right bottom))
+    (uuid 2d3d12c4-4e85-5ee8-88f9-147f06a5812e))
+  (label
+    "SWDCLK"
+    (at 35.56 182.88 180)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right bottom))
+    (uuid b03ccafe-b8e4-587e-aca3-a5b78b7bc26f))
+  (label
+    "GND"
+    (at 35.56 185.42 180)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right bottom))
+    (uuid f1da5318-364b-5844-8c88-5cce82b4f17b))
   (symbol
     (lib_id "Device:R_Small")
-    (at 73.66 180.34 0)
+    (at 63.5 180.34 0)
     (unit 1)
     (in_bom yes)
     (on_board yes)
@@ -4357,21 +4345,21 @@
     (property
       "Reference"
       "R4"
-      (at 73.66 175.26 0)
+      (at 63.5 175.26 0)
       (effects
         (font
           (size 1.27 1.27))))
     (property
       "Value"
       "1k"
-      (at 73.66 186.69 0)
+      (at 63.5 186.69 0)
       (effects
         (font
           (size 1.27 1.27))))
     (property
       "Footprint"
       "Resistor_SMD:R_0402_1005Metric"
-      (at 73.66 180.34 0)
+      (at 63.5 180.34 0)
       (effects
         (font
           (size 1.27 1.27))
@@ -4379,7 +4367,7 @@
     (property
       "Datasheet"
       ""
-      (at 73.66 180.34 0)
+      (at 63.5 180.34 0)
       (effects
         (font
           (size 1.27 1.27))
@@ -4399,7 +4387,7 @@
           (unit 1)))))
   (label
     "LED_IO"
-    (at 73.66 177.8 90)
+    (at 63.5 177.8 90)
     (fields_autoplaced)
     (effects
       (font
@@ -4408,7 +4396,7 @@
     (uuid 37377410-4dce-5cf3-aa8c-9418e95aa85d))
   (label
     "LED_A"
-    (at 73.66 182.88 270)
+    (at 63.5 182.88 270)
     (fields_autoplaced)
     (effects
       (font
@@ -4417,7 +4405,7 @@
     (uuid 4cc79ff8-185a-5afc-9b95-ffd71c98533b))
   (symbol
     (lib_id "Device:LED")
-    (at 104.14 177.8 0)
+    (at 93.98 177.8 0)
     (unit 1)
     (in_bom yes)
     (on_board yes)
@@ -4426,21 +4414,21 @@
     (property
       "Reference"
       "D4"
-      (at 100.33 175.26 0)
+      (at 90.17 175.26 0)
       (effects
         (font
           (size 1.27 1.27))))
     (property
       "Value"
       "LED green 0402"
-      (at 100.33 181.61 0)
+      (at 90.17 181.61 0)
       (effects
         (font
           (size 1.27 1.27))))
     (property
       "Footprint"
       "LED_SMD:LED_0402_1005Metric"
-      (at 104.14 177.8 0)
+      (at 93.98 177.8 0)
       (effects
         (font
           (size 1.27 1.27))
@@ -4448,7 +4436,7 @@
     (property
       "Datasheet"
       ""
-      (at 104.14 177.8 0)
+      (at 93.98 177.8 0)
       (effects
         (font
           (size 1.27 1.27))
@@ -4468,7 +4456,7 @@
           (unit 1)))))
   (label
     "GND"
-    (at 100.33 177.8 180)
+    (at 90.17 177.8 180)
     (fields_autoplaced)
     (effects
       (font
@@ -4477,7 +4465,7 @@
     (uuid 95e95d5a-c336-5caa-9998-f47d6e38ea7e))
   (label
     "LED_A"
-    (at 107.95 177.8 0)
+    (at 97.79 177.8 0)
     (fields_autoplaced)
     (effects
       (font
@@ -4882,7 +4870,7 @@
           (size 1.27 1.27))))
     (property
       "Value"
-      "20k 1%"
+      "47k 1%"
       (at 388.62 52.07 0)
       (effects
         (font
@@ -5320,14 +5308,14 @@
           (size 1.27 1.27))))
     (property
       "Value"
-      "Varta CP1654 A3 (wire or tag version)"
+      "LIR1254 (plain, spring contacts)"
       (at 215.9 143.51 0)
       (effects
         (font
           (size 1.27 1.27))))
     (property
       "Footprint"
-      "ShotPuck:CP1654_Pads"
+      "ShotPuck:LIR1254_Contacts"
       (at 215.9 137.16 0)
       (effects
         (font
@@ -6384,144 +6372,6 @@
       (justify right bottom))
     (uuid 8e197fcd-2067-589e-b19f-6c84b054e5d6))
   (symbol
-    (lib_id "Device:R_Small")
-    (at 320.04 170.18 0)
-    (unit 1)
-    (in_bom yes)
-    (on_board yes)
-    (dnp yes)
-    (uuid 26afc39f-1a29-59f4-a749-0e5ce7e3750e)
-    (property
-      "Reference"
-      "R5"
-      (at 320.04 165.1 0)
-      (effects
-        (font
-          (size 1.27 1.27))))
-    (property
-      "Value"
-      "4.7k DNP"
-      (at 320.04 176.53 0)
-      (effects
-        (font
-          (size 1.27 1.27))))
-    (property
-      "Footprint"
-      "Resistor_SMD:R_0402_1005Metric"
-      (at 320.04 170.18 0)
-      (effects
-        (font
-          (size 1.27 1.27))
-        hide))
-    (property
-      "Datasheet"
-      ""
-      (at 320.04 170.18 0)
-      (effects
-        (font
-          (size 1.27 1.27))
-        hide))
-    (pin
-      "1"
-      (uuid cb9924c9-58d7-5a1f-b06a-ca3326fac71d))
-    (pin
-      "2"
-      (uuid 374e68fa-1416-5c2e-8ddf-6f13549c6bc7))
-    (instances
-      (project
-        "shotpuck"
-        (path
-          "/453e4d2c-678b-52c6-881c-d1e900c8fc33"
-          (reference "R5")
-          (unit 1)))))
-  (label
-    "VDD"
-    (at 320.04 167.64 90)
-    (fields_autoplaced)
-    (effects
-      (font
-        (size 1.27 1.27))
-      (justify left bottom))
-    (uuid e10ec3b3-1a9d-5c6f-bec7-6e54a26df6b1))
-  (label
-    "SCL"
-    (at 320.04 172.72 270)
-    (fields_autoplaced)
-    (effects
-      (font
-        (size 1.27 1.27))
-      (justify right bottom))
-    (uuid 1e89212c-b0e9-5c56-ada7-e6426bc8b1e9))
-  (symbol
-    (lib_id "Device:R_Small")
-    (at 340.36 170.18 0)
-    (unit 1)
-    (in_bom yes)
-    (on_board yes)
-    (dnp yes)
-    (uuid 0bcae8de-841d-5264-a214-21cb4d155c54)
-    (property
-      "Reference"
-      "R6"
-      (at 340.36 165.1 0)
-      (effects
-        (font
-          (size 1.27 1.27))))
-    (property
-      "Value"
-      "4.7k DNP"
-      (at 340.36 176.53 0)
-      (effects
-        (font
-          (size 1.27 1.27))))
-    (property
-      "Footprint"
-      "Resistor_SMD:R_0402_1005Metric"
-      (at 340.36 170.18 0)
-      (effects
-        (font
-          (size 1.27 1.27))
-        hide))
-    (property
-      "Datasheet"
-      ""
-      (at 340.36 170.18 0)
-      (effects
-        (font
-          (size 1.27 1.27))
-        hide))
-    (pin
-      "1"
-      (uuid e0d1db0d-e417-5b11-8711-85c5cebc1728))
-    (pin
-      "2"
-      (uuid c0c37bc3-c273-548d-be78-96be6fe00eea))
-    (instances
-      (project
-        "shotpuck"
-        (path
-          "/453e4d2c-678b-52c6-881c-d1e900c8fc33"
-          (reference "R6")
-          (unit 1)))))
-  (label
-    "VDD"
-    (at 340.36 167.64 90)
-    (fields_autoplaced)
-    (effects
-      (font
-        (size 1.27 1.27))
-      (justify left bottom))
-    (uuid ed2c9807-d5a2-5f9d-a331-52880fca36f0))
-  (label
-    "SDA"
-    (at 340.36 172.72 270)
-    (fields_autoplaced)
-    (effects
-      (font
-        (size 1.27 1.27))
-      (justify right bottom))
-    (uuid 7955dac1-2ef0-512b-85b5-b46674726dd9))
-  (symbol
     (lib_id "Mechanical:MountingHole")
     (at 213.36 210.82 0)
     (unit 1)
@@ -6538,14 +6388,14 @@
           (size 1.27 1.27))))
     (property
       "Value"
-      "M1.6"
+      "M2"
       (at 213.36 214.63 0)
       (effects
         (font
           (size 1.27 1.27))))
     (property
       "Footprint"
-      "ShotPuck:MountingHole_1.8mm_NPTH"
+      "ShotPuck:MountingHole_2.4mm_NPTH"
       (at 213.36 210.82 0)
       (effects
         (font
@@ -6583,14 +6433,14 @@
           (size 1.27 1.27))))
     (property
       "Value"
-      "M1.6"
+      "M2"
       (at 233.68 214.63 0)
       (effects
         (font
           (size 1.27 1.27))))
     (property
       "Footprint"
-      "ShotPuck:MountingHole_1.8mm_NPTH"
+      "ShotPuck:MountingHole_2.4mm_NPTH"
       (at 233.68 210.82 0)
       (effects
         (font
@@ -6628,14 +6478,14 @@
           (size 1.27 1.27))))
     (property
       "Value"
-      "M1.6"
+      "M2"
       (at 256.54 214.63 0)
       (effects
         (font
           (size 1.27 1.27))))
     (property
       "Footprint"
-      "ShotPuck:MountingHole_1.8mm_NPTH"
+      "ShotPuck:MountingHole_2.4mm_NPTH"
       (at 256.54 210.82 0)
       (effects
         (font
@@ -6664,7 +6514,7 @@
         (size 2 2)
         bold)
       (justify left bottom))
-    (uuid 21970b24-4ae9-45f9-969c-0f5d01b56bac))
+    (uuid 0f5378af-8b51-4f38-b837-744c4c3d39ae))
   (symbol
     (lib_id "power:PWR_FLAG")
     (at 22.86 215.9 0)
@@ -6956,13 +6806,13 @@
       (justify right bottom))
     (uuid bc4e0ba0-f0a8-5195-9601-07aca2e265b5))
   (text
-    "design.py - ShotPuck circuit, single source of truth.\n\ngen_sch.py turns this into shotpuck.kicad_sch and gen_pcb.py into\nshotpuck.kicad_pcb. Change the circuit here, then re-run both.\n\nPower path\n  J1 Samzo PR5L4015 magnetic receptacle (VIN_RAW) -> D1 BAT54J (reverse polarity) -> VIN\n  VIN -> U3 MCP73831-2 (4.20 V, 50 mA via R1 = 20k) -> VBAT (CP1654)\n  VBAT -> U1 VDDH (nRF52840 high-voltage mode, REG0 -> VDD 3.0 V)\n  VDD  -> U2 LSM6DSO32 (VDD + VDDIO), LED, SWD VCC sense\nIMU\n  U2 LSM6DSO32 on I2C at 0x6A (SA0 = GND, CS = VDD selects I2C). Aux master\n  pins SDx/SCx to GND; INT2, OCS_Aux, SDO_Aux unconnected.\nCharge inhibit (temperature, firmware)\n  PROG -> R1 -> Q1A drain; Q1A gate pulled to VIN by R2 (charging allowed\n  whenever a cable is present). Q1B (gate = CHG_INH, R3 pull-down) pulls\n  Q1A gate low -> PROG floats -> MCP73831 charge disabled.\nCell protection (PCM, required by VARTA for CoinPower cells)\n  U4 BQ29700 + Q2 DMN2004DWK in the cell's negative lead: BAT_N -> Q2A (DOUT,\n  discharge) -> PCM_D -> Q2B (COUT, charge) -> GND. OVP 4.275 V, UVP 2.80 V,\n  OCD/OCC +-100 mV across ~1 ohm of FETs (~0.1 A), SCD 0.5 V. R7 330R + C8\n  100n filter the BAT supply, R8 2k2 on V-. Standby 4 uA.\nCurrent measurement\n  JP1 (bridged solder jumper) in series with the cell: cut, insert an\n  ammeter, re-bridge with solder.\nCharge status\n  STAT -> D2 (cathode) ; D2 anode -> CHG_STAT GPIO with pull-up enabled only\n  while VBUS is present (no standby leakage)."
+    "design.py - ShotPuck circuit, single source of truth.\n\ngen_sch.py turns this into shotpuck.kicad_sch and gen_pcb.py into\nshotpuck.kicad_pcb. Change the circuit here, then re-run both.\n\nPower path\n  J1 Samzo PR5L4015 magnetic receptacle (VIN_RAW) -> D1 BAT54J (reverse polarity) -> VIN\n  VIN -> U3 MCP73831-2 (4.20 V, 21 mA via R1 = 47k) -> VBAT (LIR1254, 45-65 mAh)\n  VBAT -> U1 VDDH (nRF52840 high-voltage mode, REG0 -> VDD 3.0 V)\n  VDD  -> U2 LSM6DSO32 (VDD + VDDIO), LED, SWD VCC sense\nIMU\n  U2 LSM6DSO32 on I2C at 0x6A (SA0 = GND, CS = VDD selects I2C). Aux master\n  pins SDx/SCx to GND; INT2, OCS_Aux, SDO_Aux unconnected.\nCharge inhibit (temperature, firmware)\n  PROG -> R1 -> Q1A drain; Q1A gate pulled to VIN by R2 (charging allowed\n  whenever a cable is present). Q1B (gate = CHG_INH, R3 pull-down) pulls\n  Q1A gate low -> PROG floats -> MCP73831 charge disabled.\nCell protection (PCM, required by VARTA for CoinPower cells)\n  U4 BQ29700 + Q2 DMN2004DWK in the cell's negative lead: BAT_N -> Q2A (DOUT,\n  discharge) -> PCM_D -> Q2B (COUT, charge) -> GND. OVP 4.275 V, UVP 2.80 V,\n  OCD/OCC +-100 mV across ~1 ohm of FETs (~0.1 A), SCD 0.5 V. R7 330R + C8\n  100n filter the BAT supply, R8 2k2 on V-. Standby 4 uA.\nCurrent measurement\n  JP1 (bridged solder jumper) in series with the cell: cut, insert an\n  ammeter, re-bridge with solder.\nCharge status\n  STAT -> D2 (cathode) ; D2 anode -> CHG_STAT GPIO with pull-up enabled only\n  while VBUS is present (no standby leakage)."
     (at 22.86 228.6 0)
     (effects
       (font
         (size 1.27 1.27))
       (justify left top))
-    (uuid 33800db3-8164-4473-8fe2-29b9eb2eceff))
+    (uuid f64a0d4d-1222-47a6-96b7-ddc36afae53c))
   (sheet_instances
     (path
       "/"

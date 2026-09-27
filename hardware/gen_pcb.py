@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-gen_pcb.py - builds kicad/shotpuck.kicad_pcb from design.py + ../layout.json
-(+ ../mechanical/out/trim.json), with the KiCad 10 pcbnew Python API.
+gen_pcb.py - builds kicad/shotpuck.kicad_pcb from design.py + ../layout.json,
+with the KiCad 10 pcbnew Python API.
 
   * round 2-layer board, 3 NPTH holes for the cap screws
   * custom footprints written to kicad/ShotPuck.pretty
   * placement from layout.json (big parts) and PLACE below (small parts)
-  * keep-outs: antenna to board rim, under the cell (top copper), trim pin
+  * keep-outs: antenna to board rim, cell notch + bolt-tube slot, screw bosses
   * GND pours both layers
   * routes with Freerouting if available (FREEROUTING_JAR), then DRC report
 
@@ -18,13 +18,16 @@ Routing takes 1-5 min (Freerouting 2.1, Java 21: set JAVA and FREEROUTING_JAR).
 import json
 import math
 import os
+import shutil
 import re
 import subprocess
 import sys
+import time
 
 import pcbnew
 
 import design
+import board_shape as shape
 import islands
 import sexp
 from gen_sch import U
@@ -34,24 +37,39 @@ KI = os.path.join(HERE, "kicad")
 LIB = os.path.join(KI, "ShotPuck.pretty")
 STD = os.environ.get("KICAD10_FOOTPRINT_DIR", r"C:\Program Files\KiCad\10.0\share\kicad\footprints")
 L = json.load(open(os.path.join(HERE, "..", "layout.json")))
-TRIM = json.load(open(os.path.join(HERE, "..", "mechanical", "out", "trim.json")))
 JAR = os.environ.get("FREEROUTING_JAR", os.path.expanduser("~/tools/freerouting-2.1.0.jar"))
 JAVA = os.environ.get("JAVA", os.path.expanduser("~/tools/jre21/bin/java.exe"))
 
 MM = pcbnew.FromMM
-CELL_PAD_W = 3.0
+CELL_PAD_W = 2.5
 CELL_PAD_H = 2.0
-CELL_PAD_DRILL = 1.0
+CELL_COURTYARD = 0.3
 CONN_COURTYARD_MARGIN = 0.5
-LOW_PIN_CLEAR_MM = 2.0
 PLUS_MARK_GAP = 0.3
 PLUS_MARK_HALF = 0.6
 CUTOUT_COPPER_KEEP = 0.35
 CUTOUT_VIA_MARGIN = 0.65
+ANTENNA_VIA_MARGIN = 0.6
+ANTENNA_SEG_MARGIN = 0.3
+ANTENNA_STITCH_MARGIN = 0.8
 EDGE_WIDTH_MM = 0.1
-BACK_TEXT_POS = (-8.0, -4.0)
+BACK_TEXT_POS = (0.0, 15.3)
+BOTTOM = "B"
+TRACK_MM = 0.15
+VIA_DIA_MM = 0.55
+CLEARANCE_MM = 0.127
+GND_NET = "GND"
+SOLID_GND_REFS = {"U2"}
+ROUTER_JOB_MARGIN_S = 20
+SECOND_PASS_SUFFIX = "-pass2.kicad_pcb"
 PRE_ROUTED = [("Q2", "3", "6"), ("Q1", "4", "1")]
 PRE_ROUTE_WIDTH_MM = 0.2
+PRE_VIAS = [("U1", "51", (0.35, -0.75)), ("U1", "53", (0.35, -0.75))]
+VIA_DRILL_MM = 0.3
+SWD_PAD_DIA = 1.0
+SWD_PITCH = 2.54
+SWD_PADS = 4
+SWD_COURTYARD = 0.5
 BOARD_ATTEMPTS = 4
 
 
@@ -60,27 +78,17 @@ def V(x, y):
     return pcbnew.VECTOR2I(MM(x), MM(-y))
 
 
-# small parts: ref -> (x, y, rot_deg, side)   board coords, viewed from top
+# small parts: ref -> (x, y, rot_deg[, "B" for the bottom side])   board coords, viewed from top
 PLACE = {
-    # supply decoupling at the module's power pads (VDD y=1.6, VDDH y=2.4)
-    "C4": (-1.3, 6.9, 0), "C5": (-1.3, 8.1, 0), "C3": (1.1, 6.9, 0),
-    # SWD pads next to SWDIO/SWDCLK, clear of the 148 deg boss
-    "J2": (-8.0, 8.4, 0),
-    # one row under the magnetic connector: TVS, reverse diode, VIN cap, status LED
-    "D3": (-3.0, 10.3, 0), "D1": (0.0, 10.3, 180), "C1": (3.2, 10.2, 0),
-    "D4": (5.9, 10.2, 0), "R4": (5.9, 8.9, 0),
-    # current-measurement jumper in the top-right corner, next to the cell's + pad
-    "JP1": (9.2, 13.0, 90),
-    # cell protection (PCM) in the free pocket below the module, outside the antenna zone
-    "Q2": (-9.0, -8.0, 0), "U4": (-12.2, -8.2, 0), "C8": (-12.2, -10.2, 0),
-    "R7": (-12.2, -11.6, 0), "R8": (-9.2, -10.0, 0),
-    # charger + inhibit, below the cell next to the - pad
-    "C2": (2.4, -10.2, 90), "U3": (3.9, -13.4, 0),
-    "R1": (6.9, -13.6, 90), "Q1": (9.2, -12.6, 0), "R2": (8.8, -14.6, 0),
-    "R3": (5.4, -10.3, 90), "D2": (-0.3, -12.9, 180),
-    # IMU by the I2C pads: SCL/SDA/CS edge faces the module-cell channel, C6 at VDDIO, C7 at VDD
-    "U2": (-3.6, -8.2, 270), "C6": (-6.1, -7.2, 180), "C7": (-4.35, -10.5, 0), "R5": (-1.0, -9.3, 90),
-    "R6": (0.1, -10.8, 90),
+    "C3": (-10.7, 8.0, 180), "C4": (-10.7, 9.1, 180), "C5": (-10.7, 6.9, 180),
+    "U2": (-10.2, 11.5, 270), "C6": (-12.4, 11.2, 90), "C7": (-12.6, 9.2, 90),
+    "R4": (-8.3, 4.3, 0), "D4": (-6.4, 3.3, 0),
+    "U3": (-12.4, -1.5, 0), "Q1": (-13.2, 2.2, 0), "R1": (-15.2, -1.5, 90), "R2": (-15.6, 1.6, 90),
+    "R3": (-10.3, 2.2, 90), "D2": (-9.0, -1.3, 90),
+    "C2": (-13.4, -4.1, 0), "JP1": (-10.2, -5.0, 0, BOTTOM), "R7": (-15.4, -5.3, 90),
+    "U4": (-13.4, -9.0, 180), "Q2": (-10.6, -9.0, 0), "C8": (-13.6, -6.9, 0), "R8": (-12.6, -10.9, 0),
+    "C1": (6.6, 2.9, 0), "D1": (9.95, 2.6, 0), "D3": (10.3, 0.4, 0),
+    "J2": (-1.5, 12.6, 0, BOTTOM),
 }
 
 
@@ -141,20 +149,8 @@ def new_fp(name, descr):
 
 def make_lib():
     os.makedirs(LIB, exist_ok=True)
-    c = L["cell"]
-    # CP1654 pads. Footprint origin = cell centre. + at -y, - at +y.
-    fp = new_fp("CP1654_Pads", "Varta CP1654 A3 sitting in the board cutout: large pads for wires or bent tabs "
-                "(the bottom + tab bends up through the relief); - at layout cell.neg_pad, + opposite. "
-                "Hand-solder only, never reflow the cell.")
-    dy = c["neg_pad"]["y"] - c["y"]
-    pad(fp, "1", pcbnew.PAD_SHAPE_RECT, 0, dy, CELL_PAD_W, CELL_PAD_H, smd=False, drill=CELL_PAD_DRILL)
-    pad(fp, "2", pcbnew.PAD_SHAPE_RECT, 0, -dy, CELL_PAD_W, CELL_PAD_H, smd=False, drill=CELL_PAD_DRILL)
-    circle(fp, pcbnew.F_Fab, c["dia"] / 2, 0.1)
-    circle(fp, pcbnew.F_CrtYd, c["dia"] / 2 + 0.3)   # tabs: see pads
-    mx = CELL_PAD_W / 2 + PLUS_MARK_GAP + PLUS_MARK_HALF
-    line(fp, pcbnew.F_SilkS, mx - PLUS_MARK_HALF, dy, mx + PLUS_MARK_HALF, dy)
-    line(fp, pcbnew.F_SilkS, mx, dy - PLUS_MARK_HALF, mx, dy + PLUS_MARK_HALF)
-    pcbnew.FootprintSave(LIB, fp)
+    cell_footprint()
+    swd_footprint()
 
     k = L["connector"]
     fp = new_fp("MagPogo_Samzo_2P", "Samzo PR5L4015-2P-C-F magnetic receptacle (drawing GZ0254-P001): "
@@ -169,7 +165,7 @@ def make_lib():
     pcbnew.FootprintSave(LIB, fp)
 
     b = L["bosses"]
-    fp = new_fp("MountingHole_1.8mm_NPTH", "M1.6 clearance, cap boss Ø%.1f bears on board" % b["boss_dia"])
+    fp = new_fp("MountingHole_2.4mm_NPTH", "M2 clearance, cap boss Ø%.1f bears on board" % b["boss_dia"])
     pad(fp, "", pcbnew.PAD_SHAPE_CIRCLE, 0, 0, b["pcb_hole"], b["pcb_hole"], drill=b["pcb_hole"], npth=True)
     circle(fp, pcbnew.Cmts_User, b["boss_dia"] / 2)
     circle(fp, pcbnew.F_CrtYd, b["boss_dia"] / 2 + 0.25)
@@ -178,6 +174,33 @@ def make_lib():
     open(os.path.join(KI, "fp-lib-table"), "w").write(
         '(fp_lib_table\n  (lib (name "ShotPuck")(type "KiCad")(uri "${KIPRJMOD}/ShotPuck.pretty")'
         '(options "")(descr "ShotPuck custom footprints"))\n)\n')
+
+
+def swd_footprint():
+    fp = new_fp("SWD_Pads_1x4_P2.54", "SWD test pads for a 4-pin 2.54 mm pogo jig: 1 VDD, 2 SWDIO, 3 SWDCLK, 4 GND.")
+    first = -(SWD_PADS - 1) * SWD_PITCH / 2
+    for i in range(SWD_PADS):
+        pad(fp, str(i + 1), pcbnew.PAD_SHAPE_CIRCLE, first + i * SWD_PITCH, 0, SWD_PAD_DIA, SWD_PAD_DIA)
+    rect(fp, pcbnew.F_CrtYd, (SWD_PADS - 1) * SWD_PITCH + SWD_PAD_DIA + SWD_COURTYARD, SWD_PAD_DIA + SWD_COURTYARD)
+    pcbnew.FootprintSave(LIB, fp)
+
+
+def cell_footprint():
+    c = L["cell"]
+    fp = new_fp("LIR1254_Contacts", "LIR1254 in the board notch, no tabs: pad 1 = + spring contact on the can side, "
+                "pad 2 = - strap across the top cap (Kapton where it passes the can). Hand-solder the contacts.")
+    for num, key in (("1", "pos_pad"), ("2", "neg_pad")):
+        dx, dy = c[key]["x"] - c["x"], c[key]["y"] - c["y"]
+        p = pad(fp, num, pcbnew.PAD_SHAPE_RECT, dx, -dy, CELL_PAD_W, CELL_PAD_H)
+        p.SetOrientationDegrees(math.degrees(math.atan2(dy, dx)) + 90)
+    circle(fp, pcbnew.F_Fab, c["dia"] / 2, 0.1)
+    circle(fp, pcbnew.F_CrtYd, c["dia"] / 2 + CELL_COURTYARD)
+    dx, dy = c["pos_pad"]["x"] - c["x"], c["pos_pad"]["y"] - c["y"]
+    k = (CELL_PAD_W / 2 + PLUS_MARK_GAP + PLUS_MARK_HALF) / math.hypot(dx, dy)
+    mx, my = dx - dy * k, -(dy + dx * k)
+    line(fp, pcbnew.F_SilkS, mx - PLUS_MARK_HALF, my, mx + PLUS_MARK_HALF, my)
+    line(fp, pcbnew.F_SilkS, mx, my - PLUS_MARK_HALF, mx, my + PLUS_MARK_HALF)
+    pcbnew.FootprintSave(LIB, fp)
 
 
 def load_fp(fpid):
@@ -230,88 +253,36 @@ def circ(cx, cy, r, n=48):
             for i in range(n)]
 
 
-def cell_cutout():
-    c = L["cell"]
-    r = c["dia"] / 2 + c["pcb_hole_clear"]
-    t = c["tab_relief"]
-    side = -math.copysign(1, c["neg_pad"]["y"] - c["y"])
-    return [(c["x"], c["y"], r), (c["x"], c["y"] + side * (r + t["depth"] - t["r"]), t["r"])]
-
-
-def in_cutout(pt, margin):
-    (hx, hy, hr), _ = cell_cutout()
-    if pt[0] >= hx and abs(pt[1] - hy) < hr + margin:
-        return True
-    return any(math.hypot(pt[0] - cx, pt[1] - cy) < r + margin for cx, cy, r in cell_cutout())
-
-
-def add_arc(board, pts):
-    s = pcbnew.PCB_SHAPE(board)
-    s.SetShape(pcbnew.SHAPE_T_ARC)
-    s.SetArcGeometry(*(V(*p) for p in pts))
-    s.SetLayer(pcbnew.Edge_Cuts)
-    s.SetWidth(MM(EDGE_WIDTH_MM))
-    board.Add(s)
-
-
-def add_line(board, pts):
-    s = pcbnew.PCB_SHAPE(board)
-    s.SetShape(pcbnew.SHAPE_T_SEGMENT)
-    s.SetStart(V(*pts[0]))
-    s.SetEnd(V(*pts[1]))
-    s.SetLayer(pcbnew.Edge_Cuts)
-    s.SetWidth(MM(EDGE_WIDTH_MM))
-    board.Add(s)
-
-
-def notch_points():
-    (hx, hy, hr), (bx, by, br) = cell_cutout()
-    side = math.copysign(1, by - hy)
-    d = abs(by - hy)
-    ty = (hr * hr - br * br + d * d) / (2 * d)
-    tx = math.sqrt(hr * hr - ty * ty)
-    ux = math.sqrt(br * br - (hr - d) ** 2)
-    rim_r = L["pcb_dia"] / 2
-    plus, minus = hy + side * hr, hy - side * hr
-    return {
-        "rim_plus": (math.sqrt(rim_r ** 2 - plus ** 2), plus),
-        "rim_minus": (math.sqrt(rim_r ** 2 - minus ** 2), minus),
-        "rim_back": (-rim_r, 0.0),
-        "hole_minus": (hx, minus),
-        "hole_back": (hx - hr, hy),
-        "cusp": (hx - tx, hy + side * ty),
-        "apex": (hx, hy + side * (d + br)),
-        "relief_end": (hx + ux, plus),
-    }
-
-
 def add_outline(board):
-    p = notch_points()
-    add_arc(board, (p["rim_plus"], p["rim_back"], p["rim_minus"]))
-    add_line(board, (p["rim_minus"], p["hole_minus"]))
-    add_arc(board, (p["hole_minus"], p["hole_back"], p["cusp"]))
-    add_arc(board, (p["cusp"], p["apex"], p["relief_end"]))
-    add_line(board, (p["relief_end"], p["rim_plus"]))
+    for loop in shape.outline_loops():
+        for a, b in zip(loop, loop[1:]):
+            edge = pcbnew.PCB_SHAPE(board)
+            edge.SetShape(pcbnew.SHAPE_T_SEGMENT)
+            edge.SetStart(V(*a))
+            edge.SetEnd(V(*b))
+            edge.SetLayer(pcbnew.Edge_Cuts)
+            edge.SetWidth(MM(EDGE_WIDTH_MM))
+            board.Add(edge)
 
 
 # ---------------------------------------------------------------------- main
-def build():
-    make_lib()
-    board = pcbnew.BOARD()
+def setup_rules(board):
     ds = board.GetDesignSettings()
     ds.SetCopperLayerCount(2)
+    ds.SetBoardThickness(MM(L["puck"]["pcb_thickness"]))
     ds.m_TrackMinWidth = MM(0.127)
     ds.m_MinClearance = MM(0.127)
     ds.m_ViasMinSize = MM(0.45)
     ds.m_MinThroughDrill = MM(0.2)
     ds.m_CopperEdgeClearance = MM(0.3)
     nc = ds.m_NetSettings.GetDefaultNetclass()
-    nc.SetTrackWidth(MM(0.2))
-    nc.SetClearance(MM(0.15))
-    nc.SetViaDiameter(MM(0.5))
+    nc.SetTrackWidth(MM(TRACK_MM))
+    nc.SetClearance(MM(CLEARANCE_MM))
+    nc.SetViaDiameter(MM(VIA_DIA_MM))
     nc.SetViaDrill(MM(0.3))
 
-    # nets
+
+def add_nets(board):
     nets = {}
     for (_r, _l, _f, _v, pm, _e) in design.PARTS:
         for n in pm.values():
@@ -319,25 +290,26 @@ def build():
                 ni = pcbnew.NETINFO_ITEM(board, n)
                 board.Add(ni)
                 nets[n] = ni
+    return nets
 
-    # outline
-    R = L["pcb_dia"] / 2
-    add_outline(board)
 
-    # footprints
-    bosses = [(L["bosses"]["radius"] * math.cos(math.radians(a)),
-               L["bosses"]["radius"] * math.sin(math.radians(a))) for a in L["bosses"]["angles_deg"]]
-    fixed = {
+def fixed_places():
+    bosses = shape.boss_xy()
+    return {
         "U1": (L["module"]["x"], L["module"]["y"], L["module"]["rot_deg"]),
         "BT1": (L["cell"]["x"], L["cell"]["y"], 0),
-        "J1": (L["connector"]["x"], L["connector"]["y"], 0),
+        "J1": (L["connector"]["x"], L["connector"]["y"], L["connector"]["rot_deg"]),
         "H1": (*bosses[0], 0), "H2": (*bosses[1], 0), "H3": (*bosses[2], 0),
     }
+
+
+def place_footprints(board, nets):
+    fixed = fixed_places()
     for (ref, lib_id, fpid, value, pm, extra) in design.PARTS:
         fp = load_fp(fpid)
         fp.SetReference(ref)
         fp.SetValue(value)
-        x, y, rot = fixed.get(ref) or PLACE[ref]
+        x, y, rot, *side = fixed.get(ref) or PLACE[ref]
         fp.SetPosition(V(x, y))
         fp.SetOrientationDegrees(rot)
         fp.SetPath(pcbnew.KIID_PATH("/" + U(f"sym-{ref}-1")))
@@ -351,41 +323,35 @@ def build():
             n = pm.get(p.GetNumber())
             if n:
                 p.SetNet(nets[n])
+            if ref in SOLID_GND_REFS and n == GND_NET:
+                p.SetLocalZoneConnection(pcbnew.ZONE_CONNECTION_FULL)
         board.Add(fp)
+        if side == [BOTTOM]:
+            fp.Flip(fp.GetPosition(), pcbnew.FLIP_DIRECTION_LEFT_RIGHT)
 
-    # keep-outs
-    allcu = pcbnew.LSET()
-    allcu.AddLayer(pcbnew.F_Cu)
-    allcu.AddLayer(pcbnew.B_Cu)
-    m = L["module"]
-    ant_x = m["x"] - m["l"] / 2 + 3.9          # inner edge of antenna region
-    poly_zone(board, allcu, [(-R - 1, -6.3), (ant_x, -6.3), (ant_x, 6.3), (-R - 1, 6.3)],
-              rule="tracks vias pour", name="antenna_to_rim")
-    for i, (cx, cy, r) in enumerate(cell_cutout()):
-        poly_zone(board, allcu, circ(cx, cy, r + CUTOUT_COPPER_KEEP),
-                  rule="tracks vias pour", name=f"cell_cutout_{i + 1}")
-    (hx, hy, hr), _ = cell_cutout()
-    w = hr + CUTOUT_COPPER_KEEP
-    poly_zone(board, allcu, [(hx, hy - w), (R + CUTOUT_COPPER_KEEP, hy - w), (R + CUTOUT_COPPER_KEEP, hy + w),
-                             (hx, hy + w)], rule="tracks vias pour", name="cell_notch")
-    for i, t in enumerate(TRIM):
-        if t["clear_above_pcb"] < LOW_PIN_CLEAR_MM:   # pin reaches low: no parts below it
-            poly_zone(board, layer_set([pcbnew.F_Cu]), circ(t["x"], t["y"], t["keepout_r"]),
-                      rule="footprints", name=f"trim_pin_{i + 1}")
-    pre_route(board)
-    add_pours(board)
-    gnd_fanout(board)
-    # 0.35 mm copper-free ring at the rim (router keeps only 0.15 otherwise)
+
+def add_keepouts(board):
+    allcu = layer_set([pcbnew.F_Cu, pcbnew.B_Cu])
+    poly_zone(board, allcu, shape.polygon_points(shape.antenna_zone()), rule="tracks vias pour",
+              name="antenna_to_rim")
+    keep = shape.cutout().buffer(CUTOUT_COPPER_KEEP)
+    for i, part in enumerate(getattr(keep, "geoms", None) or [keep]):
+        poly_zone(board, allcu, shape.polygon_points(part), rule="tracks vias pour", name=f"cutout_{i + 1}")
+
+
+def add_rim_and_bosses(board):
+    R = L["pcb_dia"] / 2
+    allcu = layer_set([pcbnew.F_Cu, pcbnew.B_Cu])
     z = poly_zone(board, allcu, circ(0, 0, R + 1.0, 72), rule="tracks vias", name="rim")
     z.Outline().NewHole()
     for (x, y) in circ(0, 0, R - 0.35, 72):
         z.Outline().Append(MM(x), MM(-y), -1, 0)
-    # screw bosses clamp here: no copper under the boss face
-    for i, (bx, by) in enumerate(bosses):
+    for i, (bx, by) in enumerate(shape.boss_xy()):
         poly_zone(board, allcu, circ(bx, by, L["bosses"]["boss_dia"] / 2 + 0.3, 24),
                   rule="tracks vias pour", name=f"boss_{i + 1}")
 
-    # silkscreen label
+
+def add_label(board):
     t = pcbnew.PCB_TEXT(board)
     t.SetText("ShotPuck rev A")
     t.SetPosition(V(*BACK_TEXT_POS))
@@ -393,6 +359,22 @@ def build():
     t.SetMirrored(True)
     t.SetTextSize(pcbnew.VECTOR2I(MM(1.0), MM(1.0)))
     board.Add(t)
+
+
+def build():
+    make_lib()
+    board = pcbnew.BOARD()
+    setup_rules(board)
+    nets = add_nets(board)
+    add_outline(board)
+    place_footprints(board, nets)
+    add_keepouts(board)
+    pre_route(board)
+    pre_vias(board)
+    add_pours(board)
+    gnd_fanout(board)
+    add_rim_and_bosses(board)
+    add_label(board)
     return board
 
 
@@ -413,15 +395,35 @@ def pre_route(board):
             board.Add(tr)
 
 
+def pre_vias(board):
+    for ref, num, (dx, dy) in PRE_VIAS:
+        pad = board.FindFootprintByReference(ref).FindPadByNumber(num)
+        start = pad.GetPosition()
+        end = pcbnew.VECTOR2I(start.x + MM(dx), start.y - MM(dy))
+        tr = pcbnew.PCB_TRACK(board)
+        tr.SetStart(start)
+        tr.SetEnd(end)
+        tr.SetWidth(MM(TRACK_MM))
+        tr.SetLayer(pcbnew.F_Cu)
+        tr.SetNet(pad.GetNet())
+        tr.SetLocked(True)
+        board.Add(tr)
+        via = pcbnew.PCB_VIA(board)
+        via.SetPosition(end)
+        via.SetWidth(MM(VIA_DIA_MM))
+        via.SetDrill(MM(VIA_DRILL_MM))
+        via.SetLayerPair(pcbnew.F_Cu, pcbnew.B_Cu)
+        via.SetNet(pad.GetNet())
+        via.SetLocked(True)
+        board.Add(via)
+
+
 def gnd_fanout(board):
     """Give every GND SMD pad a short stub + via to the bottom GND plane."""
     R = L["pcb_dia"] / 2
     gnd = board.FindNet("GND")
     vias = []
-    m = L["module"]
-    ant_x = m["x"] - m["l"] / 2 + 3.9
-    bosses = [(L["bosses"]["radius"] * math.cos(math.radians(a)),
-               L["bosses"]["radius"] * math.sin(math.radians(a))) for a in L["bosses"]["angles_deg"]]
+    bosses = shape.boss_xy()
     pads = []
     for fp in board.GetFootprints():
         for p in fp.Pads():
@@ -432,9 +434,7 @@ def gnd_fanout(board):
     def free(x, y, own):
         if math.hypot(x, y) > R - 0.9:
             return False
-        if in_cutout((x, y), CUTOUT_VIA_MARGIN):
-            return False
-        if x < ant_x + 0.6 and abs(y) < 6.9:
+        if shape.in_cutout((x, y), CUTOUT_VIA_MARGIN) or shape.in_antenna((x, y), ANTENNA_VIA_MARGIN):
             return False
         if any(math.hypot(x - bx, y - by) < L["bosses"]["boss_dia"] / 2 + 0.9 for bx, by in bosses):
             return False
@@ -451,7 +451,7 @@ def gnd_fanout(board):
     def seg_ok(ax, ay, bx, by, own):
         for k in range(1, 9):
             x, y = ax + (bx - ax) * k / 8, ay + (by - ay) * k / 8
-            if x < ant_x + 0.3 and abs(y) < 6.9:
+            if shape.in_antenna((x, y), ANTENNA_SEG_MARGIN):
                 return False
             for (p, x1, y1, x2, y2) in pads:
                 if p is own or p.GetNetname() == "GND":
@@ -476,7 +476,7 @@ def gnd_fanout(board):
                     if free(vx, vy, p) and seg_ok(px, py, vx, vy, p):
                         via = pcbnew.PCB_VIA(board)
                         via.SetPosition(V(vx, vy))
-                        via.SetWidth(MM(0.5))
+                        via.SetWidth(MM(VIA_DIA_MM))
                         via.SetDrill(MM(0.3))
                         via.SetLayerPair(pcbnew.F_Cu, pcbnew.B_Cu)
                         via.SetNet(gnd)
@@ -504,10 +504,7 @@ def stitch(board, pitch=1.6):
     of the top pour is tied to the bottom plane."""
     R = L["pcb_dia"] / 2
     gnd = board.FindNet("GND")
-    m = L["module"]
-    ant_x = m["x"] - m["l"] / 2 + 3.9
-    bosses = [(L["bosses"]["radius"] * math.cos(math.radians(a)),
-               L["bosses"]["radius"] * math.sin(math.radians(a))) for a in L["bosses"]["angles_deg"]]
+    bosses = shape.boss_xy()
     segs, vias, pads = [], [], []
     for tr in board.GetTracks():
         if tr.Type() == pcbnew.PCB_VIA_T:
@@ -540,9 +537,7 @@ def stitch(board, pitch=1.6):
             x, y = i * pitch, j * pitch
             if math.hypot(x, y) > R - 1.0:
                 continue
-            if in_cutout((x, y), CUTOUT_VIA_MARGIN):
-                continue
-            if x < ant_x + 0.8 and abs(y) < 7.0:
+            if shape.in_cutout((x, y), CUTOUT_VIA_MARGIN) or shape.in_antenna((x, y), ANTENNA_STITCH_MARGIN):
                 continue
             if any(math.hypot(x - bx, y - by) < L["bosses"]["boss_dia"] / 2 + 0.9 for bx, by in bosses):
                 continue
@@ -552,12 +547,9 @@ def stitch(board, pitch=1.6):
                 continue
             if any(dseg(x, y, s) < s[4] + 0.25 + 0.2 for s in segs):
                 continue
-            if any(math.hypot(x - t["x"], y - t["y"]) < t["keepout_r"] for t in TRIM
-                   if t["clear_above_pcb"] < LOW_PIN_CLEAR_MM):
-                continue
             via = pcbnew.PCB_VIA(board)
             via.SetPosition(V(x, y))
-            via.SetWidth(MM(0.5))
+            via.SetWidth(MM(VIA_DIA_MM))
             via.SetDrill(MM(0.3))
             via.SetLayerPair(pcbnew.F_Cu, pcbnew.B_Cu)
             via.SetNet(gnd)
@@ -581,6 +573,29 @@ def fill(board):
     pcbnew.ZONE_FILLER(board).Fill(board.Zones())
 
 
+def drop_block(text, marker):
+    out, i = [], 0
+    while (j := text.find(marker, i)) >= 0:
+        out.append(text[i:j])
+        depth, k = 0, j
+        while True:
+            depth += {"(": 1, ")": -1}.get(text[k], 0)
+            if depth == 0:
+                break
+            k += 1
+        i = k + 1
+    return "".join(out) + text[i:]
+
+
+def signals_only(dsn):
+    text = drop_block(open(dsn).read(), "(plane " + GND_NET)
+    net = text.find("(net " + GND_NET + "\n")
+    if net >= 0:
+        pins = text.index("(pins", net)
+        text = text[:pins] + "(pins)" + text[text.index("\n    )", net):]
+    open(dsn, "w").write(text)
+
+
 def route(board, path, timeout=900):
     dsn = path.replace(".kicad_pcb", ".dsn")
     ses = path.replace(".kicad_pcb", ".ses")
@@ -592,10 +607,12 @@ def route(board, path, timeout=900):
     if not pcbnew.ExportSpecctraDSN(board, dsn):
         print("DSN export failed")
         return False
+    signals_only(dsn)
     if os.path.exists(ses):
         os.remove(ses)
+    job = time.strftime("%H:%M:%S", time.gmtime(timeout - ROUTER_JOB_MARGIN_S))
     cmd = [JAVA, "-jar", JAR, "--gui.enabled=false", "-de", dsn, "-do", ses, "--router.max_passes=100",
-           "--router.optimizer.enabled=false", "--router.max_threads=1"]
+           "--router.optimizer.enabled=false", "--router.max_threads=1", f"--router.job_timeout={job}"]
     print(" ".join(cmd))
     try:
         subprocess.run(cmd, stdout=open(os.path.join(KI, "freerouting.log"), "w"),
@@ -684,6 +701,20 @@ def unconnected(board):
     return board.GetConnectivity().GetUnconnectedCount(False)
 
 
+def remove_dangling(board):
+    removed = 0
+    while True:
+        board.BuildConnectivity()
+        conn = board.GetConnectivity()
+        loose = [t for t in board.GetTracks() if t.Type() == pcbnew.PCB_TRACE_T and not t.IsLocked()
+                 and conn.TestTrackEndpointDangling(t, False)]
+        if not loose:
+            return removed
+        for t in loose:
+            board.Delete(t)
+        removed += len(loose)
+
+
 def attempt(path):
     board = build()
     pcbnew.SaveBoard(path, board)
@@ -694,7 +725,9 @@ def attempt(path):
         fill(board)
         left = unconnected(board)
         if routed and left:
-            print(f"second pass for {left} connection(s):", route(board, path, timeout=200))
+            second = path.replace(".kicad_pcb", SECOND_PASS_SUFFIX)
+            print(f"second pass for {left} connection(s):", route(board, second, timeout=200))
+        print("dangling tracks removed:", remove_dangling(board))
         stitch(board)
     fill(board)
     if islands.bridge_islands(board):
@@ -706,11 +739,18 @@ def attempt(path):
 def main():
     path = os.path.join(KI, "shotpuck.kicad_pcb")
     single = "--no-route" in sys.argv or "--reuse-ses" in sys.argv
+    best = path.replace(".kicad_pcb", "-best.kicad_pcb")
+    fewest = None
     for n in range(1, BOARD_ATTEMPTS + 1):
         left = attempt(path)
         print(f"attempt {n}: {left} unconnected")
+        if fewest is None or left < fewest:
+            fewest = left
+            shutil.copyfile(path, best)
         if left == 0 or single:
             break
+    shutil.copyfile(best, path)
+    os.remove(best)
     drc(path)
 
 
