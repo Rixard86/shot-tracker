@@ -13,6 +13,7 @@ ARC_SEGMENTS = 32
 ANTENNA_INSET = 4.4
 ANTENNA_HALF_W = 6.2
 ANTENNA_CHAMFER = ANTENNA_HALF_W - L["module"]["w"] / 2
+MODULE_COPPER_MARGIN = 0.5
 RIM_MARGIN = 2.0
 
 
@@ -87,12 +88,20 @@ def antenna_zone():
     return affinity.translate(zone, m["x"], m["y"])
 
 
+@lru_cache(maxsize=None)
+def rf_keepout():
+    s = L["sleeve"]
+    edge = s["od"] / 2 + s["pcb_clear"]
+    right = board().intersection(box(edge, -rim_r(), rim_r(), rim_r()))
+    return unary_union([antenna_zone(), right.difference(module_rect().buffer(MODULE_COPPER_MARGIN))])
+
+
 def in_cutout(pt, margin):
     return cutout().distance(Point(*pt)) < margin
 
 
 def in_antenna(pt, margin):
-    return antenna_zone().distance(Point(*pt)) < margin
+    return rf_keepout().distance(Point(*pt)) < margin
 
 
 def polygon_points(shape):

@@ -45,7 +45,6 @@ MM = pcbnew.FromMM
 CELL_PAD_W = 2.5
 CELL_PAD_H = 2.0
 CELL_COURTYARD = 0.3
-CONN_COURTYARD_MARGIN = 0.5
 PLUS_MARK_GAP = 0.3
 PLUS_MARK_HALF = 0.6
 CUTOUT_COPPER_KEEP = 0.35
@@ -54,7 +53,7 @@ ANTENNA_VIA_MARGIN = 0.6
 ANTENNA_SEG_MARGIN = 0.3
 ANTENNA_STITCH_MARGIN = 0.8
 EDGE_WIDTH_MM = 0.1
-BACK_TEXT_POS = (0.0, 15.3)
+BACK_TEXT_POS = (11.0, -6.0)
 BOTTOM = "B"
 TRACK_MM = 0.15
 VIA_DIA_MM = 0.55
@@ -64,20 +63,18 @@ SOLID_GND_REFS = {"U2", "J2", "Q2"}
 ROUTER_JOB_MARGIN_S = 20
 SECOND_PASS_SUFFIX = "-pass2.kicad_pcb"
 PRE_ROUTED = [("Q2", "3", "6"), ("Q1", "4", "1")]
-PRE_LINKS = [("U1", "21", "U2", "14", ((-7.3, 12.1),)),("U1", "23", "U2", "13", ((-7.8, 11.0), (-8.3, 11.5))),
-             ("U1", "19", "U2", "4", ((-7.3, 13.2), (-7.45, 13.35), (-10.95, 13.35))),
+PRE_LINKS = [("U1", "21", "U2", "14", ((3.36, 13.75),)), ("U1", "23", "U2", "13", ()),
+             ("U1", "19", "U2", "4", ((3.9, 14.77), (1.46, 16.92))),
              ("U1", "31", "R4", "1", ()),
              ("U4", "2", "Q2", "2", ()),
              ("Q1", "5", "R3", "1", ((-10.81, 2.2),)),
-             ("U4", "3", "Q2", "5", ((-12.7, -7.6), (-12.1, -7.0), (-11.6, -6.3), (-9.0, -6.3), (-9.0, -8.2))),
-             ("C1", "2", "U1", "45", ((5.75, -2.275), (5.75, 1.9), (4.9, 3.0), (4.4, 3.65), (3.96, 4.16),
-                                      (3.2, 4.9), (2.85, 5.6)))]
+             ("U4", "3", "Q2", "5", ((-12.7, -7.6), (-12.1, -7.0), (-11.6, -6.3), (-9.0, -6.3), (-9.0, -8.2)))]
 PRE_ROUTE_WIDTH_MM = 0.2
+MODULE_BASE_ROT_DEG = 180
 PRE_VIAS = [("U1", "43", (-0.25, -0.75)), ("U1", "44", (0.05, -1.55)), ("U1", "33", (0.0, -0.75)),
             ("U1", "17", (0.55, 0.55)), ("U1", "18", (1.15, -0.25)), ("Q2", "1", (0.55, 0.71))]
 PAD_BRIDGES = [("U1", "45", "46"), ("U1", "2", "1"), ("U1", "4", "3"), ("U2", "1", "2"), ("U2", "3", "2")]
-VIN_ESCAPE = ("C1", "1", ((6.45, 2.9), (5.6, 3.75), (4.95, 3.95)),
-              ((3.95, 4.55), (2.96, 5.54), (2.96, 15.7), (-6.8, 15.7), (-6.8, 3.25), (-7.75, 3.25)), ("R9", "1"))
+VIN_ESCAPE = None
 TRACK_SAMPLE_MM = 0.3
 FANOUT_TRACK_CLEAR_MM = 0.5
 VIA_DRILL_MM = 0.3
@@ -85,6 +82,8 @@ SWD_PAD_DIA = 1.0
 SWD_PITCH = 2.54
 SWD_PADS = 4
 SWD_COURTYARD = 0.5
+MODEL_OVERRIDES = {"J1": ("${KIPRJMOD}/ShotPuck.3dshapes/USB_C_Receptacle_HRO_TYPE-C-31-M-17.step",
+                          (0.0, -0.9, 0.0), 180.0)}
 BOARD_ATTEMPTS = 4
 VIA_ECHO_TOL_MM = 0.01
 
@@ -96,16 +95,17 @@ def V(x, y):
 
 # small parts: ref -> (x, y, rot_deg[, "B" for the bottom side])   board coords, viewed from top
 PLACE = {
-    "C3": (-10.7, 8.0, 180), "C4": (-12.8, 7.3, 90), "C5": (-10.7, 9.1, 180),
-    "U2": (-10.2, 11.5, 270), "C6": (-12.4, 11.2, 90), "C7": (-12.6, 9.2, 90),
-    "R9": (-8.8, 2.4, 270), "C9": (-7.8, 1.8, 90),
-    "R4": (-4.6, 4.44, 180), "D4": (-16.95, 2.6, 90),
+    "U2": (0.6, 15.0, 225), "C4": (4.4, 16.2, 45),
+    "C3": (-1.1, 11.3, 45), "C5": (-1.91, 12.11, 45), "C6": (-2.72, 12.92, 45), "C7": (-0.1, 12.3, 135),
+    "R9": (-3.3, 8.6, 42), "C9": (-2.4, 7.8, 42),
+    "R4": (-0.6, 6.9, 225), "D4": (-16.95, 2.6, 90),
     "U3": (-12.4, -1.5, 0), "Q1": (-13.2, 2.2, 0), "R1": (-15.2, -1.5, 90), "R2": (-15.6, 1.6, 90),
     "R3": (-10.3, 2.2, 90), "D2": (-9.0, -1.3, 90),
     "C2": (-13.4, -4.1, 0), "JP1": (-10.2, -5.0, 0, BOTTOM), "R7": (-15.4, -5.3, 90),
     "U4": (-13.4, -8.65, 180), "Q2": (-10.6, -8.5, 0), "C8": (-13.6, -6.9, 0), "R8": (-15.2, -7.4, 90),
-    "C1": (6.45, -1.5, 270), "D1": (8.2, -6.8, 0), "D3": (9.3, -3.4, 270),
-    "J2": (-1.7, 13.5, 180, BOTTOM),
+    "R10": (-6.1, 7.51, 312), "R11": (-6.83, 6.85, 312),
+    "D3": (-5.41, 5.24, 42), "D1": (-7.7, 2.1, 42), "C1": (-8.79, 4.81, 42),
+    "J2": (8.344, 10.748, 225, BOTTOM),
 }
 
 
@@ -169,18 +169,6 @@ def make_lib():
     bmd340.save_footprint(LIB)
     cell_footprint()
     swd_footprint()
-
-    k = L["connector"]
-    fp = new_fp("MagPogo_Samzo_2P", "Samzo PR5L4015-2P-C-F magnetic receptacle (drawing GZ0254-P001): "
-                "2 contacts at %.2f mm, magnets %.1f mm apart; pin 1 = + (VIN_RAW)."
-                % (k["pitch"], k["magnet_pitch"]))
-    pd = k["pad_dia"]
-    pad(fp, "1", pcbnew.PAD_SHAPE_RECT, -k["pitch"] / 2, 0, pd, pd, smd=False, drill=k["pin_drill"])
-    pad(fp, "2", pcbnew.PAD_SHAPE_CIRCLE, k["pitch"] / 2, 0, pd, pd, smd=False, drill=k["pin_drill"])
-    rect(fp, pcbnew.F_SilkS, k["body_w"], k["body_l"], 0.12)
-    rect(fp, pcbnew.F_CrtYd, k["body_w"] + CONN_COURTYARD_MARGIN, k["body_l"] + CONN_COURTYARD_MARGIN)
-    rect(fp, pcbnew.F_Fab, k["body_w"], k["body_l"], 0.1)
-    pcbnew.FootprintSave(LIB, fp)
 
     b = L["bosses"]
     fp = new_fp("MountingHole_2.4mm_NPTH", "M2 clearance, cap boss Ø%.1f bears on board" % b["boss_dia"])
@@ -321,6 +309,16 @@ def fixed_places():
     }
 
 
+def set_model(fp, spec):
+    path, offset, rot_z = spec
+    m = pcbnew.FP_3DMODEL()
+    m.m_Filename = path
+    m.m_Offset = pcbnew.VECTOR3D(*offset)
+    m.m_Rotation = pcbnew.VECTOR3D(0.0, 0.0, rot_z)
+    fp.Models().clear()
+    fp.Add3DModel(m)
+
+
 def place_footprints(board, nets):
     fixed = fixed_places()
     for (ref, lib_id, fpid, value, pm, extra) in design.PARTS:
@@ -337,6 +335,8 @@ def place_footprints(board, nets):
         fp.Reference().SetTextThickness(MM(0.08))
         if extra.get("dnp"):
             fp.SetAttributes(fp.GetAttributes() | pcbnew.FP_EXCLUDE_FROM_BOM)
+        if ref in MODEL_OVERRIDES:
+            set_model(fp, MODEL_OVERRIDES[ref])
         for p in fp.Pads():
             n = pm.get(p.GetNumber())
             if n:
@@ -350,8 +350,9 @@ def place_footprints(board, nets):
 
 def add_keepouts(board):
     allcu = layer_set([pcbnew.F_Cu, pcbnew.B_Cu])
-    poly_zone(board, allcu, shape.polygon_points(shape.antenna_zone()), rule="tracks vias pour",
-              name="antenna_to_rim")
+    rf = shape.rf_keepout()
+    for i, part in enumerate(getattr(rf, "geoms", None) or [rf]):
+        poly_zone(board, allcu, shape.polygon_points(part), rule="tracks vias pour", name=f"rf_keepout_{i + 1}")
     keep = shape.cutout().buffer(CUTOUT_COPPER_KEEP)
     for i, part in enumerate(getattr(keep, "geoms", None) or [keep]):
         poly_zone(board, allcu, shape.polygon_points(part), rule="tracks vias pour", name=f"cutout_{i + 1}")
@@ -440,8 +441,15 @@ def locked_via(board, spec):
     board.Add(via)
 
 
+def turned(ref, offset):
+    turn = math.radians(L["module"]["rot_deg"] - MODULE_BASE_ROT_DEG) if ref == "U1" else 0.0
+    dx, dy = offset
+    return dx * math.cos(turn) - dy * math.sin(turn), dx * math.sin(turn) + dy * math.cos(turn)
+
+
 def pre_vias(board):
-    for ref, num, (dx, dy) in PRE_VIAS:
+    for ref, num, offset in PRE_VIAS:
+        dx, dy = turned(ref, offset)
         pad = board.FindFootprintByReference(ref).FindPadByNumber(num)
         start = pad.GetPosition()
         end = pcbnew.VECTOR2I(start.x + MM(dx), start.y - MM(dy))
@@ -467,6 +475,8 @@ def pad_bridges(board):
 
 
 def pre_path(board):
+    if VIN_ESCAPE is None:
+        return
     ref, num, top, bottom, (end_ref, end_num) = VIN_ESCAPE
     pad = board.FindFootprintByReference(ref).FindPadByNumber(num)
     end = board.FindFootprintByReference(end_ref).FindPadByNumber(end_num).GetPosition()

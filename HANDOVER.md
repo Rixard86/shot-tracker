@@ -2,6 +2,17 @@
 
 Read this first, then `README.md`. Everything below is the state as of 2026-09-27 (rev A: flat plate, centre bolt, LIR1254).
 
+## 0. This branch: `alt/usb-c-side` (alternative PCB, 2026-09-29)
+
+An alternative to `main`'s board, kept on its own branch. What differs from the rest of this document:
+
+- **Charging port:** J1 is a side-mounted USB-C, Korean Hroparts TYPE-C-31-M-17 (6-pin, power-only, LCSC C283540, JLC-assembled), at 132° on the left rim with its plug axis radial through the cap wall. R10/R11 (5.1k) pull CC1/CC2 down so USB-C chargers switch on 5 V. D3 → D1 → C1 sit right behind the port, then VIN runs down to the charger. The magnetic Samzo connector is gone.
+- **Module:** slid 45° clockwise around the sleeve at the same radius (centre (7.78, 7.78), rotated 135°), so tube and rim clearances are unchanged. The antenna end points 45° below +x. `PRE_VIAS` offsets for U1 rotate with it (`turned()` in `gen_pcb.py`).
+- **Copper-free right side:** `board_shape.rf_keepout()` is the antenna zone plus everything right of the sleeve hole, except the module's own footprint (+0.5 mm). There is no right-half GND, no passage and no VIN loop (`VIN_ESCAPE = None`).
+- **Moved parts:** IMU U2 sits in the wedge between the module's left end and the port. C3/C5/C6/C7 are in the pocket below it and C4 is at the module's upper-left corner. R4, R9 and C9 are below the module's left end. J2 (SWD) moved with the module and is still under it; the pogo jig must match its new pads: VDD (5.65, 13.44), SWDIO (7.45, 11.65), SWDCLK (9.24, 9.85), GND (11.04, 8.05).
+- **H1** moved to r = 16.5 at 104° (−3.99, 16.01), between the module and the port. The plate's tapped hole and the cap boss must follow.
+- **Not done on this branch:** the mechanical models (`mechanical/`) still describe the magnetic connector. The cap needs a side opening at 132° with a flat seat recessed about 1.2 mm (the receptacle face sits 1.2 mm below the cap's outer surface), plus a ~0.5 mm pocket in its ceiling over the port (the part is about 3.2 mm tall; check the datasheet, the cap leaves 2.8 mm). The sections below still describe `main`.
+
 ## 1. What this is
 
 ShotPuck is a Ø40 × 9.90 mm BLE puck bolted onto the free face of an **Avalon barebow riser weight**: the weight's own 5/16-24 bolt, one size longer, goes through a sleeve in the puck's centre. It counts arrow shots and records the bow's motion around each shot, and reports both to the user's own **Flutter/PowerSync archery scoring app**.

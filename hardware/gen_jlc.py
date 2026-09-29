@@ -9,7 +9,7 @@ import design
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_BOARD = os.path.join(HERE, "kicad", "panel", "shotpuck-panel.kicad_pcb")
 OUT_DIR = os.path.join(HERE, "kicad", "fab", "jlc")
-HAND_ASSEMBLED = {"BT1", "J1", "J2", "JP1"}
+HAND_ASSEMBLED = {"BT1", "J2", "JP1"}
 PANEL_SUFFIX = "_"
 
 LCSC = {
@@ -32,6 +32,8 @@ LCSC = {
     "1k": "C11702",
     "330R": "C25104",
     "2.2k": "C25879",
+    "5.1k 1%": "C25905",
+    "TYPE-C-31-M-17": "C283540",
 }
 
 

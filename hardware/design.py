@@ -5,9 +5,9 @@ gen_sch.py turns this into shotpuck.kicad_sch and gen_pcb.py into
 shotpuck.kicad_pcb. Change the circuit here, then re-run both.
 
 Power path
-  J1 Samzo PR5L4015 magnetic receptacle (VIN_RAW), D3 SMF5.0CA bidirectional TVS to GND
-  (ESD on the exposed contacts, hot-plug; bidirectional so a reversed cable is only blocked)
-  -> D1 BAT54J (reverse polarity) -> VIN
+  J1 USB-C power-only receptacle (VBUS = VIN_RAW) on the left rim, plug through the cap wall;
+  R10/R11 5.1k pull CC1/CC2 down so USB-C sources turn on 5 V. D3 SMF5.0CA bidirectional TVS
+  to GND (ESD, hot-plug) -> D1 BAT54J (blocks back-feed into the port) -> VIN
   VIN -> R9 1k -> VBUS_SNS (C9 100n) -> U1 VBUS: charger detect only (USB unused, ~24 uA),
   the RC keeps hot-plug spikes off the 5.8 V abs-max VBUS pin
   VIN -> U3 MCP73831-2 (4.20 V, 21 mA via R1 = 47k) -> VBAT (LIR1254, 45-65 mAh)
@@ -80,7 +80,7 @@ PARTS = [
      {"1": "VDD", "2": "GND"}, {}),
     ("C7", "Device:C_Small", "Capacitor_SMD:C_0402_1005Metric", "100n",
      {"1": "VDD", "2": "GND"}, {}),
-    ("BT1", "Device:Battery_Cell", "ShotPuck:LIR1254_Contacts", "LIR1254 (plain, spring contacts)",
+    ("BT1", "Device:Battery_Cell", "ShotPuck:LIR1254_Contacts_Edit", "LIR1254 (plain, spring contacts)",
      {"1": "BAT_P", "2": "BAT_N"}, {}),
     ("U4", "Battery_Management:BQ297xy", "Package_SON:WSON-6_1.5x1.5mm_P0.5mm", "BQ29700DSER",
      {"2": "PCM_COUT", "3": "PCM_DOUT", "4": "BAT_N", "5": "PCM_BAT", "6": "PCM_VM"}, {}),
@@ -99,8 +99,13 @@ PARTS = [
      {"1": "PCM_BAT", "2": "BAT_N"}, {}),
     ("JP1", "Jumper:SolderJumper_2_Bridged", "Jumper:SolderJumper-2_P1.3mm_Bridged_Pad1.0x1.5mm",
      "I_MEAS (cut to measure)", {"1": "BAT_P", "2": "VBAT"}, {}),
-    ("J1", "Connector_Generic:Conn_01x02", "ShotPuck:MagPogo_Samzo_2P", "Samzo PR5L4015-2P-C-F",
-     {"1": "VIN_RAW", "2": "GND"}, {}),
+    ("J1", "Connector:USB_C_Receptacle_PowerOnly_6P",
+     "ShotPuck:USB_C_Receptacle_HRO_TYPE-C-31-M-17_NoFrontSilk", "TYPE-C-31-M-17",
+     {"A9": "VIN_RAW", "B9": "VIN_RAW", "A12": "GND", "B12": "GND", "A5": "CC1", "B5": "CC2", "SH": "GND"}, {}),
+    ("R10", "Device:R_Small", "Resistor_SMD:R_0402_1005Metric", "5.1k 1%",
+     {"1": "CC1", "2": "GND"}, {}),
+    ("R11", "Device:R_Small", "Resistor_SMD:R_0402_1005Metric", "5.1k 1%",
+     {"1": "CC2", "2": "GND"}, {}),
     ("J2", "Connector_Generic:Conn_01x04", "ShotPuck:SWD_Pads_1x4_P2.54", "SWD pads",
      {"1": "VDD", "2": "SWDIO", "3": "SWDCLK", "4": "GND"}, {}),
     ("H1", "Mechanical:MountingHole", "ShotPuck:MountingHole_2.4mm_NPTH", "M2", {}, {}),

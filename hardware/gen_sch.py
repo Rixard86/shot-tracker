@@ -108,7 +108,7 @@ def main():
     groups = [
         ("MCU / radio (nRF52840 high-voltage mode)", ["U1", "C4", "C5", "R9", "C9"], 22.86, 35.56, 190.5),
         ("Programming & status LED", ["J2", "R4", "D4"], 22.86, 170.18, 190.5),
-        ("Charging input & charger", ["J1", "D3", "D1", "C1", "U3", "R1"],
+        ("Charging input & charger", ["J1", "R10", "R11", "D3", "D1", "C1", "U3", "R1"],
          203.2, 35.56, 405.0),
         ("Charge inhibit / status", ["R2", "Q1", "R3", "D2"], 203.2, 81.28, 405.0),
         ("Battery + protection (PCM)", ["BT1", "JP1", "C2", "C3", "U4", "Q2", "R7", "R8", "C8"],

@@ -1,0 +1,111 @@
+(footprint "LIR1254_Contacts_Edit"
+	(version 20260206)
+	(generator "pcbnew")
+	(generator_version "10.0")
+	(layer "F.Cu")
+	(descr "LIR1254 in the board notch, no tabs: pad 1 = + spring contact on the can side, pad 2 = - strap across the top cap (Kapton where it passes the can). Hand-solder the contacts.")
+	(property "Reference" "BT1"
+		(at 0 0 0)
+		(layer "F.Fab")
+		(uuid "e0cbf7f3-dce7-4fb7-ae3f-9a889c448bec")
+		(effects
+			(font
+				(size 0.5 0.5)
+				(thickness 0.08)
+			)
+		)
+	)
+	(property "Value" "LIR1254 (plain, spring contacts)"
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "0a8037a2-beba-438e-9556-a625a2842f4d")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "e0cfa89a-a6f4-4240-b2b9-f6e2fb856e42")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "bd96dd4a-56ba-4e0d-ae92-9c5e5cb2a3f5")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(sheetname "/")
+	(sheetfile "shotpuck.kicad_sch")
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start -8.945511 -2.33834)
+		(end -7.745511 -2.33834)
+		(stroke
+			(width 0.12)
+			(type default)
+		)
+		(layer "F.SilkS")
+		(uuid "724d563d-bcac-4ce9-8433-e8f8fdf43847")
+	)
+	(fp_line
+		(start -8.345511 -2.93834)
+		(end -8.345511 -1.73834)
+		(stroke
+			(width 0.12)
+			(type default)
+		)
+		(layer "F.SilkS")
+		(uuid "9225b340-4f4d-46ca-a065-738c3570946b")
+	)
+	(fp_circle
+		(center 0 0)
+		(end 6.55 0)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(fill no)
+		(layer "F.CrtYd")
+		(uuid "021df42e-3037-47e3-a3e4-abf1a5bd0c67")
+	)
+	(fp_circle
+		(center 0 0)
+		(end 6.25 0)
+		(stroke
+			(width 0.1)
+			(type default)
+		)
+		(fill no)
+		(layer "F.Fab")
+		(uuid "72abc464-28e3-40ba-baee-ab71dd0bd0e4")
+	)
+	(pad "1" smd rect
+		(at -7.27 -4.2 239.9842587)
+		(size 2.5 2)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(thermal_bridge_angle 45)
+		(uuid "f0dd87f5-69c3-49a4-a9b9-b845537ba9ce")
+	)
+	(pad "2" smd rect
+		(at -8.27 1.449999 270)
+		(size 2.5 2)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(thermal_bridge_angle 45)
+		(uuid "a77e8e54-c2d3-40d7-a2d8-f7ce9cd947a8")
+	)
+	(embedded_fonts no)
+)

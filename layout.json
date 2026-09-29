@@ -17,12 +17,12 @@
   "_pcb_dia": "Puck OD = Avalon barebow weight OD (40 mm). Cavity 37 mm (cap_wall 1.5) minus 0.5 mm clearance per side.",
   "bosses": {
     "positions": [
-      [9.2, 1.2],
+      [-3.992, 16.01],
       [-15.505, 5.643],
       [9.464, -13.516],
       [-11.462, -11.869]
     ],
-    "_positions": "Board x, y. H2, H3 and H4 at r = 16.5 (160, 305 and 226 deg). H1 at (9.2, 1.2): right of the tube, below the antenna zone (its copper keep-out ring ends 0.9 mm below it), where C1/D1/D3 used to be, so it holds the board's top half. H4 holds the left arm (PCM and cell contacts), which had no screw below H2. Four screws for shot shock (README D29).",
+    "_positions": "Board x, y. H2, H3 and H4 at r = 16.5 (160, 305 and 226 deg). H1 at r = 16.5, 104 deg: between the module's left end and the USB-C port, so it still holds the board's top; its old spot right of the tube is now inside the copper-free RF side. H4 holds the left arm (PCM and cell contacts). Four screws for shot shock (README D29).",
     "boss_dia": 3.8,
     "pcb_hole": 2.4,
     "screw_hole": 2.2,
@@ -57,33 +57,23 @@
   },
   "module": {
     "part": "u-blox BMD-340-A-R-10",
-    "x": 0.0,
-    "y": 11.0,
-    "rot_deg": 180,
+    "x": 7.7782,
+    "y": 7.7782,
+    "rot_deg": 135.0,
     "w": 10.2,
     "l": 15.0,
     "h": 1.9,
     "mass_g": 0.6,
-    "_rot": "Long axis tangential above the sleeve; antenna end (the footprint's -x end, turned 180 deg) points to +x, copper-free from there to the rim. Centred on x = 0 as high as it goes: both top corners 0.24 mm inside the rim (more than the 0.2 mm outline tolerance), body 0.9 mm above the tube. The antenna zone's corner toward the tube is chamfered (board_shape.ANTENNA_CHAMFER), leaving a 0.83 mm copper passage between it and the tube hole. mass_g is an estimate (not in the data sheet): weigh the part.",
-    "antenna_dir_deg": 0
+    "_rot": "Long axis tangential to the rim, slid 45 deg clockwise around the sleeve from the top (centre at r = 11.0) so the left side is free for the USB-C port: both outer corners 0.24 mm inside the rim, body 0.9 mm above the tube, as at the top. The antenna end points 45 deg below +x; everything right of the tube is copper-free (board_shape.rf_keepout). mass_g is an estimate (not in the data sheet): weigh the part.",
+    "antenna_dir_deg": -45.0
   },
   "connector": {
-    "part": "Samzo PR5L4015-2P-C-F magnetic receptacle (Electrokit 41035992); cable side PR5L5015-2P-C-H (Electrokit 41035991)",
-    "x": 13.52,
-    "y": -3.62,
-    "pitch": 2.5,
-    "magnet_pitch": 8.0,
-    "body_w": 14.5,
-    "body_l": 4.0,
-    "body_h": 4.0,
-    "pin_drill": 0.85,
-    "pad_dia": 1.3,
-    "mass_g": 0.6,
-    "rot_deg": 75,
-    "_note": "Samzo drawing GZ0254-P001. Mounted on the PCB; puck.pcb_standoff puts its top flush with the cap top, which has an opening around it (RTV seal). mass_g is an estimate: weigh the part.",
-    "boss_w": 12.5,
-    "boss_h": 2.0,
-    "_body": "Stepped (Samzo GZ0254-P001): a 12.5 mm long top boss (2 mm) on a 14.5 mm flange (2 mm), both 4 mm wide with round ends. The cap opening fits the boss; a lip under the cap top stops 0.1 mm above the flange ends (RTV in the gap), so the cap, not the solder joints, takes the plug's pull."
+    "part": "Korean Hroparts TYPE-C-31-M-17, USB-C 6P power-only, right angle SMT (LCSC C283540)",
+    "x": -10.291,
+    "y": 11.43,
+    "rot_deg": 222.0,
+    "mass_g": 0.5,
+    "_note": "Plug axis radial at 132 deg, through the cap wall. The front shell legs sit 0.3 mm inside the rim, so the receptacle face is ~1.2 mm below the cap's outer surface: the cap needs a flat, recessed seat for the plug overmold there, and a ~0.5 mm pocket in its ceiling (the part is ~3.2 mm tall, the cap leaves 2.8 mm). mass_g is an estimate. The mechanical models (mechanical/) are not updated for this port yet."
   },
   "other_components_g": 0.6,
   "bolt": {
