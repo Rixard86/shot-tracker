@@ -5,7 +5,11 @@ gen_sch.py turns this into shotpuck.kicad_sch and gen_pcb.py into
 shotpuck.kicad_pcb. Change the circuit here, then re-run both.
 
 Power path
-  J1 Samzo PR5L4015 magnetic receptacle (VIN_RAW) -> D1 BAT54J (reverse polarity) -> VIN
+  J1 Samzo PR5L4015 magnetic receptacle (VIN_RAW), D3 SMF5.0CA bidirectional TVS to GND
+  (ESD on the exposed contacts, hot-plug; bidirectional so a reversed cable is only blocked)
+  -> D1 BAT54J (reverse polarity) -> VIN
+  VIN -> R9 1k -> VBUS_SNS (C9 100n) -> U1 VBUS: charger detect only (USB unused, ~24 uA),
+  the RC keeps hot-plug spikes off the 5.8 V abs-max VBUS pin
   VIN -> U3 MCP73831-2 (4.20 V, 21 mA via R1 = 47k) -> VBAT (LIR1254, 45-65 mAh)
   VBAT -> U1 VDDH (nRF52840 high-voltage mode, REG0 -> VDD 3.0 V)
   VDD  -> U2 LSM6DSO32 (VDD + VDDIO), LED, SWD VCC sense
@@ -16,7 +20,7 @@ Charge inhibit (temperature, firmware)
   PROG -> R1 -> Q1A drain; Q1A gate pulled to VIN by R2 (charging allowed
   whenever a cable is present). Q1B (gate = CHG_INH, R3 pull-down) pulls
   Q1A gate low -> PROG floats -> MCP73831 charge disabled.
-Cell protection (PCM, required by VARTA for CoinPower cells)
+Cell protection (PCM; LIR cells have no protection of their own)
   U4 BQ29700 + Q2 DMN2004DWK in the cell's negative lead: BAT_N -> Q2A (DOUT,
   discharge) -> PCM_D -> Q2B (COUT, charge) -> GND. OVP 4.275 V, UVP 2.80 V,
   OCD/OCC +-100 mV across ~1 ohm of FETs (~0.1 A), SCD 0.5 V. R7 330R + C8
@@ -33,8 +37,8 @@ Charge status
 PARTS = [
     ("U1", "RF_Module:MDBT50Q-1MV2", "RF_Module:Raytac_MDBT50Q", "MDBT50Q-1MV2",
      {"1": "GND", "2": "GND", "15": "GND", "33": "GND", "55": "GND",
-      "28": "VDD", "30": "VBAT", "32": "VIN",
-      "20": "SDA", "22": "SCL", "24": "ACC_INT1", "26": "CHG_STAT", "16": "CHG_INH",
+      "28": "VDD", "30": "VBAT", "32": "VBUS_SNS",
+      "20": "SDA", "22": "SCL", "16": "ACC_INT1", "26": "CHG_STAT", "24": "CHG_INH",
       "37": "LED_IO", "51": "SWDIO", "53": "SWDCLK"}, {}),
     ("U2", "Sensor_Motion:LSM6DSL", "Package_LGA:LGA-14_3x2.5mm_P0.5mm_LayoutBorder3x4y",
      "LSM6DSO32TR",
@@ -57,13 +61,13 @@ PARTS = [
      {"1": "VIN", "2": "VIN_RAW"}, {}),
     ("D2", "Diode:BAT54J", "Diode_SMD:D_SOD-323F", "BAT54J",
      {"1": "STAT", "2": "CHG_STAT"}, {}),
-    ("D3", "Device:D_TVS", "Diode_SMD:D_SOD-523", "PESD5V0S1BB",
+    ("D3", "Device:D_TVS", "Diode_SMD:D_SOD-123F", "SMF5.0CA",
      {"1": "GND", "2": "VIN_RAW"}, {}),
-    ("D4", "Device:LED", "LED_SMD:LED_0402_1005Metric", "LED green 0402",
+    ("D4", "Device:LED", "LED_SMD:LED_0402_1005Metric", "LED yellow-green 0402",
      {"1": "GND", "2": "LED_A"}, {}),
     ("C1", "Device:C_Small", "Capacitor_SMD:C_0603_1608Metric", "4.7u 10V",
      {"1": "VIN", "2": "GND"}, {}),
-    ("C2", "Device:C_Small", "Capacitor_SMD:C_0603_1608Metric", "4.7u 10V",
+    ("C2", "Device:C_Small", "Capacitor_SMD:C_0603_1608Metric", "10u 10V",
      {"1": "VBAT", "2": "GND"}, {}),
     ("C3", "Device:C_Small", "Capacitor_SMD:C_0402_1005Metric", "4.7u 6.3V",
      {"1": "VBAT", "2": "GND"}, {}),
@@ -86,6 +90,10 @@ PARTS = [
      {"1": "VBAT", "2": "PCM_BAT"}, {}),
     ("R8", "Device:R_Small", "Resistor_SMD:R_0402_1005Metric", "2.2k",
      {"1": "PCM_VM", "2": "GND"}, {}),
+    ("R9", "Device:R_Small", "Resistor_SMD:R_0402_1005Metric", "1k",
+     {"1": "VIN", "2": "VBUS_SNS"}, {}),
+    ("C9", "Device:C_Small", "Capacitor_SMD:C_0402_1005Metric", "100n",
+     {"1": "VBUS_SNS", "2": "GND"}, {}),
     ("C8", "Device:C_Small", "Capacitor_SMD:C_0402_1005Metric", "100n",
      {"1": "PCM_BAT", "2": "BAT_N"}, {}),
     ("JP1", "Jumper:SolderJumper_2_Bridged", "Jumper:SolderJumper-2_P1.3mm_Bridged_Pad1.0x1.5mm",
@@ -99,7 +107,7 @@ PARTS = [
     ("H3", "Mechanical:MountingHole", "ShotPuck:MountingHole_2.4mm_NPTH", "M2", {}, {}),
 ]
 
-POWER_FLAG_NETS = ["GND", "VDD", "VIN", "VIN_RAW", "BAT_N"]
+POWER_FLAG_NETS = ["GND", "VDD", "VIN", "VIN_RAW", "BAT_N", "VBUS_SNS"]
 
 # Nets that carry charge current / supply: wider tracks on the PCB
 POWER_NETS = {"BAT_P": 0.4, "BAT_N": 0.4, "PCM_D": 0.4, "VIN_RAW": 0.4, "VIN": 0.4, "VBAT": 0.4,

@@ -4,7 +4,7 @@ A Ø40 × 9.9 mm puck that bolts onto the free face of an Avalon riser weight (t
 
 | | |
 |---|---|
-| Size / mass | Ø40 mm (= the Avalon barebow weight's diameter), 9.90 mm above the weight face (2.0 mm flat aluminium plate; the PCB on 3 mm standoffs, the cell in a notch in the PCB), 16.3 g, centre of mass 0.85 mm off axis (no trim weight); 1.2 mm free space above the cell |
+| Size / mass | Ø40 mm (= the Avalon barebow weight's diameter), 9.90 mm above the weight face (2.0 mm flat aluminium plate; the PCB on 3 mm standoffs, the cell in a notch in the PCB), 16.3 g, centre of mass 0.9 mm off axis (no trim weight); 1.2 mm free space above the cell |
 | Radio / MCU | Raytac MDBT50Q-1MV2 (nRF52840, 1 MB flash / 256 KB RAM), BLE 5 |
 | Sensor | ST LSM6DSO32 IMU: 416 Hz, ±32 g accelerometer + ±2000 dps gyroscope while active; accelerometer only, 12.5 Hz wake-on-motion, while idle |
 | Battery | LIR1254 Li-ion coin, 45–65 mAh, plain (no tabs) on spring contacts, protected by TI BQ29700 + DMN2004DWK; magnetic charging via Samzo PR5L4015 (21 mA, temperature-gated) |
@@ -69,6 +69,8 @@ docs/VALIDATION.md          what is proven, and the on-device checklist
 | D24 | **I2C on internal pull-ups only; SCL = P0.06, SDA = P0.04** (swapped from v0.2) | The 4.7k DNP pads (R5/R6) were never fitted and cost routing space; the swap stops the IMU lines crossing on 2 layers | Keep R5/R6 as DNP pads for a stronger pull-up |
 | D25 | **PCB on 3 mm standoffs, magnetic connector flush with the cap top; cap 0.4 mm lower (9.90 mm)** | Richard: the plug should meet the receptacle at the surface. The old 3.4 mm well needed the plug head to fit the chimney and would collect dirt. The cell sets the ceiling, so raising the board costs no height, and it moves the antenna 3 mm further from the plate | Board on the plate with a 3.4 mm chimney well down to the connector |
 | D26 | **Button head bolt** (5/16-24, head Ø16.7 × 4.4 mm) with a bonded sealing washer | Richard: lower head than a socket head (7.9 mm). The sleeve stands 0.1 mm proud so the head clamps steel, not the PC cap | Socket head cap screw |
+| D27 | **Charge-input protection: SMF5.0CA bidirectional TVS (D3) at the connector + R9 1k / C9 100n in front of the nRF VBUS pin** | The flush contacts are touched constantly (ESD), the magnetic plug makes and breaks as it snaps on (hot-plug spikes), and a user-wired cable can be reversed, so the TVS must be bidirectional before D1. The SMF5.0CA starts clamping at 6.4–7.0 V (200 W) against the MCP73831's 7 V absolute maximum. No 5 V TVS can hold the nRF52840 VBUS pin under its 5.8 V absolute maximum; it is used only to detect the charger (~24 µA), so the RC limits current into it and smooths spikes | PESD5V0S1BB (a signal-line ESD diode, clamps only from 5.5–9.5 V); unidirectional flat-clamp TVS after D1 (TI TVS0500); an overvoltage switch (needed only if 9–12 V adapters are a risk) |
+| D28 | **Routing aids for 2 layers:** ACC_INT1 on P0.27 (pad 16) and CHG_INH on P0.08 (pad 24), swapped; short module links (SCL, SDA, VBAT→C3, VDD→C4, ACC_INT1 over the IMU) and the whole VIN path locked before Freerouting; the LED under its own pad | With the bolt tube through the board, everything on the left half shares one 2.5 mm escape gap beside the module. Pin order and locked paths decide whether the board routes. The board now routes with 0 DRC / 0 unconnected on the first attempt | 4 layers |
 
 ## Needs your input before ordering
 
@@ -78,6 +80,7 @@ docs/VALIDATION.md          what is proven, and the on-device checklist
 4. **Bolt:** a 5/16-24 button head socket cap screw, longer than the original Avalon bolt by the puck height plus the sealing washer (about 11.5 mm). Check that length is sold in 5/16-24 and the thread engagement in the riser; don't over-tighten (3/16 in hex).
 5. **Component masses:** weigh the real parts, put them in `layout.json`, and re-run `puck.py` for the mass report.
 6. **Back up the OTA signing key** `%USERPROFILE%\.shotpuck\ota-signing-key.pem` (password manager or offline copy). Pucks accept only images signed with it: if it is lost, updates need a cable (SWD); if it leaks, anyone who can pair could install their firmware. It is never committed (`*.pem` is git-ignored).
+7. **Module stock:** the MDBT50Q-1MV2 is out of stock at LCSC. Order it through JLCPCB's global sourcing or send modules for consignment.
 
 ## Simulation results (`firmware/sim/results.txt`, seed 2026)
 
@@ -133,6 +136,9 @@ python zephyr\scripts\build\mergehex.py -o shotpuck_full.hex build\sb\mcuboot\ze
 "C:\Program Files\KiCad\10.0\bin\python.exe" gen_sch.py
 "C:\Program Files\KiCad\10.0\bin\python.exe" check_netlist.py      # must print PASS
 kicad-cli sch erc --severity-all -o kicad\erc.rpt kicad\shotpuck.kicad_sch
+"C:\Program Files\KiCad\10.0\bin\python.exe" gen_pcb.py --no-route  # placement only, then DRC
+"C:\Program Files\KiCad\10.0\bin\python.exe" global_route.py       # routability estimate: overflow + hotspots
+"C:\Program Files\KiCad\10.0\bin\python.exe" gen_pcb.py --quick     # one-attempt trial route (~5 min)
 "C:\Program Files\KiCad\10.0\bin\python.exe" gen_pcb.py            # place, route, bridge GND islands, DRC
 "C:\Program Files\KiCad\10.0\bin\python.exe" gen_bom.py
 kicad-cli pcb export gerbers / drill / pos                         # into kicad\fab\
@@ -155,7 +161,7 @@ kicad-cli pcb export gerbers / drill for kicad/panel/shotpuck-panel.kicad_pcb
 ## Fabrication & assembly
 
 - **PCB:** 2 layers, 0.8 mm FR-4, ENIG, Ø36 mm (0.5 mm clearance per side in the Ø37 mm cap cavity; puck Ø40 mm = the Avalon weight) with a notch for the cell (Ø13.0 mm round end, open to the rim) merged with a Ø10.4 mm hole for the bolt tube (all part of the outline), 0.15 mm track / 0.127 mm space, vias 0.55 mm pad / 0.3 mm hole (standard at JLCPCB/PCBWay, no small-hole surcharge).
-- **JLCPCB order (prototype):** upload `kicad/fab/panel/shotpuck-panel-gerbers.zip` as a 2×2 panel ("panel by customer", 4 boards per panel, 91.1 × 88.7 mm; the top row is turned 180° so the tabs miss the cell notch and the antenna), order 5 panels = 20 boards, 0.8 mm, ENIG. For assembly (top side), upload `kicad/fab/jlc/shotpuck-panel-bom.csv` and `-cpl.csv` and check every part's rotation in the placement preview. Not assembled by JLCPCB: the cell BT1 and its contacts, the magnetic connector J1 (hand-solder), JP1 (bridged solder jumper, copper only), J2 (SWD test pads). The module needs JLCPCB's X-ray inspection. After breaking the boards out, sand the mouse-bite nubs flush.
+- **JLCPCB order (prototype):** upload `kicad/fab/panel/shotpuck-panel-gerbers.zip` as a 2×2 panel ("panel by customer", 4 boards per panel, 91.1 × 88.7 mm; the top row is turned 180° so the tabs miss the cell notch and the antenna), order 5 panels = 20 boards, 0.8 mm, ENIG. For assembly (top side), upload `kicad/fab/jlc/shotpuck-panel-bom.csv` and `-cpl.csv` and check every part's rotation in the placement preview. Not assembled by JLCPCB: the cell BT1 and its contacts, the magnetic connector J1 (hand-solder), JP1 (bridged solder jumper, copper only), J2 (SWD test pads). The module needs JLCPCB's X-ray inspection. Cut the tabs with flush cutters instead of snapping them (U1 sits about 2 mm and the 0603 capacitor C2 about 2.7 mm from a tab, and bending there can crack joints or C2), then sand the nubs flush. The BQ29700 may start with its discharge FET off when a cell is first fitted (TI SLUSBU9I §8.4.1): attach the charger once to wake it.
 - **Plate:** 6061-T6, 2.0 mm, laser or waterjet cut: Ø8.4 mm centre hole, 3× M2 tapped at r = 16.5 mm (40°/160°/305°, tap drill Ø1.6). Anodising is optional (mask the threads).
 - **Cap:** polycarbonate, CNC-machined (translucent so the LED shows), with the M2 counterbores, the tube bore and the connector opening. The opening fits the connector's 12.5 mm top boss, and a lip under the cap top stops 0.1 mm above the connector's flange ends (RTV in the gap), so the cap, not the solder joints, takes the plug's pull (Samzo drawing GZ0254-P001). For prototypes, clear SLA resin. **No liquid threadlocker anywhere near PC** (it causes stress cracking): use nylon-patch screws.
 - **Tube:** cold-drawn 304 stainless tube Ø10 × 0.8 mm (yield ≥ 500 MPa; annealed tube would yield when the bolt is over-tightened), 8.0 mm long (plate to 0.1 mm above the cap top), bonded into the cap. Kapton tape on the side facing the cell.

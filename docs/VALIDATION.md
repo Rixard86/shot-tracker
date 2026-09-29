@@ -9,10 +9,11 @@
 | Shot log in flash | `firmware/sim/test_evlog.c` (run by `simulate.py`) against a fake NOR flash that rejects writes to unerased bytes: reboot recovery, wrap-around (952 of 3000 kept), `from_seq` filter, torn record, torn sector erase, appending during a replay | EVLOG TESTS: PASS (mutation-checked) |
 | Firmware | Zephyr 4.1 sysbuild (MCUboot + app), custom board `shotpuck/nrf52840`, release and log+assert variants | 0 compiler warnings; both fit the 452 KB slot |
 | OTA signing | `imgtool verify` on the signed image with the private key and with MCUboot's public dev key; MCUboot's embedded public key compared with the private key; build without the key | Valid with ours, rejected with the dev key, keys match, keyless build refused |
-| Schematic | KiCad netlist export vs `design.py` (`check_netlist.py`), KiCad 10 ERC | 95/95 pin assignments, 25 nets; ERC 0 errors (2 intentional strap warnings) |
+| Schematic | KiCad netlist export vs `design.py` (`check_netlist.py`), KiCad 10 ERC | 99/99 pin assignments, 26 nets; ERC 0 errors (2 intentional strap warnings) |
 | PCB | Freerouting + KiCad 10 DRC | 0 violations, 0 unconnected (2 layers, vias 0.55/0.3 mm) |
+| PCB pre-order audit | DRC with schematic parity; IC pinouts against the datasheets (LSM6DSO32 DocID032891, MCP73831 DS20001984H, BQ2970 SLUSBU9I, DMN63D8LDW DS36021, DMN2004DWK DS30935, MDBT50Q pad table); LCSC part numbers against the intended parts; board against JLCPCB's 2-layer limits; courtyards against the outline, the cap bosses and the panel tabs | Every pad's net matches the schematic; all pinouts match; min hole-to-hole 0.41 mm, PTH ring 0.225 mm, copper to edge 0.3 mm; no courtyard overlaps or boss conflicts (closest Q1, 0.76 mm from the H2 boss face) |
 | Panel | KiKit 2×2, KiCad 10 DRC on the panel | 0 violations, 0 unconnected; 4 tabs per board, mouse bites clear of the antenna, the cell notch, the screw holes and all courtyards |
-| Height / balance | CadQuery (`puck.py`) | 9.90 mm tall (PCB on 3 mm standoffs, connector top flush with the cap top, 1.2 mm free above the cell); 16.27 g, COM 0.85 mm off axis (no trim weight; estimated masses) |
+| Height / balance | CadQuery (`puck.py`) | 9.90 mm tall (PCB on 3 mm standoffs, connector top flush with the cap top, 1.2 mm free above the cell); 16.31 g, COM 0.88 mm off axis (no trim weight; estimated masses) |
 
 The simulation validates **logic and robustness margins**, not the physics of your bow. The signal model (release shock of 8–40 g, 15–80° rotation into the sling) is an assumption.
 
@@ -21,6 +22,7 @@ The simulation validates **logic and robustness margins**, not the physics of yo
 Do these in order: each step de-risks the next. **Bold** items are blockers.
 
 ### 1. Bench, cap off (programmer on the SWD test pads)
+- [ ] **PCM wake on first cell:** the BQ29700 may leave its discharge FET off when a cell is first connected (TI SLUSBU9I §8.4.1). If the puck stays dead with a charged cell, attach the charger once; it must then run from the cell after the charger is removed.
 - [ ] **First boot:** the LED blinks 200 ms, the puck advertises as ShotPuck, and the UICR REGOUT0 write causes one extra reset.
 - [ ] **VDD measures 3.0 V** (REG0 programmed) and the IMU answers (WHO_AM_I 0x6C at I2C 0x6A; no 1 Hz error blinking).
 - [ ] **Standby current** with JP1 cut: IDLE and not advertising should be about 17 µA (LSM6DSO32 accelerometer in low-power mode at 12.5 Hz is about 10 µA, interpolated from the datasheet; BQ29700 4 µA; measure it). ACTIVE at 416 Hz with the gyroscope should be about 0.7–0.8 mA. Advertising at 500 ms should add about 10–15 µA. These set the battery life (README: about 3.5–5 weeks at 2 h/day).
@@ -28,11 +30,14 @@ Do these in order: each step de-risks the next. **Bold** items are blockers.
 - [ ] **Wake-on-motion** from IDLE at the default 150 mg threshold (±8 g, 31.25 mg steps): picking up the bow wakes it; the bow lying still does not.
 - [ ] **Charging:** about 21 mA (from R1 = 47k), and termination at 4.20 V ±0.75 %. Confirm both against the LIR1254 datasheet limits before first charge.
 - [ ] **CHG_STAT and VBUS flags** in STATUS follow the cable.
+- [ ] **Weak supply:** at 4.75 V on the magnetic connector, VBUS is detected (pairing window opens, STATUS shows VBUS) and stays detected while charging; measure the final cell voltage after termination (may end slightly below 4.20 V; the MCP73831 is specified from 5.2 V input).
+- [ ] **Hot-plug:** scope VIN and VBUS_SNS while snapping the plug on and off 20 times from a stiff 5 V supply: VIN stays below 7 V and VBUS_SNS below 5.8 V.
+- [ ] **LED:** the yellow-green LED (XL-1005SYGC, ~1 mA) is clearly visible through the cap indoors and in daylight shade.
 - [ ] **Charge inhibit:** freezer at −5 °C sets CHG_INHIBIT and the charge current drops to about 0. Warm to 20 °C and charging resumes.
 - [ ] **Low-battery cut-off:** with a bench supply on the cell pads below 3.3 V, the puck enters System OFF (current under 1 µA). **Attaching the charger must wake it** (nRF52840 VBUS wake from System OFF: verify, it is load-bearing).
 
 ### 2. Assembled puck
-- [ ] **Cell protection (PCM):** with a current-limited bench supply in place of the cell, check over-discharge cut-off at about 2.8 V, over-charge cut-off at about 4.28 V, and that a load above about 0.1 A (e.g. 30 Ω across VBAT–GND) trips the over-current protection within about 20 ms and recovers when removed. Check the drop across Q2 at 21 mA charging (expected under 30 mV).
+- [ ] **Cell protection (PCM):** with a current-limited bench supply in place of the cell, check over-discharge cut-off at about 2.8 V, over-charge cut-off at about 4.28 V, and that a load above about 0.1 A (e.g. 30 Ω across VBAT–GND) trips the over-current protection within about 20 ms. Recovery needs V− to fall back near VSS: with the puck's own load still on, expect it to recover only when the charger is attached; note which. Check the drop across Q2 at 21 mA charging (expected under 30 mV).
 - [ ] **Magnetic connector:** it mates only one way; the cable's + reaches pin 1 (square pad). A reversed cable must not charge or damage anything.
 - [ ] **Cell and contacts:** the cell drops freely into the notch onto the Kapton; the + spring presses on the can side and the − strap on the top cap without touching the can edge; with the cap on, the foam clamps the cell and it cannot shift. **No resets from shot shock:** shoot a session and check that the puck never rebooted (a reboot shows as `t_uptime_ms` falling between consecutive EVENTs and `seq` jumping ahead).
 - [ ] **Swell space:** with the cap on, a 6.6 mm gauge block in place of the cell fits without load (1.2 mm above the 5.4 mm cell), and the foam pad still clamps a real cell.
@@ -43,7 +48,7 @@ Do these in order: each step de-risks the next. **Bold** items are blockers.
 - [ ] **Background replay:** trigger `REPLAY(0)` with a full log and shoot during it. No shot is missed and the debug log shows no `FIFO overrun`.
 - [ ] **IMU axes:** record a capture with the puck lying cap-up (+Z ≈ +1000 mg), then on its edge in two directions, and note which X/Y direction points along the arrow and which points up the riser. Put the mapping in `docs/PROTOCOL.md` for the app.
 - [ ] **Capture transfer:** after a shot, the app receives the header plus 624 samples within about 3 s; GET_CAPTURE re-sends it; the gyroscope shows the bow rotating forward into the sling.
-- [ ] **BLE range through the cap**, with the puck on the riser and the phone in a pocket about 1–2 m away, and at 10 m. If the link is weak, raise TX power (`CONFIG_BT_CTLR_TX_PWR_PLUS_4=y`) or check the antenna keep-out against the aluminium base.
+- [ ] **BLE range through the cap**, with the puck on the riser and the phone in a pocket about 1–2 m away, and at 10 m. If the link is weak, raise TX power (`CONFIG_BT_CTLR_TX_PWR_PLUS_4=y`) or check the antenna keep-out against the aluminium base. The 40° boss (H1) sits inside the antenna zone, about 2.8 mm from the module's antenna end: compare range with its steel screw and aluminium standoff against a nylon M2 screw and nylon spacer.
 - [ ] **Bolt mounting:** the button head bolt with its sealing washer clamps the puck on the tube alone: the PCB and the cap are not squeezed, and the tube does not shorten; the cap screws still sit tight afterwards. Check BLE range with the bolt head in place (it overlaps the antenna zone's inner corner).
 - [ ] **Tube insulation:** the Kapton tape on the tube faces the cell; with the puck shaken hard, the cell can never touches bare steel.
 - [ ] **Magnetic plug at the surface:** the charging plug snaps onto the flush connector from any approach and charges reliably; the spring pins sit at their 1.0 mm working height. After 50 plug cycles the RTV seal is intact and the connector has not lifted (the cap lip holds its flange).

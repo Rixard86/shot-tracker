@@ -1170,6 +1170,129 @@
                 (size 1.27 1.27))))))
       (embedded_fonts no))
     (symbol
+      "Device:R_Small"
+      (pin_numbers
+        (hide yes))
+      (pin_names
+        (offset 0.254)
+        (hide yes))
+      (exclude_from_sim no)
+      (in_bom yes)
+      (on_board yes)
+      (in_pos_files yes)
+      (duplicate_pin_numbers_are_jumpers no)
+      (property
+        "Reference"
+        "R"
+        (at 0 0 90)
+        (show_name no)
+        (do_not_autoplace no)
+        (effects
+          (font
+            (size 1.016 1.016))))
+      (property
+        "Value"
+        "R_Small"
+        (at 1.778 0 90)
+        (show_name no)
+        (do_not_autoplace no)
+        (effects
+          (font
+            (size 1.27 1.27))))
+      (property
+        "Footprint"
+        ""
+        (at 0 0 0)
+        (show_name no)
+        (do_not_autoplace no)
+        (hide yes)
+        (effects
+          (font
+            (size 1.27 1.27))))
+      (property
+        "Datasheet"
+        ""
+        (at 0 0 0)
+        (show_name no)
+        (do_not_autoplace no)
+        (hide yes)
+        (effects
+          (font
+            (size 1.27 1.27))))
+      (property
+        "Description"
+        "Resistor, small symbol"
+        (at 0 0 0)
+        (show_name no)
+        (do_not_autoplace no)
+        (hide yes)
+        (effects
+          (font
+            (size 1.27 1.27))))
+      (property
+        "ki_keywords"
+        "R resistor"
+        (at 0 0 0)
+        (show_name no)
+        (do_not_autoplace no)
+        (hide yes)
+        (effects
+          (font
+            (size 1.27 1.27))))
+      (property
+        "ki_fp_filters"
+        "R_*"
+        (at 0 0 0)
+        (show_name no)
+        (do_not_autoplace no)
+        (hide yes)
+        (effects
+          (font
+            (size 1.27 1.27))))
+      (symbol
+        "R_Small_0_1"
+        (rectangle
+          (start -0.762 1.778)
+          (end 0.762 -1.778)
+          (stroke
+            (width 0.2032)
+            (type default))
+          (fill
+            (type none))))
+      (symbol
+        "R_Small_1_1"
+        (pin
+          passive
+          line
+          (at 0 2.54 270)
+          (length 0.762)
+          (name
+            ""
+            (effects
+              (font
+                (size 1.27 1.27))))
+          (number
+            "1"
+            (effects
+              (font
+                (size 1.27 1.27)))))
+        (pin
+          passive
+          line
+          (at 0 -2.54 90)
+          (length 0.762)
+          (name
+            ""
+            (effects
+              (font
+                (size 1.27 1.27))))
+          (number
+            "2"
+            (effects
+              (font
+                (size 1.27 1.27))))))
+      (embedded_fonts no))
+    (symbol
       "Connector_Generic:Conn_01x04"
       (pin_names
         (offset 1.016)
@@ -1346,129 +1469,6 @@
                 (size 1.27 1.27))))
           (number
             "4"
-            (effects
-              (font
-                (size 1.27 1.27))))))
-      (embedded_fonts no))
-    (symbol
-      "Device:R_Small"
-      (pin_numbers
-        (hide yes))
-      (pin_names
-        (offset 0.254)
-        (hide yes))
-      (exclude_from_sim no)
-      (in_bom yes)
-      (on_board yes)
-      (in_pos_files yes)
-      (duplicate_pin_numbers_are_jumpers no)
-      (property
-        "Reference"
-        "R"
-        (at 0 0 90)
-        (show_name no)
-        (do_not_autoplace no)
-        (effects
-          (font
-            (size 1.016 1.016))))
-      (property
-        "Value"
-        "R_Small"
-        (at 1.778 0 90)
-        (show_name no)
-        (do_not_autoplace no)
-        (effects
-          (font
-            (size 1.27 1.27))))
-      (property
-        "Footprint"
-        ""
-        (at 0 0 0)
-        (show_name no)
-        (do_not_autoplace no)
-        (hide yes)
-        (effects
-          (font
-            (size 1.27 1.27))))
-      (property
-        "Datasheet"
-        ""
-        (at 0 0 0)
-        (show_name no)
-        (do_not_autoplace no)
-        (hide yes)
-        (effects
-          (font
-            (size 1.27 1.27))))
-      (property
-        "Description"
-        "Resistor, small symbol"
-        (at 0 0 0)
-        (show_name no)
-        (do_not_autoplace no)
-        (hide yes)
-        (effects
-          (font
-            (size 1.27 1.27))))
-      (property
-        "ki_keywords"
-        "R resistor"
-        (at 0 0 0)
-        (show_name no)
-        (do_not_autoplace no)
-        (hide yes)
-        (effects
-          (font
-            (size 1.27 1.27))))
-      (property
-        "ki_fp_filters"
-        "R_*"
-        (at 0 0 0)
-        (show_name no)
-        (do_not_autoplace no)
-        (hide yes)
-        (effects
-          (font
-            (size 1.27 1.27))))
-      (symbol
-        "R_Small_0_1"
-        (rectangle
-          (start -0.762 1.778)
-          (end 0.762 -1.778)
-          (stroke
-            (width 0.2032)
-            (type default))
-          (fill
-            (type none))))
-      (symbol
-        "R_Small_1_1"
-        (pin
-          passive
-          line
-          (at 0 2.54 270)
-          (length 0.762)
-          (name
-            ""
-            (effects
-              (font
-                (size 1.27 1.27))))
-          (number
-            "1"
-            (effects
-              (font
-                (size 1.27 1.27)))))
-        (pin
-          passive
-          line
-          (at 0 -2.54 90)
-          (length 0.762)
-          (name
-            ""
-            (effects
-              (font
-                (size 1.27 1.27))))
-          (number
-            "2"
             (effects
               (font
                 (size 1.27 1.27))))))
@@ -3577,7 +3577,7 @@
         (size 2 2)
         bold)
       (justify left bottom))
-    (uuid a0e58020-a5f6-4861-9931-9fffeea702b0))
+    (uuid 3229ce87-7728-4898-b8e6-87720c04cd0b))
   (text
     "Programming & status LED"
     (at 22.86 165.1 0)
@@ -3586,7 +3586,7 @@
         (size 2 2)
         bold)
       (justify left bottom))
-    (uuid 97f2b134-4a96-4567-be4a-8aeccafa9291))
+    (uuid 6a16d398-4419-471f-879a-283b9b9c7506))
   (text
     "Charging input & charger"
     (at 203.2 30.48 0)
@@ -3595,7 +3595,7 @@
         (size 2 2)
         bold)
       (justify left bottom))
-    (uuid e93e0909-179a-4325-8ac3-e7dbff1c6f5a))
+    (uuid 96bfaac0-7046-4663-be87-f3cd1271a63d))
   (text
     "Charge inhibit / status"
     (at 203.2 76.2 0)
@@ -3604,7 +3604,7 @@
         (size 2 2)
         bold)
       (justify left bottom))
-    (uuid ee9b3029-0892-4c7c-80a6-c3054d73d3bc))
+    (uuid f69290a3-36ce-4ab5-a465-56282e46ac47))
   (text
     "Battery + protection (PCM)"
     (at 203.2 119.38 0)
@@ -3613,7 +3613,7 @@
         (size 2 2)
         bold)
       (justify left bottom))
-    (uuid 51e9f9d5-72e0-4ab1-b4bd-d1c8bf94104c))
+    (uuid 09890609-a54a-4908-b98c-bdef897d3d14))
   (text
     "IMU (accelerometer + gyroscope)"
     (at 203.2 154.94 0)
@@ -3622,7 +3622,7 @@
         (size 2 2)
         bold)
       (justify left bottom))
-    (uuid 9e3a7a97-ad99-4d87-98f2-9d535cae62f1))
+    (uuid 5dfb9c84-3178-46e6-9b17-3120abd2c9ae))
   (text
     "Mechanical"
     (at 203.2 198.12 0)
@@ -3631,7 +3631,7 @@
         (size 2 2)
         bold)
       (justify left bottom))
-    (uuid cada160c-6832-43b2-88c0-2cd94eee1cbb))
+    (uuid d600b254-d947-4ab8-9b35-fffc9044ca67))
   (symbol
     (lib_id "RF_Module:MDBT50Q-1MV2")
     (at 58.42 88.9 0)
@@ -3906,7 +3906,7 @@
     (at 38.1 71.12)
     (uuid 59259bec-c5c3-5424-b879-c703f192dbad))
   (label
-    "CHG_INH"
+    "ACC_INT1"
     (at 78.74 109.22 0)
     (fields_autoplaced)
     (effects
@@ -3948,7 +3948,7 @@
     (at 78.74 124.46)
     (uuid 2e5d8b28-95aa-58a8-ade8-377b0c5c13f8))
   (label
-    "ACC_INT1"
+    "CHG_INH"
     (at 78.74 63.5 0)
     (fields_autoplaced)
     (effects
@@ -3996,7 +3996,7 @@
     (at 63.5 43.18)
     (uuid 1f55b54d-a5fc-5163-846a-4bcce11a94c4))
   (label
-    "VIN"
+    "VBUS_SNS"
     (at 60.96 43.18 90)
     (fields_autoplaced)
     (effects
@@ -4242,6 +4242,144 @@
       (justify right bottom))
     (uuid ff91db78-12e2-5f9f-a7f9-fd084de6e10d))
   (symbol
+    (lib_id "Device:R_Small")
+    (at 154.94 45.72 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid 4010873a-1d53-5424-80db-1b0f235edde3)
+    (property
+      "Reference"
+      "R9"
+      (at 154.94 40.64 0)
+      (effects
+        (font
+          (size 1.27 1.27))))
+    (property
+      "Value"
+      "1k"
+      (at 154.94 52.07 0)
+      (effects
+        (font
+          (size 1.27 1.27))))
+    (property
+      "Footprint"
+      "Resistor_SMD:R_0402_1005Metric"
+      (at 154.94 45.72 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        hide))
+    (property
+      "Datasheet"
+      ""
+      (at 154.94 45.72 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        hide))
+    (pin
+      "1"
+      (uuid 7ce31cdc-a76e-52eb-9982-14ba8f12efa6))
+    (pin
+      "2"
+      (uuid 72c38ddd-4719-57b1-aded-2838e1962927))
+    (instances
+      (project
+        "shotpuck"
+        (path
+          "/453e4d2c-678b-52c6-881c-d1e900c8fc33"
+          (reference "R9")
+          (unit 1)))))
+  (label
+    "VIN"
+    (at 154.94 43.18 90)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify left bottom))
+    (uuid 9906f5ca-bcec-505f-91d8-b834037b44ed))
+  (label
+    "VBUS_SNS"
+    (at 154.94 48.26 270)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right bottom))
+    (uuid ecbc6a37-f958-56df-80e2-1cd52f7dc216))
+  (symbol
+    (lib_id "Device:C_Small")
+    (at 38.1 154.94 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid 04e47b7b-134a-5170-a494-46c99205862c)
+    (property
+      "Reference"
+      "C9"
+      (at 38.1 149.86 0)
+      (effects
+        (font
+          (size 1.27 1.27))))
+    (property
+      "Value"
+      "100n"
+      (at 38.1 161.29 0)
+      (effects
+        (font
+          (size 1.27 1.27))))
+    (property
+      "Footprint"
+      "Capacitor_SMD:C_0402_1005Metric"
+      (at 38.1 154.94 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        hide))
+    (property
+      "Datasheet"
+      ""
+      (at 38.1 154.94 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        hide))
+    (pin
+      "1"
+      (uuid f060ea22-0e5e-5ffe-b8df-af8039d5c5ac))
+    (pin
+      "2"
+      (uuid f50a5d8d-ddf1-52fe-903a-1fa34ab9794d))
+    (instances
+      (project
+        "shotpuck"
+        (path
+          "/453e4d2c-678b-52c6-881c-d1e900c8fc33"
+          (reference "C9")
+          (unit 1)))))
+  (label
+    "VBUS_SNS"
+    (at 38.1 152.4 90)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify left bottom))
+    (uuid 526b3a01-956a-524f-ad14-5e5f06d1b413))
+  (label
+    "GND"
+    (at 38.1 157.48 270)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right bottom))
+    (uuid f17d8214-41a7-5292-b65c-a8a5075924d3))
+  (symbol
     (lib_id "Connector_Generic:Conn_01x04")
     (at 40.64 180.34 0)
     (unit 1)
@@ -4420,7 +4558,7 @@
           (size 1.27 1.27))))
     (property
       "Value"
-      "LED green 0402"
+      "LED yellow-green 0402"
       (at 90.17 181.61 0)
       (effects
         (font
@@ -4558,14 +4696,14 @@
           (size 1.27 1.27))))
     (property
       "Value"
-      "PESD5V0S1BB"
+      "SMF5.0CA"
       (at 247.65 46.99 0)
       (effects
         (font
           (size 1.27 1.27))))
     (property
       "Footprint"
-      "Diode_SMD:D_SOD-523"
+      "Diode_SMD:D_SOD-123F"
       (at 251.46 43.18 0)
       (effects
         (font
@@ -5446,7 +5584,7 @@
           (size 1.27 1.27))))
     (property
       "Value"
-      "4.7u 10V"
+      "10u 10V"
       (at 276.86 140.97 0)
       (effects
         (font
@@ -6514,7 +6652,7 @@
         (size 2 2)
         bold)
       (justify left bottom))
-    (uuid 0f5378af-8b51-4f38-b837-744c4c3d39ae))
+    (uuid 3a4b6c7c-1da0-4685-9b43-f840901f688b))
   (symbol
     (lib_id "power:PWR_FLAG")
     (at 22.86 215.9 0)
@@ -6805,14 +6943,72 @@
         (size 1.27 1.27))
       (justify right bottom))
     (uuid bc4e0ba0-f0a8-5195-9601-07aca2e265b5))
+  (symbol
+    (lib_id "power:PWR_FLAG")
+    (at 149.86 215.9 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid e1c81aec-938f-516d-8fdf-575e2766e9c2)
+    (property
+      "Reference"
+      "#FLG06"
+      (at 149.86 212.09 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        hide))
+    (property
+      "Value"
+      "PWR_FLAG"
+      (at 149.86 212.09 0)
+      (effects
+        (font
+          (size 1.27 1.27))))
+    (property
+      "Footprint"
+      ""
+      (at 149.86 215.9 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        hide))
+    (property
+      "Datasheet"
+      ""
+      (at 149.86 215.9 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        hide))
+    (pin
+      "1"
+      (uuid bae06e84-3b98-51c6-8bbb-a9412f537dde))
+    (instances
+      (project
+        "shotpuck"
+        (path
+          "/453e4d2c-678b-52c6-881c-d1e900c8fc33"
+          (reference "#FLG06")
+          (unit 1)))))
+  (label
+    "VBUS_SNS"
+    (at 149.86 215.9 270)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right bottom))
+    (uuid 58fe7537-c779-58ae-a2f9-e52a5650a403))
   (text
-    "design.py - ShotPuck circuit, single source of truth.\n\ngen_sch.py turns this into shotpuck.kicad_sch and gen_pcb.py into\nshotpuck.kicad_pcb. Change the circuit here, then re-run both.\n\nPower path\n  J1 Samzo PR5L4015 magnetic receptacle (VIN_RAW) -> D1 BAT54J (reverse polarity) -> VIN\n  VIN -> U3 MCP73831-2 (4.20 V, 21 mA via R1 = 47k) -> VBAT (LIR1254, 45-65 mAh)\n  VBAT -> U1 VDDH (nRF52840 high-voltage mode, REG0 -> VDD 3.0 V)\n  VDD  -> U2 LSM6DSO32 (VDD + VDDIO), LED, SWD VCC sense\nIMU\n  U2 LSM6DSO32 on I2C at 0x6A (SA0 = GND, CS = VDD selects I2C). Aux master\n  pins SDx/SCx to GND; INT2, OCS_Aux, SDO_Aux unconnected.\nCharge inhibit (temperature, firmware)\n  PROG -> R1 -> Q1A drain; Q1A gate pulled to VIN by R2 (charging allowed\n  whenever a cable is present). Q1B (gate = CHG_INH, R3 pull-down) pulls\n  Q1A gate low -> PROG floats -> MCP73831 charge disabled.\nCell protection (PCM, required by VARTA for CoinPower cells)\n  U4 BQ29700 + Q2 DMN2004DWK in the cell's negative lead: BAT_N -> Q2A (DOUT,\n  discharge) -> PCM_D -> Q2B (COUT, charge) -> GND. OVP 4.275 V, UVP 2.80 V,\n  OCD/OCC +-100 mV across ~1 ohm of FETs (~0.1 A), SCD 0.5 V. R7 330R + C8\n  100n filter the BAT supply, R8 2k2 on V-. Standby 4 uA.\nCurrent measurement\n  JP1 (bridged solder jumper) in series with the cell: cut, insert an\n  ammeter, re-bridge with solder.\nCharge status\n  STAT -> D2 (cathode) ; D2 anode -> CHG_STAT GPIO with pull-up enabled only\n  while VBUS is present (no standby leakage)."
+    "design.py - ShotPuck circuit, single source of truth.\n\ngen_sch.py turns this into shotpuck.kicad_sch and gen_pcb.py into\nshotpuck.kicad_pcb. Change the circuit here, then re-run both.\n\nPower path\n  J1 Samzo PR5L4015 magnetic receptacle (VIN_RAW), D3 SMF5.0CA bidirectional TVS to GND\n  (ESD on the exposed contacts, hot-plug; bidirectional so a reversed cable is only blocked)\n  -> D1 BAT54J (reverse polarity) -> VIN\n  VIN -> R9 1k -> VBUS_SNS (C9 100n) -> U1 VBUS: charger detect only (USB unused, ~24 uA),\n  the RC keeps hot-plug spikes off the 5.8 V abs-max VBUS pin\n  VIN -> U3 MCP73831-2 (4.20 V, 21 mA via R1 = 47k) -> VBAT (LIR1254, 45-65 mAh)\n  VBAT -> U1 VDDH (nRF52840 high-voltage mode, REG0 -> VDD 3.0 V)\n  VDD  -> U2 LSM6DSO32 (VDD + VDDIO), LED, SWD VCC sense\nIMU\n  U2 LSM6DSO32 on I2C at 0x6A (SA0 = GND, CS = VDD selects I2C). Aux master\n  pins SDx/SCx to GND; INT2, OCS_Aux, SDO_Aux unconnected.\nCharge inhibit (temperature, firmware)\n  PROG -> R1 -> Q1A drain; Q1A gate pulled to VIN by R2 (charging allowed\n  whenever a cable is present). Q1B (gate = CHG_INH, R3 pull-down) pulls\n  Q1A gate low -> PROG floats -> MCP73831 charge disabled.\nCell protection (PCM; LIR cells have no protection of their own)\n  U4 BQ29700 + Q2 DMN2004DWK in the cell's negative lead: BAT_N -> Q2A (DOUT,\n  discharge) -> PCM_D -> Q2B (COUT, charge) -> GND. OVP 4.275 V, UVP 2.80 V,\n  OCD/OCC +-100 mV across ~1 ohm of FETs (~0.1 A), SCD 0.5 V. R7 330R + C8\n  100n filter the BAT supply, R8 2k2 on V-. Standby 4 uA.\nCurrent measurement\n  JP1 (bridged solder jumper) in series with the cell: cut, insert an\n  ammeter, re-bridge with solder.\nCharge status\n  STAT -> D2 (cathode) ; D2 anode -> CHG_STAT GPIO with pull-up enabled only\n  while VBUS is present (no standby leakage)."
     (at 22.86 228.6 0)
     (effects
       (font
         (size 1.27 1.27))
       (justify left top))
-    (uuid f64a0d4d-1222-47a6-96b7-ddc36afae53c))
+    (uuid 610c1225-9708-4218-817b-8d12f980307e))
   (sheet_instances
     (path
       "/"

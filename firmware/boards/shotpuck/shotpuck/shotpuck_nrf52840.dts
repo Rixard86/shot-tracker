@@ -2,13 +2,13 @@
  * ShotPuck - nRF52840 (Raytac MDBT50Q-1MV2), VDDH = Li-ion cell.
  *
  * Pin map (MDBT50Q pad -> signal):
- *   P0.04 (20) I2C SCL      -> LSM6DSO32 SCL
- *   P0.06 (22) I2C SDA      -> LSM6DSO32 SDA
- *   P0.08 (24) ACCEL_INT1   <- LSM6DSO32 INT1
- *   P1.09 (26) CHG_STAT     <- MCP73831 STAT via BAT54 (low = charging)
- *   P0.27 (16) CHG_INHIBIT  -> Q2 gate (high = charging disabled)
+ *   P0.04 (20) I2C SDA      -> LSM6DSO32 SDA
+ *   P0.06 (22) I2C SCL      -> LSM6DSO32 SCL
+ *   P0.27 (16) ACCEL_INT1   <- LSM6DSO32 INT1
+ *   P1.09 (26) CHG_STAT     <- MCP73831 STAT via BAT54J (low = charging)
+ *   P0.08 (24) CHG_INHIBIT  -> Q1B gate (high = charging disabled)
  *   P0.13 (37) LED          -> LED anode via 1k (active high)
- *   VBUS  (32)              <- charger input after reverse-polarity diode
+ *   VBUS  (32)              <- charger input after reverse-polarity diode, 1k/100n filter
  */
 /dts-v1/;
 #include <nordic/nrf52840_qiaa.dtsi>
@@ -34,9 +34,9 @@
 	};
 
 	zephyr,user {
-		accel-int1-gpios = <&gpio0 8 GPIO_ACTIVE_HIGH>;
+		accel-int1-gpios = <&gpio0 27 GPIO_ACTIVE_HIGH>;
 		chg-stat-gpios = <&gpio1 9 GPIO_ACTIVE_LOW>;
-		chg-inhibit-gpios = <&gpio0 27 GPIO_ACTIVE_HIGH>;
+		chg-inhibit-gpios = <&gpio0 8 GPIO_ACTIVE_HIGH>;
 	};
 
 	aliases {

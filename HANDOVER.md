@@ -58,7 +58,8 @@ The panel moved to annotation tabs in a frame. Then (Richard): the PCB went up o
    - Keep the two in sync (packet layouts are also pinned by `test_capture.c`).
    - Bump `PROTO_VERSION` on any layout change, because the Flutter app parses these bytes. It is **2** now.
 5. `puck.py` and `gen_pcb.py` share only `layout.json` now (the trim pin and its `trim.json` are gone).
-6. `gen_pcb.py` must end with **0 DRC violations and 0 unconnected pads**. Freerouting is not deterministic; the script already retries up to 4 times, so re-run it if it still fails.
+6. **Placement before routing:** after any placement or circuit change, run `gen_pcb.py --no-route` (placement DRC), then `global_route.py` (overflow + hotspots; the split-tube board that routed cleanly scored 8.3, boards that failed scored 8.5–9.2, and parts sitting in a hotspot band showed up there), then `gen_pcb.py --quick` (one Freerouting attempt, ~5 min). Only a placement that passes the trial gets the full run.
+7. `gen_pcb.py` must end with **0 DRC violations and 0 unconnected pads**. Freerouting is not deterministic; the script already retries up to 4 times, so re-run it if it still fails.
 
 ## 4. Repository map
 
@@ -99,6 +100,9 @@ hardware/
                              Freerouting, SES import, stitching, pours, island bridging, DRC (kicad-cli)
   board_shape.py             board outline, cell notch, bolt hole, sleeve land, antenna zone (shapely, from layout.json)
   islands.py                 bridges GND pour fragments cut off from the main plane (post-fill)
+  place_eval.py              airwire model of a placed board (MST per net, locked copper pre-connected), crossings
+  global_route.py            routability estimate before Freerouting: 0.5 mm grid global router (A*, congestion
+                             negotiation) on the board's own outline, keep-outs and pads -> overflow + hotspots
   gen_bom.py                 → kicad/fab/shotpuck-bom.csv
   gen_panel.py               → kicad/panel/shotpuck-panel.kicad_pcb (KiKit 2x2 in a frame, 4 annotation tabs per board, top row turned 180°, mouse bites, fiducials, tooling)
   gen_jlc.py                 → kicad/fab/jlc/ BOM + CPL for JLCPCB assembly (LCSC numbers in the script)
@@ -124,10 +128,10 @@ docs/VALIDATION.md           proven vs on-device checklist
 | Sim hard cases (479 shots) | recall 99.58 %, precision 99.38 % (3 FP: 2 grab, 1 stand knock) |
 | Sim weak bow (info only, 253 shots) | recall 80.2 %, precision 99.5 %, dominated by missed triggers / no follow-through |
 | Firmware rev A (2026-09-27) | Rebuilt for the SCL/SDA swap only: same sizes (200,016 B / 27,980 B), 0 compiler warnings, `imgtool verify` valid, compiled DTS has SCL = P0.06 and SDA = P0.04 |
-| Schematic | `check_netlist.py` PASS, 95/95 pin assignments, 25 nets; KiCad 10 ERC 0 errors, 2 warnings (intentional SA0/SDx straps to GND) |
-| PCB | Ø36 mm 2-layer, 0.8 mm, track 0.15 / clearance 0.127, vias 0.55/0.3 mm, fully routed, **0 DRC violations, 0 unconnected** (KiCad 10 DRC). DRC with `--schematic-parity` only reports the "/GND" vs "GND" net-name style and the BOM-exclude flag on H1–H3/JP1 |
-| Panel | 91.1 × 88.7 mm, 2×2 in a frame, 16 tabs, **0 DRC violations, 0 unconnected**; JLCPCB BOM 18 lines / CPL 96 placements |
-| Enclosure | 9.90 mm above the weight face (plate 2.0 + Kapton 0.1 + 3.0 mm standoffs + PCB 0.8; cell on the Kapton in the PCB notch, 6.60 mm from there to the ceiling = 1.2 mm free), connector top flush with the cap top, 16.27 g, COM 0.85 mm off axis (no trim weight) |
+| Schematic | `check_netlist.py` PASS, 99/99 pin assignments, 26 nets; KiCad 10 ERC 0 errors, 2 warnings (intentional SA0/SDx straps to GND) |
+| PCB | Ø36 mm 2-layer, 0.8 mm, track 0.15 / clearance 0.127, vias 0.55/0.3 mm, fully routed, **0 DRC violations, 0 unconnected** (KiCad 10 DRC), first Freerouting attempt after the placement and pin work (D28). DRC with `--schematic-parity` only reports the "/GND" vs "GND" net-name style and the BOM-exclude flag on H1–H3/JP1 |
+| Panel | 91.1 × 88.7 mm, 2×2 in a frame, 16 tabs, **0 DRC violations, 0 unconnected**; JLCPCB BOM 19 lines / CPL 104 placements |
+| Enclosure | 9.90 mm above the weight face (plate 2.0 + Kapton 0.1 + 3.0 mm standoffs + PCB 0.8; cell on the Kapton in the PCB notch, 6.60 mm from there to the ceiling = 1.2 mm free), connector top flush with the cap top, 16.31 g, COM 0.88 mm off axis (no trim weight) |
 
 Before the IMU change, the unchanged v0.1 sources were rebuilt on Windows as a toolchain check: firmware byte-identical in size (142,620 B / 27,856 B), netlist PASS.
 
@@ -150,7 +154,7 @@ Detector defaults (tunable over BLE CONFIG) are unchanged except the sample rate
 - **Battery voltage:** read via SAADC `NRF_SAADC_VDDHDIV5`. The define needs `#include <zephyr/dt-bindings/adc/nrf-saadc-v3.h>`.
 - **Charge inhibit logic:**
   - PROG → R1 47k (21 mA for the LIR1254) → Q1A. Q1A's gate is pulled to VIN by R2 (1M).
-  - Q1B (gate = CHG_INH on P0.27, R3 100k pull-down) pulls Q1A's gate low, which floats PROG and disables charging.
+  - Q1B (gate = CHG_INH on P0.08, R3 100k pull-down) pulls Q1A's gate low, which floats PROG and disables charging.
   - **Default = charging allowed** (deliberate, so a flat cell can recover).
 - **Charge status:** STAT → D2 BAT54J → P1.09. The GPIO pull-up is enabled **only while VBUS is detected**, which avoids standby leakage.
 - **Pins:**
@@ -159,15 +163,16 @@ Detector defaults (tunable over BLE CONFIG) are unchanged except the sample rate
   |---|---|---|
   | I2C SCL | P0.06 | 22 |
   | I2C SDA | P0.04 | 20 |
-  | ACCEL_INT1 (IMU INT1) | P0.08 | 24 |
+  | ACCEL_INT1 (IMU INT1) | P0.27 | 16 |
   | CHG_STAT | P1.09 | 26 |
-  | CHG_INH | P0.27 | 16 |
+  | CHG_INH | P0.08 | 24 |
   | LED | P0.13 | 37 |
   | SWD | SWDIO / SWDCLK | 51 / 53 |
-  | VBUS (charger present, System-OFF wake) | VBUS | 32 |
+  | VBUS (charger present, System-OFF wake), via R9 1k + C9 100n (net VBUS_SNS) | VBUS | 32 |
 
   - LSM6DSO32 is at I2C address **0x6A** (SA0 = GND), CS = VDD (I2C mode), SDx/SCx = GND, INT2/OCS_Aux/SDO_Aux unconnected. KiCad symbol: `Sensor_Motion:LSM6DSL` (same pinout), footprint `LGA-14_3x2.5mm_P0.5mm_LayoutBorder3x4y`.
   - Avoid P0.00/P0.01 (LFXO) and P0.19 (duplicated in the KiCad symbol).
+  - Rev A pin moves for 2-layer routing: ACC_INT1 P0.08 → P0.27 (pad 16, so it reaches the IMU over its top without crossing I2C) and CHG_INH P0.27 → P0.08 (pad 24, so it drops straight down the channel to the charger like CHG_STAT). Firmware follows through the board DTS.
   - SCL/SDA were swapped in rev A (v0.2 had SCL = P0.04) so the IMU lines do not cross; `design.py` and the board pinctrl `.dtsi` must change together. The I2C pull-ups are the nRF's internal ones (~13 kΩ, 400 kHz): there are no external pull-up pads any more.
 - **IMU configuration** (register values checked against ST's `lsm6dso32_reg.h` in `C:\zp\modules\hal\st`):
   - Init: software reset, BDU + IF_INC, **I3C disabled** (CTRL9_XL = 0xE2, datasheet recommendation for I2C-only use). INT1 has an internal pull-down and must be low at power-on for I2C mode: the nRF pin is high-Z then, so never add a pull-up to ACC_INT1.
@@ -180,12 +185,12 @@ Detector defaults (tunable over BLE CONFIG) are unchanged except the sample rate
   - Cell at (0, −11.75) in a notch open to the rim: Ø13.0 mm round end (`cell.pcb_hole_clear` 0.25 mm) with straight edges out to the rim. The Edge.Cuts outline (rim, notch, Ø8.4 bolt hole) comes from `board_shape.py`; `puck.py` cuts the same shape.
   - Cell contact pads (2.5 × 2.0 mm SMD, `ShotPuck:LIR1254_Contacts`) both left of the notch: + at (−7.27, −7.55) for a spring on the can side, − at (−8.27, −13.2) for a strap over the top cap.
   - Magnetic connector J1 at (13.52, −3.62), rotated 75°, pin 1 (square) = VIN_RAW; TVS, D1 and C1 beside it.
-  - IMU U2 at (−10.2, 11.5), rotated 270°, C6/C7 beside it; module decoupling C3–C5 at x = −10.7; LED D4 and R4 below the module's left end.
+  - IMU U2 at (−10.7, 11.5), rotated 270°, C6/C7 beside it (moved 0.5 mm left so U1's left-end pads, SDA/SCL/ACC_INT1/CHG_INH/VDD, have a 1.75 mm escape gap); module decoupling C3–C5 at x = −10.7; LED D4 and R4 below the module's left end.
   - Charger (U3, Q1, R1–R3, D2) on the left at y ≈ −1.5…2; PCM (U4, Q2, R7, R8, C8) at the lower left, x −15…−10, y −5…−11.
-  - Bottom side: JP1 at (−10.2, −5.0) and the SWD test pads J2 (VDD, SWDIO, SWDCLK, GND at 2.54 mm) at (−1.5, 12.6) under the module; SWDIO/SWDCLK leave U1 through locked escape vias (`PRE_VIAS`).
+  - Bottom side: JP1 at (−10.2, −5.0) and the SWD test pads J2 at (−1.5, 12.6) under the module, rotated 180° so VDD sits at the −x end next to its sources: VDD x −5.31, SWDIO −2.77, SWDCLK −0.23, GND 2.31 (2.54 mm pitch, board coordinates seen from the cap; the pogo jig must match). J2's GND pad gets a solid zone connection and no fan-out via; SWDIO/SWDCLK leave U1 through locked escape vias (`PRE_VIAS`).
   - Board Ø36 mm: the puck is Ø40 mm = the Avalon barebow weight (the true constraint); cap wall 1.5 mm leaves a Ø37 mm cavity, 0.5 mm clearance per side.
   - Screw holes Ø2.4 mm at r = 16.5 mm, 40°/160°/305°, spread around the sleeve and clear of the module, the notch and the connector.
-  - The bolt tube (Ø10) passes through a Ø10.4 hole (0.2 mm clearance for JLCPCB's ±0.2 mm outline tolerance) that a straight slot merges with the cell notch (`board_shape.sleeve_hole`), so no FR-4 web is left between them. The right half (J1, D1, D3, C1) reaches the rest only across the top: VIN through a ~0.54 mm gap between the hole's 0.35 mm copper keep-out and the antenna zone, GND on the other layer. The antenna zone matches the footprint's own keep-out (from 4.0 mm along the module axis, ±6.2 mm across; `ANTENNA_INSET`/`ANTENNA_HALF_W` in `board_shape.py`), then runs on to the rim; the earlier, slightly larger zone left Freerouting too little room here. Past the gap, the SWD escape vias and their B.Cu tracks up to J2 form a fence, so VIN's crossing is pre-routed and locked (`VIN_ESCAPE`): C1 → via just right of the tube hole → B.Cu up the channel between the SWD fence and the antenna zone → over J2 → end at (−6.3, 13.45), where Freerouting picks it up. Freerouting found that path on its own only in some runs. `gnd_fanout` keeps its vias clear of existing tracks as well as vias, so none lands on the locked path. The module sits 0.1 mm higher (y 10.75) and the SWD escape vias 0.45 mm to +x of their pads (`PRE_VIAS`) so they clear that keep-out; 0.2 mm higher clips the module's silkscreen on the rim.
+  - The bolt tube (Ø10) passes through a Ø10.4 hole (0.2 mm clearance for JLCPCB's ±0.2 mm outline tolerance) that a straight slot merges with the cell notch (`board_shape.sleeve_hole`), so no FR-4 web is left between them. The right half (J1, D1, D3, C1) reaches the rest only across the top: VIN through a ~0.54 mm gap between the hole's 0.35 mm copper keep-out and the antenna zone, GND on the other layer. The antenna zone matches the footprint's own keep-out (from 4.0 mm along the module axis, ±6.2 mm across; `ANTENNA_INSET`/`ANTENNA_HALF_W` in `board_shape.py`), then runs on to the rim; the earlier, slightly larger zone left Freerouting too little room here. Past the gap, the SWD escape vias and their B.Cu tracks up to J2 form a fence, so VIN is pre-routed and locked end to end (`VIN_ESCAPE`): C1 → via just right of the tube hole → B.Cu up the channel between the SWD fence and the antenna zone → over J2 (y 13.45) → down under the module's left end (x −6.8) → via at (−7.75, 3.25) → R9's VIN pad. Freerouting found parts of that path only in some runs, and a partly locked path left dangling tails. The short module links (SCL, SDA, VBAT→C3, VDD→C4, ACC_INT1 over the IMU) are locked too (`PRE_LINKS`). `gnd_fanout` keeps its vias clear of existing tracks as well as vias, so none lands on the locked path. The module sits 0.1 mm higher (y 10.75) and the SWD escape vias 0.45 mm to +x of their pads (`PRE_VIAS`) so they clear that keep-out; 0.2 mm higher clips the module's silkscreen on the rim.
 - **Keep-outs in `gen_pcb.py`:** antenna region to the rim; 0.35 mm copper-free band along the cell notch (both layers); the sleeve land (F.Cu); 3 boss faces, Ø3.8 + 0.3 mm; 0.35 mm rim ring. The boss rings keep both layers copper-free under the cap bosses and the standoffs.
 - **Cell protection:** BAT_N (cell −) → Q2A (DOUT) → PCM_D → Q2B (COUT) → GND. BQ29700: OVP 4.275 V, UVP 2.80 V, OCD/OCC ±100 mV over ~1 Ω of FETs (≈ 0.1 A), SCD 0.5 V, 4 µA. R7 feeds BAT from VBAT (= cell + through JP1). The firmware's 3.3 V cut-off stays the primary over-discharge guard.
 - **Mechanical (`puck.py`):** plate (2.0) → Kapton (0.1) → standoffs (`puck.pcb_standoff`, 3.0) → PCB (0.8); the cell sits on the Kapton in the PCB notch (`Z_CELL`); ceiling = `Z_CELL` + `cell.swell_h` (6.6 mm); cap top 1.2 mm, total 9.90 mm, which puts the connector top exactly at the cap top (the report prints the offset; 0 = flush). The tube runs from the plate through the PCB to 0.1 mm above the cap top (8.0 mm) and carries the whole clamp load, steel on aluminium. The cap sits on a 0.3 mm gasket on the plate and is held by 3 M2×8 cheese head screws from above; the counterbore depth is set so the screw tip ends `tip_inset` (0.1 mm) inside the plate. The connector is stepped (Samzo GZ0254-P001: a 12.5 mm top boss on a 14.5 mm flange, 2 mm each; `connector.boss_w/boss_h`). The cap opening fits the boss (0.1 mm RTV gap per side) and a 0.8 mm lip under the cap top stops 0.1 mm above the flange ends, so the cap takes the plug's magnetic pull and side loads. The connector's pins stick out 0.7 mm under the PCB, into the standoff gap. `mechanical/blender/stack.py` imports these heights from `geometry.py`.
@@ -263,17 +268,21 @@ Build commands are in README "Build & flash". Keep toolchains and build director
 - **Battery life ≈ 3.5–5 weeks at 2 h/day is an estimate** (45–65 mAh; gyro + accel 0.55 mA whenever ACTIVE; idle ~17 µA estimated). Measure with JP1 cut. Richard chose the single LIR1254 knowing this; do not add gyro duty-cycling unless he asks. A further idle saving would be the accelerometer's ultra-low-power mode (datasheet §6.2.1; check wake-up support first).
 - **IMU X/Y axes vs the bow are unconfirmed**; +Z is out of the cap. First capture on hardware fixes the mapping (VALIDATION §2).
 - **Hard grab off the stand and stand knocks** are the false-positive sources in simulation.
-- **Load-bearing but unverified assumptions:** nRF52840 VBUS wake from System OFF; MDBT50Q LFXO / DC-DC inductor presence; BLE range through the PC cap next to the aluminium plate; I2C at 400 kHz on the nRF's internal pull-ups (~13 kΩ, estimated 130–200 ns rise on this short bus; there are no pads for external ones).
+- **Load-bearing but unverified assumptions:** nRF52840 VBUS wake from System OFF; MDBT50Q LFXO (Raytac: not fitted by default; we use the RC oscillator); BLE range through the PC cap next to the aluminium plate; I2C at 400 kHz on the nRF's internal pull-ups (~13 kΩ, estimated 130–200 ns rise on this short bus; there are no pads for external ones).
+- **REG1 DC/DC:** Raytac's spec (MDBT50Q-1MV2 ver. K, §8) says the REG1 DC/DC inductor is inside the module, so REG1's DC/DC mode could be enabled in firmware to save active current. Not done yet (D5 kept LDO mode while this was unconfirmed).
+- **VBUS detect and charger headroom on a weak supply:** the nRF52840 detects VBUS rising at 3.4–4.3 V and drops it only below 3.0–3.9 V. Detection happens at plug-in, before the MCP73831 starts (5 ms start delay), when D1 (BAT54J, max 320 mV at 1 mA) carries only a few hundred µA: from a 4.75 V supply VBUS reaches ~4.43 V, 0.13 V above the worst-case threshold. While charging (21 mA, D1 max ~0.46 V) VIN falls to ~4.29 V, far above the removal threshold. The tighter limit is the charger: MCP73831 accuracy is specified from VDD ≥ 5.2 V, so on a 4.75 V supply the charge may end slightly below 4.20 V. Use a 5.0–5.25 V charger; a lower-drop D1 would add margin.
+- **Sustained overvoltage:** D3 and R9/C9 handle ESD and hot-plug spikes, not a 9–12 V adapter; that would need an overvoltage switch on VIN.
+- **Stock:** on 2026-09-29 LCSC showed the MDBT50Q-1MV2, the LSM6DSO32TR, the DMN63D8LDW (Q1) and the XL-1005SYGC LED (D4) out of stock. JLCPCB's assembly stock is separate: the BOM upload shows it. For anything missing, use global sourcing or consignment, or swap Q1 for another dual N-FET in SOT-363 with the S1 G1 D2 S2 G2 D1 pinout and Vgs(th) under 1.5 V.
 - **Captures and rejected candidates are RAM-only** (4 captures, 128 rejects). Accepted shots persist (~900 in flash).
 - **Pairing window:** anyone within range during the 60 s after the charger is attached can pair. Acceptable because attaching the charger needs the puck in hand.
 - **LED_BLINK (find-my-puck) blocks the main loop for ~1 s**, longer than the IMU FIFO (~0.5 s). Using it while shooting can drop a shot (FIFO overrun restarts the detector). Not fixed; it is meant for a puck lying around.
 - **OTA is verified off-device only** (build, signatures, key guard). Upgrade, rollback-on-reset and rollback-on-hang must be tested on hardware (VALIDATION §2b). During the MCUboot swap (about 10–20 s) the puck is unavailable.
 - **Firmware reads the FIFO word by word** (52 I2C transactions per watermark). A burst read would cut ACTIVE current; verify the LSM6DSO32 FIFO address roll-over first.
 - **Material constraint:** PC cap + liquid threadlocker = stress cracking. Use nylon-patch screws only.
-- **Mouse-bite nubs:** sand them flush; the board has 0.5 mm radial clearance in the cap cavity.
+- **Mouse-bite tabs:** cut them with flush cutters, never snap (U1 is about 2 mm from the top tab, the 0603 C2 about 2.7 mm from the left one), then sand the nubs flush; the board has 0.5 mm radial clearance in the cap cavity.
 - **JLCPCB part rotations** come from KiCad orientations; JLCPCB's conventions differ for some packages. Check every part in their placement preview (especially U1, U2, U4, Q1, Q2, D1–D4).
 - **Cell in the PCB notch:** the Kapton under the PCB must cover the plate under the cell (it insulates the + can from the plate). The cell is held only by the + spring, the − strap and the foam pad: shot shocks (8–40 g) must not lift a contact, or the puck browns out. Check for resets over a shooting session (VALIDATION §2). The contacts are not a bought part yet.
-- **Bolt head near the antenna:** the steel button head (Ø16.7) and its Ø14 sealing washer sit on the sleeve, about 4 mm above the PCB and 2 mm above the module, and overlap the inner corner of the antenna zone (x ≥ 4.05, y ≥ 4.55) up to x ≈ 6.0 in plan view. Check BLE range on the bow (VALIDATION §2); a smaller washer or a plastic one would help.
+- **Bolt head near the antenna:** the steel button head (Ø16.7) and its Ø14 sealing washer sit on the sleeve, about 4 mm above the PCB and 2 mm above the module, and overlap the inner corner of the antenna zone (x ≥ 4.05, y ≥ 4.55) up to x ≈ 6.0 in plan view. Check BLE range on the bow (VALIDATION §2); a smaller washer or a plastic one would help. The 40° boss (H1) is inside the antenna zone too, about 2.8 mm from the module's antenna end: its M2 screw and standoff can be nylon if range is short.
 - **Bolt tube:** it carries the whole clamp load (a 5/16 button head at its maximum torque gives ~9 kN, ~400 MPa on the tube end), so it must be cold-drawn tube: annealed 304 yields at ~205 MPa. It stands 0.5 mm from the cell's + can with no FR-4 between them: keep the Kapton tape on it. A touch is harmless on its own (the tube, plate and bow are not connected to the circuit).
 
 ## 10. Likely next requests and where to start

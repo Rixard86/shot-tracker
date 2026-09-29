@@ -63,9 +63,12 @@ SOLID_GND_REFS = {"U2", "J2"}
 ROUTER_JOB_MARGIN_S = 20
 SECOND_PASS_SUFFIX = "-pass2.kicad_pcb"
 PRE_ROUTED = [("Q2", "3", "6"), ("Q1", "4", "1")]
+PRE_LINKS = [("U1", "22", "U2", "13", ()), ("U1", "20", "U2", "14", ()), ("U1", "30", "C3", "1", ()),
+             ("U1", "28", "C4", "1", ()), ("U1", "16", "U2", "4", ((-10.95, 13.4),))]
 PRE_ROUTE_WIDTH_MM = 0.2
 PRE_VIAS = [("U1", "51", (0.45, -0.75)), ("U1", "53", (0.45, -0.75))]
-VIN_ESCAPE = ("C1", "1", ((4.7, 3.65),), ((3.7, 4.65), (3.7, 12.0)))
+VIN_ESCAPE = ("C1", "1", ((4.7, 3.65),),
+              ((3.7, 4.65), (3.7, 13.45), (-6.8, 13.45), (-6.8, 3.25), (-7.75, 3.25)), ("R9", "1"))
 TRACK_SAMPLE_MM = 0.3
 VIA_DRILL_MM = 0.3
 SWD_PAD_DIA = 1.0
@@ -84,12 +87,13 @@ def V(x, y):
 PLACE = {
     "C3": (-10.7, 8.0, 180), "C4": (-10.7, 9.1, 180), "C5": (-10.7, 6.9, 180),
     "U2": (-10.2, 11.5, 270), "C6": (-12.4, 11.2, 90), "C7": (-12.6, 9.2, 90),
-    "R4": (-8.3, 4.3, 0), "D4": (-6.4, 3.3, 0),
+    "R9": (-8.8, 2.4, 270), "C9": (-7.8, 1.8, 90),
+    "R4": (-4.6, 4.44, 180), "D4": (-6.6, 4.44, 0),
     "U3": (-12.4, -1.5, 0), "Q1": (-13.2, 2.2, 0), "R1": (-15.2, -1.5, 90), "R2": (-15.6, 1.6, 90),
     "R3": (-10.3, 2.2, 90), "D2": (-9.0, -1.3, 90),
     "C2": (-13.4, -4.1, 0), "JP1": (-10.2, -5.0, 0, BOTTOM), "R7": (-15.4, -5.3, 90),
     "U4": (-13.4, -9.0, 180), "Q2": (-10.6, -9.0, 0), "C8": (-13.6, -6.9, 0), "R8": (-12.6, -10.9, 0),
-    "C1": (6.6, 2.9, 0), "D1": (9.95, 2.6, 0), "D3": (10.3, 0.4, 0),
+    "C1": (6.6, 2.9, 0), "D1": (9.95, 2.6, 0), "D3": (8.6, 0.4, 0),
     "J2": (-1.5, 12.6, 180, BOTTOM),
 }
 
@@ -373,6 +377,7 @@ def build():
     add_keepouts(board)
     pre_route(board)
     pre_vias(board)
+    pre_links(board)
     pre_path(board)
     add_pours(board)
     gnd_fanout(board)
@@ -399,11 +404,11 @@ def pre_route(board):
 
 
 def locked_track(board, spec):
-    start, end, layer, net = spec
+    start, end, layer, net, width = spec
     tr = pcbnew.PCB_TRACK(board)
     tr.SetStart(start)
     tr.SetEnd(end)
-    tr.SetWidth(MM(TRACK_MM))
+    tr.SetWidth(MM(width))
     tr.SetLayer(layer)
     tr.SetNet(net)
     tr.SetLocked(True)
@@ -427,20 +432,33 @@ def pre_vias(board):
         pad = board.FindFootprintByReference(ref).FindPadByNumber(num)
         start = pad.GetPosition()
         end = pcbnew.VECTOR2I(start.x + MM(dx), start.y - MM(dy))
-        locked_track(board, (start, end, pcbnew.F_Cu, pad.GetNet()))
+        locked_track(board, (start, end, pcbnew.F_Cu, pad.GetNet(), TRACK_MM))
         locked_via(board, (end, pad.GetNet()))
 
 
+def pre_links(board):
+    for ref_a, num_a, ref_b, num_b, via_points in PRE_LINKS:
+        pa = board.FindFootprintByReference(ref_a).FindPadByNumber(num_a)
+        pb = board.FindFootprintByReference(ref_b).FindPadByNumber(num_b)
+        width = design.POWER_NETS.get(pa.GetNetname(), TRACK_MM)
+        points = [pa.GetPosition()] + [V(x, y) for x, y in via_points] + [pb.GetPosition()]
+        for a, b in zip(points, points[1:]):
+            locked_track(board, (a, b, pcbnew.F_Cu, pa.GetNet(), width))
+
+
 def pre_path(board):
-    ref, num, top, bottom = VIN_ESCAPE
+    ref, num, top, bottom, (end_ref, end_num) = VIN_ESCAPE
     pad = board.FindFootprintByReference(ref).FindPadByNumber(num)
+    end = board.FindFootprintByReference(end_ref).FindPadByNumber(end_num).GetPosition()
     points = [pad.GetPosition()] + [V(x, y) for x, y in top]
     for a, b in zip(points, points[1:]):
-        locked_track(board, (a, b, pcbnew.F_Cu, pad.GetNet()))
+        locked_track(board, (a, b, pcbnew.F_Cu, pad.GetNet(), TRACK_MM))
     locked_via(board, (points[-1], pad.GetNet()))
     points = points[-1:] + [V(x, y) for x, y in bottom]
     for a, b in zip(points, points[1:]):
-        locked_track(board, (a, b, pcbnew.B_Cu, pad.GetNet()))
+        locked_track(board, (a, b, pcbnew.B_Cu, pad.GetNet(), TRACK_MM))
+    locked_via(board, (points[-1], pad.GetNet()))
+    locked_track(board, (points[-1], end, pcbnew.F_Cu, pad.GetNet(), TRACK_MM))
 
 
 def track_points(board):
@@ -776,7 +794,7 @@ def attempt(path):
 
 def main():
     path = os.path.join(KI, "shotpuck.kicad_pcb")
-    single = "--no-route" in sys.argv or "--reuse-ses" in sys.argv
+    single = any(flag in sys.argv for flag in ("--no-route", "--reuse-ses", "--quick"))
     best = path.replace(".kicad_pcb", "-best.kicad_pcb")
     fewest = None
     for n in range(1, BOARD_ATTEMPTS + 1):
