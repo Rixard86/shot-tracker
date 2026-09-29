@@ -373,99 +373,7 @@
     "netclass_patterns": [
       {
         "netclass": "Board_0-Default",
-        "pattern": "Board_0-VIN"
-      },
-      {
-        "netclass": "Board_0-Default",
-        "pattern": "Board_0-PCM_D"
-      },
-      {
-        "netclass": "Board_0-Default",
-        "pattern": "Board_0-PCM_VM"
-      },
-      {
-        "netclass": "Board_0-Default",
-        "pattern": "Board_0-PCM_COUT"
-      },
-      {
-        "netclass": "Board_0-Default",
-        "pattern": "Board_0-STAT"
-      },
-      {
-        "netclass": "Board_0-Default",
-        "pattern": "Board_0-SCL"
-      },
-      {
-        "netclass": "Board_0-Default",
-        "pattern": "Board_0-VBUS_SNS"
-      },
-      {
-        "netclass": "Board_0-Default",
-        "pattern": "Board_0-BAT_N"
-      },
-      {
-        "netclass": "Board_0-Default",
-        "pattern": "Board_0-Q1_GATE"
-      },
-      {
-        "netclass": "Board_0-Default",
-        "pattern": "Board_0-LED_IO"
-      },
-      {
-        "netclass": "Board_0-Default",
-        "pattern": "Board_0-PCM_BAT"
-      },
-      {
-        "netclass": "Board_0-Default",
-        "pattern": "Board_0-SDA"
-      },
-      {
-        "netclass": "Board_0-Default",
-        "pattern": "Board_0-PROG_SW"
-      },
-      {
-        "netclass": "Board_0-Default",
-        "pattern": "Board_0-GND"
-      },
-      {
-        "netclass": "Board_0-Default",
-        "pattern": "Board_0-VBAT"
-      },
-      {
-        "netclass": "Board_0-Default",
-        "pattern": "Board_0-VDD"
-      },
-      {
-        "netclass": "Board_0-Default",
-        "pattern": "Board_0-CHG_STAT"
-      },
-      {
-        "netclass": "Board_0-Default",
         "pattern": "Board_0-LED_A"
-      },
-      {
-        "netclass": "Board_0-Default",
-        "pattern": "Board_0-BAT_P"
-      },
-      {
-        "netclass": "Board_0-Default",
-        "pattern": "Board_0-VIN_RAW"
-      },
-      {
-        "netclass": "Board_0-Default",
-        "pattern": "Board_0-PCM_DOUT"
-      },
-      {
-        "netclass": "Board_0-Default",
-        "pattern": "Board_0-CHG_INH"
-      },
-      {
-        "netclass": "Board_0-Default",
-        "pattern": "Board_0-SWDCLK"
-      },
-      {
-        "netclass": "Board_0-Default",
-        "pattern": "Board_0-ACC_INT1"
       },
       {
         "netclass": "Board_0-Default",
@@ -473,27 +381,99 @@
       },
       {
         "netclass": "Board_0-Default",
+        "pattern": "Board_0-PROG_SW"
+      },
+      {
+        "netclass": "Board_0-Default",
+        "pattern": "Board_0-Q1_GATE"
+      },
+      {
+        "netclass": "Board_0-Default",
+        "pattern": "Board_0-BAT_N"
+      },
+      {
+        "netclass": "Board_0-Default",
+        "pattern": "Board_0-PCM_VM"
+      },
+      {
+        "netclass": "Board_0-Default",
+        "pattern": "Board_0-SCL"
+      },
+      {
+        "netclass": "Board_0-Default",
+        "pattern": "Board_0-SWDCLK"
+      },
+      {
+        "netclass": "Board_0-Default",
         "pattern": "Board_0-PROG"
       },
       {
-        "netclass": "Board_1-Default",
-        "pattern": "Board_1-PCM_D"
+        "netclass": "Board_0-Default",
+        "pattern": "Board_0-VBAT"
       },
       {
-        "netclass": "Board_1-Default",
-        "pattern": "Board_1-SWDCLK"
+        "netclass": "Board_0-Default",
+        "pattern": "Board_0-PCM_BAT"
       },
       {
-        "netclass": "Board_1-Default",
-        "pattern": "Board_1-VBUS_SNS"
+        "netclass": "Board_0-Default",
+        "pattern": "Board_0-CHG_STAT"
       },
       {
-        "netclass": "Board_1-Default",
-        "pattern": "Board_1-SWDIO"
+        "netclass": "Board_0-Default",
+        "pattern": "Board_0-BAT_P"
       },
       {
-        "netclass": "Board_1-Default",
-        "pattern": "Board_1-LED_A"
+        "netclass": "Board_0-Default",
+        "pattern": "Board_0-PCM_DOUT"
+      },
+      {
+        "netclass": "Board_0-Default",
+        "pattern": "Board_0-SDA"
+      },
+      {
+        "netclass": "Board_0-Default",
+        "pattern": "Board_0-GND"
+      },
+      {
+        "netclass": "Board_0-Default",
+        "pattern": "Board_0-PCM_COUT"
+      },
+      {
+        "netclass": "Board_0-Default",
+        "pattern": "Board_0-VIN_RAW"
+      },
+      {
+        "netclass": "Board_0-Default",
+        "pattern": "Board_0-STAT"
+      },
+      {
+        "netclass": "Board_0-Default",
+        "pattern": "Board_0-LED_IO"
+      },
+      {
+        "netclass": "Board_0-Default",
+        "pattern": "Board_0-VIN"
+      },
+      {
+        "netclass": "Board_0-Default",
+        "pattern": "Board_0-ACC_INT1"
+      },
+      {
+        "netclass": "Board_0-Default",
+        "pattern": "Board_0-PCM_D"
+      },
+      {
+        "netclass": "Board_0-Default",
+        "pattern": "Board_0-CHG_INH"
+      },
+      {
+        "netclass": "Board_0-Default",
+        "pattern": "Board_0-VDD"
+      },
+      {
+        "netclass": "Board_0-Default",
+        "pattern": "Board_0-VBUS_SNS"
       },
       {
         "netclass": "Board_1-Default",
@@ -501,15 +481,11 @@
       },
       {
         "netclass": "Board_1-Default",
-        "pattern": "Board_1-VBAT"
+        "pattern": "Board_1-GND"
       },
       {
         "netclass": "Board_1-Default",
-        "pattern": "Board_1-CHG_INH"
-      },
-      {
-        "netclass": "Board_1-Default",
-        "pattern": "Board_1-CHG_STAT"
+        "pattern": "Board_1-PCM_COUT"
       },
       {
         "netclass": "Board_1-Default",
@@ -517,7 +493,7 @@
       },
       {
         "netclass": "Board_1-Default",
-        "pattern": "Board_1-PROG"
+        "pattern": "Board_1-PCM_DOUT"
       },
       {
         "netclass": "Board_1-Default",
@@ -525,35 +501,15 @@
       },
       {
         "netclass": "Board_1-Default",
-        "pattern": "Board_1-PCM_DOUT"
+        "pattern": "Board_1-CHG_STAT"
       },
       {
         "netclass": "Board_1-Default",
-        "pattern": "Board_1-SCL"
+        "pattern": "Board_1-VBUS_SNS"
       },
       {
         "netclass": "Board_1-Default",
-        "pattern": "Board_1-BAT_P"
-      },
-      {
-        "netclass": "Board_1-Default",
-        "pattern": "Board_1-Q1_GATE"
-      },
-      {
-        "netclass": "Board_1-Default",
-        "pattern": "Board_1-VIN"
-      },
-      {
-        "netclass": "Board_1-Default",
-        "pattern": "Board_1-GND"
-      },
-      {
-        "netclass": "Board_1-Default",
-        "pattern": "Board_1-PROG_SW"
-      },
-      {
-        "netclass": "Board_1-Default",
-        "pattern": "Board_1-LED_IO"
+        "pattern": "Board_1-SWDCLK"
       },
       {
         "netclass": "Board_1-Default",
@@ -561,7 +517,15 @@
       },
       {
         "netclass": "Board_1-Default",
-        "pattern": "Board_1-PCM_VM"
+        "pattern": "Board_1-VBAT"
+      },
+      {
+        "netclass": "Board_1-Default",
+        "pattern": "Board_1-PCM_D"
+      },
+      {
+        "netclass": "Board_1-Default",
+        "pattern": "Board_1-Q1_GATE"
       },
       {
         "netclass": "Board_1-Default",
@@ -569,7 +533,23 @@
       },
       {
         "netclass": "Board_1-Default",
-        "pattern": "Board_1-VDD"
+        "pattern": "Board_1-PCM_VM"
+      },
+      {
+        "netclass": "Board_1-Default",
+        "pattern": "Board_1-SWDIO"
+      },
+      {
+        "netclass": "Board_1-Default",
+        "pattern": "Board_1-VIN"
+      },
+      {
+        "netclass": "Board_1-Default",
+        "pattern": "Board_1-SCL"
+      },
+      {
+        "netclass": "Board_1-Default",
+        "pattern": "Board_1-LED_IO"
       },
       {
         "netclass": "Board_1-Default",
@@ -577,15 +557,27 @@
       },
       {
         "netclass": "Board_1-Default",
-        "pattern": "Board_1-PCM_COUT"
+        "pattern": "Board_1-VDD"
       },
       {
-        "netclass": "Board_2-Default",
-        "pattern": "Board_2-Q1_GATE"
+        "netclass": "Board_1-Default",
+        "pattern": "Board_1-LED_A"
       },
       {
-        "netclass": "Board_2-Default",
-        "pattern": "Board_2-ACC_INT1"
+        "netclass": "Board_1-Default",
+        "pattern": "Board_1-PROG_SW"
+      },
+      {
+        "netclass": "Board_1-Default",
+        "pattern": "Board_1-PROG"
+      },
+      {
+        "netclass": "Board_1-Default",
+        "pattern": "Board_1-BAT_P"
+      },
+      {
+        "netclass": "Board_1-Default",
+        "pattern": "Board_1-CHG_INH"
       },
       {
         "netclass": "Board_2-Default",
@@ -593,31 +585,19 @@
       },
       {
         "netclass": "Board_2-Default",
-        "pattern": "Board_2-PCM_VM"
+        "pattern": "Board_2-CHG_INH"
       },
       {
         "netclass": "Board_2-Default",
-        "pattern": "Board_2-PROG_SW"
+        "pattern": "Board_2-LED_A"
       },
       {
         "netclass": "Board_2-Default",
-        "pattern": "Board_2-BAT_P"
+        "pattern": "Board_2-GND"
       },
       {
         "netclass": "Board_2-Default",
-        "pattern": "Board_2-PCM_D"
-      },
-      {
-        "netclass": "Board_2-Default",
-        "pattern": "Board_2-LED_IO"
-      },
-      {
-        "netclass": "Board_2-Default",
-        "pattern": "Board_2-SWDIO"
-      },
-      {
-        "netclass": "Board_2-Default",
-        "pattern": "Board_2-VIN"
+        "pattern": "Board_2-SDA"
       },
       {
         "netclass": "Board_2-Default",
@@ -625,11 +605,35 @@
       },
       {
         "netclass": "Board_2-Default",
-        "pattern": "Board_2-CHG_INH"
+        "pattern": "Board_2-Q1_GATE"
+      },
+      {
+        "netclass": "Board_2-Default",
+        "pattern": "Board_2-VIN"
+      },
+      {
+        "netclass": "Board_2-Default",
+        "pattern": "Board_2-PCM_VM"
+      },
+      {
+        "netclass": "Board_2-Default",
+        "pattern": "Board_2-PCM_BAT"
+      },
+      {
+        "netclass": "Board_2-Default",
+        "pattern": "Board_2-SWDIO"
       },
       {
         "netclass": "Board_2-Default",
         "pattern": "Board_2-VIN_RAW"
+      },
+      {
+        "netclass": "Board_2-Default",
+        "pattern": "Board_2-ACC_INT1"
+      },
+      {
+        "netclass": "Board_2-Default",
+        "pattern": "Board_2-PROG"
       },
       {
         "netclass": "Board_2-Default",
@@ -641,15 +645,27 @@
       },
       {
         "netclass": "Board_2-Default",
-        "pattern": "Board_2-GND"
+        "pattern": "Board_2-LED_IO"
       },
       {
         "netclass": "Board_2-Default",
-        "pattern": "Board_2-PROG"
+        "pattern": "Board_2-PCM_D"
       },
       {
         "netclass": "Board_2-Default",
-        "pattern": "Board_2-PCM_BAT"
+        "pattern": "Board_2-VDD"
+      },
+      {
+        "netclass": "Board_2-Default",
+        "pattern": "Board_2-BAT_P"
+      },
+      {
+        "netclass": "Board_2-Default",
+        "pattern": "Board_2-VBUS_SNS"
+      },
+      {
+        "netclass": "Board_2-Default",
+        "pattern": "Board_2-PROG_SW"
       },
       {
         "netclass": "Board_2-Default",
@@ -661,39 +677,19 @@
       },
       {
         "netclass": "Board_2-Default",
-        "pattern": "Board_2-VDD"
+        "pattern": "Board_2-PCM_COUT"
       },
       {
         "netclass": "Board_2-Default",
         "pattern": "Board_2-PCM_DOUT"
       },
       {
-        "netclass": "Board_2-Default",
-        "pattern": "Board_2-PCM_COUT"
-      },
-      {
-        "netclass": "Board_2-Default",
-        "pattern": "Board_2-LED_A"
-      },
-      {
-        "netclass": "Board_2-Default",
-        "pattern": "Board_2-SDA"
-      },
-      {
-        "netclass": "Board_2-Default",
-        "pattern": "Board_2-VBUS_SNS"
+        "netclass": "Board_3-Default",
+        "pattern": "Board_3-ACC_INT1"
       },
       {
         "netclass": "Board_3-Default",
-        "pattern": "Board_3-SWDCLK"
-      },
-      {
-        "netclass": "Board_3-Default",
-        "pattern": "Board_3-PROG_SW"
-      },
-      {
-        "netclass": "Board_3-Default",
-        "pattern": "Board_3-LED_A"
+        "pattern": "Board_3-VIN"
       },
       {
         "netclass": "Board_3-Default",
@@ -705,11 +701,7 @@
       },
       {
         "netclass": "Board_3-Default",
-        "pattern": "Board_3-PCM_DOUT"
-      },
-      {
-        "netclass": "Board_3-Default",
-        "pattern": "Board_3-SCL"
+        "pattern": "Board_3-STAT"
       },
       {
         "netclass": "Board_3-Default",
@@ -717,47 +709,7 @@
       },
       {
         "netclass": "Board_3-Default",
-        "pattern": "Board_3-GND"
-      },
-      {
-        "netclass": "Board_3-Default",
-        "pattern": "Board_3-BAT_P"
-      },
-      {
-        "netclass": "Board_3-Default",
-        "pattern": "Board_3-PCM_VM"
-      },
-      {
-        "netclass": "Board_3-Default",
-        "pattern": "Board_3-VBAT"
-      },
-      {
-        "netclass": "Board_3-Default",
-        "pattern": "Board_3-PCM_D"
-      },
-      {
-        "netclass": "Board_3-Default",
-        "pattern": "Board_3-VIN"
-      },
-      {
-        "netclass": "Board_3-Default",
-        "pattern": "Board_3-VDD"
-      },
-      {
-        "netclass": "Board_3-Default",
-        "pattern": "Board_3-SDA"
-      },
-      {
-        "netclass": "Board_3-Default",
-        "pattern": "Board_3-ACC_INT1"
-      },
-      {
-        "netclass": "Board_3-Default",
-        "pattern": "Board_3-STAT"
-      },
-      {
-        "netclass": "Board_3-Default",
-        "pattern": "Board_3-SWDIO"
+        "pattern": "Board_3-PROG_SW"
       },
       {
         "netclass": "Board_3-Default",
@@ -765,19 +717,7 @@
       },
       {
         "netclass": "Board_3-Default",
-        "pattern": "Board_3-PROG"
-      },
-      {
-        "netclass": "Board_3-Default",
-        "pattern": "Board_3-VBUS_SNS"
-      },
-      {
-        "netclass": "Board_3-Default",
-        "pattern": "Board_3-BAT_N"
-      },
-      {
-        "netclass": "Board_3-Default",
-        "pattern": "Board_3-CHG_STAT"
+        "pattern": "Board_3-SWDIO"
       },
       {
         "netclass": "Board_3-Default",
@@ -785,7 +725,67 @@
       },
       {
         "netclass": "Board_3-Default",
+        "pattern": "Board_3-BAT_P"
+      },
+      {
+        "netclass": "Board_3-Default",
+        "pattern": "Board_3-PCM_D"
+      },
+      {
+        "netclass": "Board_3-Default",
+        "pattern": "Board_3-GND"
+      },
+      {
+        "netclass": "Board_3-Default",
+        "pattern": "Board_3-SCL"
+      },
+      {
+        "netclass": "Board_3-Default",
         "pattern": "Board_3-VIN_RAW"
+      },
+      {
+        "netclass": "Board_3-Default",
+        "pattern": "Board_3-PCM_DOUT"
+      },
+      {
+        "netclass": "Board_3-Default",
+        "pattern": "Board_3-PROG"
+      },
+      {
+        "netclass": "Board_3-Default",
+        "pattern": "Board_3-PCM_VM"
+      },
+      {
+        "netclass": "Board_3-Default",
+        "pattern": "Board_3-LED_A"
+      },
+      {
+        "netclass": "Board_3-Default",
+        "pattern": "Board_3-SDA"
+      },
+      {
+        "netclass": "Board_3-Default",
+        "pattern": "Board_3-VBAT"
+      },
+      {
+        "netclass": "Board_3-Default",
+        "pattern": "Board_3-BAT_N"
+      },
+      {
+        "netclass": "Board_3-Default",
+        "pattern": "Board_3-VDD"
+      },
+      {
+        "netclass": "Board_3-Default",
+        "pattern": "Board_3-CHG_STAT"
+      },
+      {
+        "netclass": "Board_3-Default",
+        "pattern": "Board_3-SWDCLK"
+      },
+      {
+        "netclass": "Board_3-Default",
+        "pattern": "Board_3-VBUS_SNS"
       }
     ]
   },

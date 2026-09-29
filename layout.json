@@ -16,13 +16,13 @@
   "pcb_dia": 36.0,
   "_pcb_dia": "Puck OD = Avalon barebow weight OD (40 mm). Cavity 37 mm (cap_wall 1.5) minus 0.5 mm clearance per side.",
   "bosses": {
-    "radius": 16.5,
-    "angles_deg": [
-      40,
-      160,
-      305
+    "positions": [
+      [9.2, 1.2],
+      [-15.505, 5.643],
+      [9.464, -13.516],
+      [-11.462, -11.869]
     ],
-    "_angles": "Spread around the sleeve, clear of the module, the cell notch and the connector.",
+    "_positions": "Board x, y. H2, H3 and H4 at r = 16.5 (160, 305 and 226 deg). H1 at (9.2, 1.2): right of the tube, below the antenna zone (its copper keep-out ring ends 0.9 mm below it), where C1/D1/D3 used to be, so it holds the board's top half. H4 holds the left arm (PCM and cell contacts), which had no screw below H2. Four screws for shot shock (README D29).",
     "boss_dia": 3.8,
     "pcb_hole": 2.4,
     "screw_hole": 2.2,
@@ -56,15 +56,15 @@
     "_contacts": "+ : spring contact from pos_pad against the can side. - : strap from neg_pad across the top cap, Kapton where it passes the can. The cap's foam pad presses the strap and the cell onto the Kapton on the plate."
   },
   "module": {
-    "part": "Raytac MDBT50Q-1MV2",
-    "x": 0.05,
-    "y": 10.75,
-    "rot_deg": 270,
-    "w": 10.0,
-    "l": 15.5,
-    "h": 2.2,
-    "mass_g": 0.9,
-    "_rot": "Long axis tangential above the sleeve; antenna end points to +x, copper-free from there to the rim.",
+    "part": "u-blox BMD-340-A-R-10",
+    "x": 1.0,
+    "y": 10.5,
+    "rot_deg": 180,
+    "w": 10.2,
+    "l": 15.0,
+    "h": 1.9,
+    "mass_g": 0.6,
+    "_rot": "Long axis tangential above the sleeve; antenna end (the footprint's -x end, turned 180 deg) points to +x, copper-free from there to the rim. x = 1.0 keeps a 0.56 mm copper passage between the antenna zone and the tube hole. mass_g is an estimate (not in the data sheet): weigh the part.",
     "antenna_dir_deg": 0
   },
   "connector": {

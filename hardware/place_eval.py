@@ -9,7 +9,7 @@ import gen_pcb
 POUR_NETS = {"GND", ""}
 LENGTH_WEIGHT = 0.05
 LOCK_TOUCH_MM = 0.05
-FIXED_REFS = {"U1", "J1", "J2", "BT1", "H1", "H2", "H3"}
+FIXED_REFS = {"U1", "J1", "J2", "BT1", "H1", "H2", "H3", "H4"}
 BOARD = os.path.join(gen_pcb.KI, "shotpuck.kicad_pcb")
 
 

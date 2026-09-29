@@ -14,6 +14,7 @@ import uuid
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import bmd340  # noqa: E402
 import design  # noqa: E402
 import sexp  # noqa: E402
 from sexp import Str  # noqa: E402
@@ -21,6 +22,7 @@ from sexp import Str  # noqa: E402
 SYMDIR = os.environ.get("KICAD10_SYMBOL_DIR", r"C:\Program Files\KiCad\10.0\share\kicad\symbols")
 OUTDIR = os.path.join(HERE, "kicad")
 PROJECT = "shotpuck"
+PROJECT_SYMBOL_LIB = "ShotPuck"
 ROOT_UUID = str(uuid.uuid5(uuid.NAMESPACE_URL, "shotpuck-root"))
 
 _libs = {}
@@ -32,7 +34,8 @@ def U(seed=None):
 
 def load_lib(name):
     if name not in _libs:
-        _libs[name] = sexp.parse(open(os.path.join(SYMDIR, name + ".kicad_sym")).read())[0]
+        folder = OUTDIR if name == PROJECT_SYMBOL_LIB else SYMDIR
+        _libs[name] = sexp.parse(open(os.path.join(folder, name + ".kicad_sym")).read())[0]
     return _libs[name]
 
 
@@ -95,6 +98,7 @@ def prop(name, value, x, y, hide=False, size=1.27):
 
 def main():
     os.makedirs(OUTDIR, exist_ok=True)
+    bmd340.save_symbol(OUTDIR)
     libsyms = {}
     items = []
     placements = []  # (ref, lib_id, unit, x, y, pins, value, fp, extra)
@@ -110,7 +114,7 @@ def main():
         ("Battery + protection (PCM)", ["BT1", "JP1", "C2", "C3", "U4", "Q2", "R7", "R8", "C8"],
          203.2, 124.46, 405.0),
         ("IMU (accelerometer + gyroscope)", ["U2", "C6", "C7"], 203.2, 160.02, 405.0),
-        ("Mechanical", ["H1", "H2", "H3"], 203.2, 203.2, 405.0),
+        ("Mechanical", ["H1", "H2", "H3", "H4"], 203.2, 203.2, 405.0),
     ]
     by_ref = {p[0]: p for p in design.PARTS}
     for title, refs, x0, y0, page_w in groups:

@@ -6,7 +6,7 @@ import os
 import design
 
 MPN = {
-    "MDBT50Q-1MV2": ("Raytac", "MDBT50Q-1MV2"),
+    "BMD-340-A-R": ("u-blox", "BMD-340-A-R-10"),
     "LSM6DSO32TR": ("STMicroelectronics", "LSM6DSO32TR"),
     "MCP73831T-2ACI/OT": ("Microchip", "MCP73831T-2ACI/OT"),
     "DMN63D8LDW": ("Diodes Inc", "DMN63D8LDW-7"),

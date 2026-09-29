@@ -1,16 +1,16 @@
-/* ShotPuck pin control. Pins chosen from the MDBT50Q bottom pad row. */
+/* ShotPuck pin control. I2C on the BMD-340's left pad column, next to the IMU. */
 &pinctrl {
 	i2c0_default: i2c0_default {
 		group1 {
-			psels = <NRF_PSEL(TWIM_SCL, 0, 6)>,
-				<NRF_PSEL(TWIM_SDA, 0, 4)>;
+			psels = <NRF_PSEL(TWIM_SCL, 0, 7)>,
+				<NRF_PSEL(TWIM_SDA, 0, 5)>;
 			bias-pull-up;   /* internal pull-ups */
 		};
 	};
 	i2c0_sleep: i2c0_sleep {
 		group1 {
-			psels = <NRF_PSEL(TWIM_SCL, 0, 6)>,
-				<NRF_PSEL(TWIM_SDA, 0, 4)>;
+			psels = <NRF_PSEL(TWIM_SCL, 0, 7)>,
+				<NRF_PSEL(TWIM_SDA, 0, 5)>;
 			low-power-enable;
 		};
 	};

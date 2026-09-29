@@ -1,6 +1,6 @@
 board:
   name: shotpuck
-  full_name: ShotPuck (Raytac MDBT50Q-1MV2 / nRF52840)
+  full_name: ShotPuck (u-blox BMD-340 / nRF52840)
   vendor: shotpuck
   socs:
   - name: nrf52840

@@ -5,17 +5,17 @@ PCB on 3.0 mm standoffs; cell on the Kapton in the PCB notch: 6.60 mm to the cei
 Connector top below the cap top: 0.00 mm (0 = flush)
 
 part                     mass g       x       y       z
-plate (6061)               6.44   -0.01   -0.00    1.00
-standoffs (Al)             0.21    2.20    0.91    3.60
-pcb (FR4)                  1.12   -0.04    2.38    5.50
+plate (6061)               6.43    0.01    0.03    1.00
+standoffs (Al)             0.28   -2.08   -4.64    3.60
+pcb (FR4)                  1.11    0.05    2.52    5.50
 sleeve (steel)             1.46   -0.00   -0.00    6.00
 cell LIR1254               1.90   -0.00  -11.75    4.80
-module MDBT50Q             0.90    0.05   10.75    7.00
+module BMD-340             0.60    1.00   10.50    6.85
 mag connector              0.60   13.52   -3.62    7.82
 other SMD parts            0.60    0.00    0.00    6.40
-cap (PC)                   3.08   -0.15    0.07    7.50
+cap (PC)                   3.10   -0.22   -0.06    7.49
 
-Total mass: 16.31 g
-Centre of mass: x=0.493 y=-0.723 z=4.24 mm -> 0.875 mm off axis (14.27 g*mm)
+Total mass: 16.09 g
+Centre of mass: x=0.471 y=-1.037 z=4.19 mm -> 1.139 mm off axis (18.32 g*mm)
 
 Component masses are datasheet/estimated values from layout.json. Weigh the real parts and re-run.

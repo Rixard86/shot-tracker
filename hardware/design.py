@@ -11,7 +11,7 @@ Power path
   VIN -> R9 1k -> VBUS_SNS (C9 100n) -> U1 VBUS: charger detect only (USB unused, ~24 uA),
   the RC keeps hot-plug spikes off the 5.8 V abs-max VBUS pin
   VIN -> U3 MCP73831-2 (4.20 V, 21 mA via R1 = 47k) -> VBAT (LIR1254, 45-65 mAh)
-  VBAT -> U1 VDDH (nRF52840 high-voltage mode, REG0 -> VDD 3.0 V)
+  VBAT -> U1 VCCH (u-blox BMD-340, nRF52840 high-voltage mode, REG0 -> VCC = VDD 3.0 V)
   VDD  -> U2 LSM6DSO32 (VDD + VDDIO), LED, SWD VCC sense
 IMU
   U2 LSM6DSO32 on I2C at 0x6A (SA0 = GND, CS = VDD selects I2C). Aux master
@@ -21,8 +21,8 @@ Charge inhibit (temperature, firmware)
   whenever a cable is present). Q1B (gate = CHG_INH, R3 pull-down) pulls
   Q1A gate low -> PROG floats -> MCP73831 charge disabled.
 Cell protection (PCM; LIR cells have no protection of their own)
-  U4 BQ29700 + Q2 DMN2004DWK in the cell's negative lead: BAT_N -> Q2A (DOUT,
-  discharge) -> PCM_D -> Q2B (COUT, charge) -> GND. OVP 4.275 V, UVP 2.80 V,
+  U4 BQ29700 + Q2 DMN2004DWK in the cell's negative lead: BAT_N -> Q2B (DOUT,
+  discharge) -> PCM_D -> Q2A (COUT, charge) -> GND. OVP 4.275 V, UVP 2.80 V,
   OCD/OCC +-100 mV across ~1 ohm of FETs (~0.1 A), SCD 0.5 V. R7 330R + C8
   100n filter the BAT supply, R8 2k2 on V-. Standby 4 uA.
 Current measurement
@@ -35,11 +35,12 @@ Charge status
 
 # (ref, lib_id, footprint, value, {pin: net}, extra)
 PARTS = [
-    ("U1", "RF_Module:MDBT50Q-1MV2", "RF_Module:Raytac_MDBT50Q", "MDBT50Q-1MV2",
-     {"1": "GND", "2": "GND", "15": "GND", "33": "GND", "55": "GND",
-      "28": "VDD", "30": "VBAT", "32": "VBUS_SNS",
-      "20": "SDA", "22": "SCL", "16": "ACC_INT1", "26": "CHG_STAT", "24": "CHG_INH",
-      "37": "LED_IO", "51": "SWDIO", "53": "SWDCLK"}, {}),
+    ("U1", "ShotPuck:BMD-340", "ShotPuck:u-blox_BMD-340", "BMD-340-A-R",
+     {"1": "GND", "2": "GND", "3": "GND", "4": "GND", "5": "GND", "16": "GND", "18": "GND",
+      "29": "GND", "30": "GND", "45": "GND", "46": "GND", "47": "GND", "55": "GND",
+      "17": "VDD", "65": "VBAT", "66": "VBUS_SNS",
+      "21": "SDA", "23": "SCL", "19": "ACC_INT1", "33": "CHG_STAT", "27": "CHG_INH",
+      "31": "LED_IO", "44": "SWDIO", "43": "SWDCLK"}, {}),
     ("U2", "Sensor_Motion:LSM6DSL", "Package_LGA:LGA-14_3x2.5mm_P0.5mm_LayoutBorder3x4y",
      "LSM6DSO32TR",
      {"1": "GND", "2": "GND", "3": "GND", "4": "ACC_INT1", "5": "VDD", "6": "GND", "7": "GND",
@@ -84,7 +85,7 @@ PARTS = [
     ("U4", "Battery_Management:BQ297xy", "Package_SON:WSON-6_1.5x1.5mm_P0.5mm", "BQ29700DSER",
      {"2": "PCM_COUT", "3": "PCM_DOUT", "4": "BAT_N", "5": "PCM_BAT", "6": "PCM_VM"}, {}),
     ("Q2", "Transistor_FET:Q_Dual_NMOS_S1G1D2S2G2D1", "Package_TO_SOT_SMD:SOT-363_SC-70-6", "DMN2004DWK",
-     {"1": "BAT_N", "2": "PCM_DOUT", "6": "PCM_D", "4": "GND", "5": "PCM_COUT", "3": "PCM_D"},
+     {"1": "GND", "2": "PCM_COUT", "6": "PCM_D", "4": "BAT_N", "5": "PCM_DOUT", "3": "PCM_D"},
      {"units": 2}),
     ("R7", "Device:R_Small", "Resistor_SMD:R_0402_1005Metric", "330R",
      {"1": "VBAT", "2": "PCM_BAT"}, {}),
@@ -105,6 +106,7 @@ PARTS = [
     ("H1", "Mechanical:MountingHole", "ShotPuck:MountingHole_2.4mm_NPTH", "M2", {}, {}),
     ("H2", "Mechanical:MountingHole", "ShotPuck:MountingHole_2.4mm_NPTH", "M2", {}, {}),
     ("H3", "Mechanical:MountingHole", "ShotPuck:MountingHole_2.4mm_NPTH", "M2", {}, {}),
+    ("H4", "Mechanical:MountingHole", "ShotPuck:MountingHole_2.4mm_NPTH", "M2", {}, {}),
 ]
 
 POWER_FLAG_NETS = ["GND", "VDD", "VIN", "VIN_RAW", "BAT_N", "VBUS_SNS"]

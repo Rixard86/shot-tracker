@@ -19,7 +19,6 @@ Z_CEIL = Z_CELL + CAV_H
 Z_TOP = Z_CEIL + P["cap_top"]
 Z_SLEEVE_TOP = Z_TOP + L["sleeve"]["proud"]
 Z_CAP = T_PLATE + P["gasket_t"]
-BOSS_R = L["bosses"]["radius"]
 BOSS_D = L["bosses"]["boss_dia"]
 COUNTERBORE_D = L["bosses"]["head_dia"] + L["bosses"]["counterbore_clear"]
 COUNTERBORE_DEPTH = Z_TOP - L["bosses"]["screw_len"] - L["bosses"]["tip_inset"]
@@ -31,8 +30,7 @@ SLEEVE_BORE_CLEAR = 0.1
 
 
 def boss_xy():
-    return [(BOSS_R * math.cos(math.radians(a)), BOSS_R * math.sin(math.radians(a)))
-            for a in L["bosses"]["angles_deg"]]
+    return [tuple(p) for p in L["bosses"]["positions"]]
 
 
 def module_pose():

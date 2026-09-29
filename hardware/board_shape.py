@@ -10,7 +10,7 @@ from shapely.ops import unary_union
 HERE = os.path.dirname(os.path.abspath(__file__))
 L = json.load(open(os.path.join(HERE, "..", "layout.json")))
 ARC_SEGMENTS = 32
-ANTENNA_INSET = 3.75
+ANTENNA_INSET = 4.4
 ANTENNA_HALF_W = 6.2
 RIM_MARGIN = 2.0
 
@@ -20,9 +20,7 @@ def rim_r():
 
 
 def boss_xy():
-    b = L["bosses"]
-    return [(b["radius"] * math.cos(math.radians(a)), b["radius"] * math.sin(math.radians(a)))
-            for a in b["angles_deg"]]
+    return [tuple(p) for p in L["bosses"]["positions"]]
 
 
 def disc(center, r):
