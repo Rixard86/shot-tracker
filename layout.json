@@ -57,14 +57,14 @@
   },
   "module": {
     "part": "u-blox BMD-340-A-R-10",
-    "x": 1.0,
-    "y": 10.5,
+    "x": 0.0,
+    "y": 11.0,
     "rot_deg": 180,
     "w": 10.2,
     "l": 15.0,
     "h": 1.9,
     "mass_g": 0.6,
-    "_rot": "Long axis tangential above the sleeve; antenna end (the footprint's -x end, turned 180 deg) points to +x, copper-free from there to the rim. x = 1.0 keeps a 0.56 mm copper passage between the antenna zone and the tube hole. mass_g is an estimate (not in the data sheet): weigh the part.",
+    "_rot": "Long axis tangential above the sleeve; antenna end (the footprint's -x end, turned 180 deg) points to +x, copper-free from there to the rim. Centred on x = 0 as high as it goes: both top corners 0.24 mm inside the rim (more than the 0.2 mm outline tolerance), body 0.9 mm above the tube. The antenna zone's corner toward the tube is chamfered (board_shape.ANTENNA_CHAMFER), leaving a 0.83 mm copper passage between it and the tube hole. mass_g is an estimate (not in the data sheet): weigh the part.",
     "antenna_dir_deg": 0
   },
   "connector": {

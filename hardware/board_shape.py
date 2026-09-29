@@ -12,6 +12,7 @@ L = json.load(open(os.path.join(HERE, "..", "layout.json")))
 ARC_SEGMENTS = 32
 ANTENNA_INSET = 4.4
 ANTENNA_HALF_W = 6.2
+ANTENNA_CHAMFER = ANTENNA_HALF_W - L["module"]["w"] / 2
 RIM_MARGIN = 2.0
 
 
@@ -79,7 +80,9 @@ def module_rect():
 def antenna_zone():
     m = L["module"]
     u0 = m["l"] / 2 - ANTENNA_INSET
-    zone = box(u0, -ANTENNA_HALF_W, rim_r() + RIM_MARGIN + m["l"], ANTENNA_HALF_W)
+    far = rim_r() + RIM_MARGIN + m["l"]
+    zone = Polygon([(u0 + ANTENNA_CHAMFER, -ANTENNA_HALF_W), (far, -ANTENNA_HALF_W), (far, ANTENNA_HALF_W),
+                    (u0, ANTENNA_HALF_W), (u0, ANTENNA_CHAMFER - ANTENNA_HALF_W)])
     zone = affinity.rotate(zone, m["antenna_dir_deg"], origin=(0, 0))
     return affinity.translate(zone, m["x"], m["y"])
 
