@@ -6,7 +6,7 @@ import bpy
 import cellconn
 from shapes import MM, activate, attach, bevel, cone, cut, cylinder, empty, smooth, tag
 from stack import (COUNTERBORE_DEPTH, L, OUT, P, R_CAVITY, ROOT, T_PLATE, Z_CAP, Z_CEIL, Z_KAPTON_TOP, Z_PCB,
-                   Z_SLEEVE_TOP, Z_TOP, boss_xy)
+                   Z_TOP, boss_xy)
 
 KICAD_CLI = os.environ.get("KICAD_CLI", r"C:\Program Files\KiCad\10.0\bin\kicad-cli.exe")
 BOARD_PCB = os.path.join(ROOT, "hardware", "kicad", "shotpuck.kicad_pcb")
@@ -109,7 +109,7 @@ def build_screws():
 
 def build_bolt():
     b = L["bolt"]
-    z_head = Z_SLEEVE_TOP + b["washer_t"]
+    z_head = Z_TOP + b["washer_t"]
     r = b["head_dia"] / 2
     head = cone({"r0": r, "r1": r * BUTTON_TOP_RATIO, "x": 0.0, "y": 0.0, "z0": z_head, "z1": z_head + b["head_h"]},
                 "bolt")
@@ -119,7 +119,7 @@ def build_bolt():
     cut(head, socket((0.0, 0.0, z_head + b["head_h"], BOLT_SOCKET_RADIUS, BOLT_SOCKET_DEPTH), "cutter"))
     shank = cylinder({"r": b["dia"] / 2, "z0": z_head - BOLT_LEN, "z1": z_head}, "bolt_shank")
     attach(tag(smooth(shank), "black_oxide"), head)
-    washer = ring((b["washer_od"] / 2, b["dia"] / 2, Z_SLEEVE_TOP, z_head), "sealing_washer")
+    washer = ring((b["washer_od"] / 2, b["dia"] / 2, Z_TOP, z_head), "sealing_washer")
     attach(tag(smooth(washer), "steel"), head)
     return tag(smooth(head), "black_oxide")
 

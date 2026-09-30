@@ -95,7 +95,7 @@
     "head_h": 4.4,
     "washer_od": 14.0,
     "washer_t": 1.5,
-    "_note": "The Avalon weight bolt as a button head, longer by the puck height plus the sealing washer: it goes through the sleeve and the weight into the riser. Bonded sealing washer under the head."
+    "_note": "The Avalon weight bolt as a button head, longer by the puck height plus the sealing washer: it goes through the cap top, the sleeve and the weight into the riser. Bonded sealing washer under the head."
   },
   "sleeve": {
     "od": 10.0,
@@ -103,8 +103,7 @@
     "pcb_clear": 0.2,
     "material": "stainless 304 tube 10 x 0.8, cold-drawn (yield >= 500 MPa)",
     "density": 7.9,
-    "_note": "One tube from the plate through the Kapton and the PCB to 0.1 mm above the cap top; bonded into the cap. Steel on aluminium carries the whole bolt clamp load, so the PCB and the PC cap stay out of it. The PCB hole (od + 2 x pcb_clear) is merged with the cell notch by a straight slot; the right half of the board reaches the rest only across the top. Kapton tape on the tube where it faces the cell can.",
-    "proud": 0.1
+    "_note": "One loose tube from the plate through the Kapton and the PCB to the underside of the cap top, where a lip under the cap locates it; the plate and the cap trap it, so it cannot fall out. The bolt clamps the PC cap top onto the tube: PC is in the clamp path (Richard's prototype test, README D21). The PCB hole (od + 2 x pcb_clear) is merged with the cell notch by a straight slot; the right half of the board reaches the rest only across the top. The tube can turn, so the Kapton tape goes all round it from the plate to the cell top."
   },
   "standoffs": {
     "od": 4.0,

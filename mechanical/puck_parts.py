@@ -4,7 +4,7 @@ import cadquery as cq
 
 from geometry import (BOSS_D, BOSS_HEAD_WALL, COUNTERBORE_D, COUNTERBORE_DEPTH, L, P, R, SLEEVE_BORE_CLEAR,
                       LIP_GAP, LIP_WALL, T_PLATE, WALL, WELL_CLEAR, Z_CAP, Z_CEIL, Z_CELL, Z_KAPTON_TOP, Z_PCB, Z_PCB_TOP,
-                      Z_SLEEVE_TOP, Z_TOP, boss_xy, cell_dir_deg, connector_pose, module_pose, notch_r)
+                      SLEEVE_LIP_DEPTH, Z_SLEEVE_TOP, Z_TOP, boss_xy, cell_dir_deg, connector_pose, module_pose, notch_r)
 
 EDGE_CHAMFER = 0.3
 TOP_FILLET = 0.8
@@ -89,9 +89,16 @@ def add_opening(cap):
     return cap.union(placed(lip, connector_pose())).cut(placed(opening, connector_pose()))
 
 
+def add_sleeve_lip(cap):
+    r_bore = L["sleeve"]["od"] / 2 + SLEEVE_BORE_CLEAR
+    z_lip = Z_CEIL - SLEEVE_LIP_DEPTH
+    cap = cap.union(column((0, 0, r_bore + LIP_WALL, z_lip, Z_TOP)))
+    cap = cap.cut(column((0, 0, r_bore, z_lip - CUT_MARGIN, Z_CEIL)))
+    return cap.cut(column((0, 0, L["bolt"]["clearance_dia"] / 2, Z_CEIL - CUT_MARGIN, Z_TOP + CUT_MARGIN)))
+
+
 def make_cap():
-    cap = add_opening(add_bosses(cap_shell()))
-    return cap.cut(column((0, 0, L["sleeve"]["od"] / 2 + SLEEVE_BORE_CLEAR, Z_CEIL - CUT_MARGIN, Z_TOP + CUT_MARGIN)))
+    return add_sleeve_lip(add_opening(add_bosses(cap_shell())))
 
 
 def make_pcb():
