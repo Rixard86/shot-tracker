@@ -23,13 +23,16 @@ LIB_TABLE = ('(fp_lib_table\n  (lib (name "ShotPuck")(type "KiCad")(uri "${KIPRJ
 KIKIT_PREFIX = "KIKIT:"
 TAB_WIDTH_MM = 3.0
 TAB_ORIGIN_OUT_MM = 0.5
-TOP_TAB_X = 0.0
+TOP_TAB_X = 1.2
+TOP_TAB_WIDTH_MM = 1.5
+TOP = (0, 1)
 BOTTOM_TAB_X = -8.5
 SIDE_TAB_Y = -4.0
-TABS = [((0, 1), TOP_TAB_X), ((0, -1), BOTTOM_TAB_X), ((-1, 0), SIDE_TAB_Y), ((1, 0), SIDE_TAB_Y)]
+TABS = [(TOP, TOP_TAB_X), ((0, -1), BOTTOM_TAB_X), ((-1, 0), SIDE_TAB_Y), ((1, 0), SIDE_TAB_Y)]
 
 SETTINGS = [
-    "--layout", "grid; rows: 2; cols: 2; space: 3mm; rotation: 180deg; alternation: rows; renameref: {orig}_{n}",
+    "--layout", "grid; rows: 2; cols: 2; hspace: 3mm; vspace: 2.5mm; hbackbone: 2mm; "
+    "rotation: 180deg; alternation: rows; renameref: {orig}_{n}",
     "--tabs", "annotation",
     "--cuts", "mousebites; drill: 0.5mm; spacing: 0.8mm; offset: 0.2mm; prolong: 0.5mm",
     "--framing", "frame; width: 5mm; space: 3mm",
@@ -40,23 +43,34 @@ SETTINGS = [
 ]
 
 
+def tab_width(tab):
+    return TOP_TAB_WIDTH_MM if tab[0] == TOP else TAB_WIDTH_MM
+
+
 def tab_origin(tab):
     outward, offset = tab
-    nearest_edge = max(0.0, abs(offset) - TAB_WIDTH_MM / 2)
+    nearest_edge = max(0.0, abs(offset) - tab_width(tab) / 2)
     reach = math.sqrt(shape.rim_r() ** 2 - nearest_edge ** 2) + TAB_ORIGIN_OUT_MM
     return outward[0] * reach + abs(outward[1]) * offset, outward[1] * reach + abs(outward[0]) * offset
+
+
+def design_origin(board):
+    centre = board.GetBoardEdgesBoundingBox().Centre()
+    minx, miny, maxx, maxy = shape.board().bounds
+    return pcbnew.ToMM(centre.x) - (minx + maxx) / 2, pcbnew.ToMM(centre.y) + (miny + maxy) / 2
 
 
 def tab_footprint(board, tab):
     outward = tab[0]
     x, y = tab_origin(tab)
+    origin_x, origin_y = design_origin(board)
     fp = pcbnew.FootprintLoad(KIKIT_FOOTPRINTS, "Tab")
     fp.SetFPID(pcbnew.LIB_ID("kikit", "Tab"))
     for item in fp.GraphicalItems():
         if isinstance(item, pcbnew.PCB_TEXT) and item.GetText().startswith(KIKIT_PREFIX):
-            item.SetText(f"{KIKIT_PREFIX} width: {TAB_WIDTH_MM}mm")
+            item.SetText(f"{KIKIT_PREFIX} width: {tab_width(tab)}mm")
     board.Add(fp)
-    fp.SetPosition(pcbnew.VECTOR2I(pcbnew.FromMM(x), pcbnew.FromMM(-y)))
+    fp.SetPosition(pcbnew.VECTOR2I(pcbnew.FromMM(origin_x + x), pcbnew.FromMM(origin_y - y)))
     fp.SetOrientationDegrees(math.degrees(math.atan2(-outward[1], -outward[0])))
 
 

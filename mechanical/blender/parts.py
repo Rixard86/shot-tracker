@@ -1,4 +1,5 @@
 import os
+import re
 import subprocess
 
 import bpy
@@ -13,6 +14,8 @@ BOARD_PCB = os.path.join(ROOT, "hardware", "kicad", "shotpuck.kicad_pcb")
 BOARD_GLB = os.path.join(OUT, "board.glb")
 GLB_OPTIONS = ["--include-tracks", "--include-pads", "--include-zones", "--include-silkscreen",
                "--include-soldermask", "--no-dnp"]
+EDGE_BLOCK = re.compile(r"\n\t\(gr_\w+\s*\n(.*?)\n\t\)", re.S)
+EDGE_POINT = re.compile(r"\((?:start|end|mid) ([-\d.]+) ([-\d.]+)\)")
 KAPTON_EDGE_CLEAR = 0.25
 FOAM_DIA = 11.0
 SCREW_DIA = 2.0
@@ -34,8 +37,17 @@ def import_stl(name, look):
     return tag(smooth(obj), look)
 
 
+def board_origin():
+    text = open(BOARD_PCB, encoding="utf-8").read()
+    blocks = [b for b in EDGE_BLOCK.findall(text) if '"Edge.Cuts"' in b]
+    xs, ys = zip(*[(float(x), float(y)) for b in blocks for x, y in EDGE_POINT.findall(b)])
+    return (min(xs) + max(xs)) / 2, min(ys) + L["pcb_dia"] / 2
+
+
 def import_board():
-    subprocess.run([KICAD_CLI, "pcb", "export", "glb", "-f", "-o", BOARD_GLB] + GLB_OPTIONS + [BOARD_PCB],
+    x, y = board_origin()
+    origin = ["--user-origin", f"{x:.4f}x{y:.4f}mm"]
+    subprocess.run([KICAD_CLI, "pcb", "export", "glb", "-f", "-o", BOARD_GLB] + GLB_OPTIONS + origin + [BOARD_PCB],
                    check=True, stdout=subprocess.DEVNULL)
     before = set(bpy.data.objects)
     bpy.ops.import_scene.gltf(filepath=BOARD_GLB)
@@ -44,7 +56,6 @@ def import_board():
     for obj in roots:
         obj.location.z += Z_PCB * MM
         attach(obj, board)
-    attach(cellconn.build_connector(), board)
     cellconn.build_contacts(board)
     return board
 

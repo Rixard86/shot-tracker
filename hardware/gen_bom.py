@@ -22,7 +22,7 @@ MPN = {
     "100k": ("Yageo", "RC0402FR-07100KL"),
     "1k": ("Yageo", "RC0402FR-071KL"),
     "LIR1254 (plain, spring contacts)": ("generic", "LIR1254 3.6-3.7 V 45-65 mAh, no tabs - pick a maker with a datasheet"),
-    "TYPE-C-31-M-17": ("Korean Hroparts", "TYPE-C-31-M-17 USB-C 6P power-only (LCSC C283540)"),
+    "TYPE-C 6PFS 2JCB1.6-H6.7 IPX8": ("SHOU HAN", "waterproof USB-C 6P power-only (LCSC C3020041)"),
     "5.1k 1%": ("UNI-ROYAL", "0402WGF5101TCE"),
     "BQ29700DSER": ("Texas Instruments", "BQ29700DSER"),
     "DMN2004DWK": ("Diodes Inc", "DMN2004DWK-7"),

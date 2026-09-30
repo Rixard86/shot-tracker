@@ -1,0 +1,315 @@
+(footprint "USB_C_Receptacle_ShouHan_TYPE-C-6PFS-2JCB1.6-H6.7_IPX8"
+	(version 20260206)
+	(generator "pcbnew")
+	(generator_version "10.0")
+	(layer "F.Cu")
+	(descr "SHOU HAN TYPE-C 6PFS 2JCB1.6-H6.7 IPX8 (LCSC C3020041): 6-pin power-only USB-C, recessed into a board-edge notch (datasheet: 9.60 wide, 5.40 deep; here 10.28 wide through the drilled slot ends, like LCSC). Pads per the datasheet, trimmed 0.3 mm from the notch. The board edge is at y = 4.33 (datasheet product edge); the silicone ring is the front 0.95 mm.")
+	(tags "usb-c waterproof ipx8 recessed")
+	(property "Reference" "REF**"
+		(at 0 -3.4 0)
+		(layer "F.Fab")
+		(uuid "66365d6d-020a-4bb3-9fec-e760eb53767a")
+		(effects
+			(font
+				(size 0.5 0.5)
+				(thickness 0.08)
+			)
+		)
+	)
+	(property "Value" "USB_C_Receptacle_ShouHan_TYPE-C-6PFS-2JCB1.6-H6.7_IPX8"
+		(at 0 6.4 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "1116f999-0ace-42bf-9bae-727fe64c44b9")
+		(effects
+			(font
+				(size 0.5 0.5)
+				(thickness 0.08)
+			)
+		)
+	)
+	(property "Datasheet" "https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/2205231645_SHOU-HAN-TYPE-C-6PFS-2JCB1-6-H6-7-IPX8_C3020041.pdf"
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "8f974ee2-b298-4a98-8c7e-ca702d3421b2")
+		(effects
+			(font
+				(size 0.5 0.5)
+				(thickness 0.08)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "9575a772-cdcd-446a-95ce-c4912d551591")
+		(effects
+			(font
+				(size 0.5 0.5)
+				(thickness 0.08)
+			)
+		)
+	)
+	(attr smd)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start -6.5 4.33)
+		(end 6.5 4.33)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "Dwgs.User")
+		(uuid "e0a207c4-e4e1-48f0-b024-02603eefcf82")
+	)
+	(fp_line
+		(start -5.14 -1.05)
+		(end 5.14 -1.05)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "Dwgs.User")
+		(uuid "28a279e3-973a-473f-b269-5f83b11b569d")
+	)
+	(fp_line
+		(start -5.14 4.33)
+		(end -5.14 -1.05)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "Dwgs.User")
+		(uuid "532c883c-e37f-4c77-9d91-d6b21aa94a20")
+	)
+	(fp_line
+		(start 5.14 -1.05)
+		(end 5.14 4.33)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "Dwgs.User")
+		(uuid "94f6ccad-ef54-4d23-8a59-4da85c709f87")
+	)
+	(fp_poly
+		(pts
+			(xy -3.7 -2.7) (xy 3.7 -2.7) (xy 3.7 -1) (xy 5.45 -1) (xy 5.45 0.35) (xy 6.4 0.35) (xy 6.4 2.85)
+			(xy 5.45 2.85) (xy 5.45 5.85) (xy -5.45 5.85) (xy -5.45 2.85) (xy -6.4 2.85) (xy -6.4 0.35) (xy -5.45 0.35)
+			(xy -5.45 -1) (xy -3.7 -1)
+		)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(fill no)
+		(layer "F.CrtYd")
+		(uuid "f3fe0bbb-cc84-4233-9a7b-87a4565fe330")
+	)
+	(fp_line
+		(start -5.22 4.67)
+		(end 5.22 4.67)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "09efb15e-9fcd-4b5a-9a37-587b4c1ac931")
+	)
+	(fp_line
+		(start -5.22 5.62)
+		(end -5.22 4.67)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "28c1ec8b-13f0-4714-bc62-e3c953235c41")
+	)
+	(fp_line
+		(start -4.52 -1.05)
+		(end 4.52 -1.05)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "b93ba46c-2ea8-4f62-a19c-7580bcd1e48a")
+	)
+	(fp_line
+		(start -4.52 5.62)
+		(end -4.52 -1.05)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "5bdfe780-b2f1-4732-bf51-d1f8529d43bb")
+	)
+	(fp_line
+		(start 4.52 -1.05)
+		(end 4.52 5.62)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "8e515495-c878-4b78-a912-9576ed8a3498")
+	)
+	(fp_line
+		(start 4.52 5.62)
+		(end -4.52 5.62)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "97844b21-ccd8-4548-b6ee-52cad3fa91d2")
+	)
+	(fp_line
+		(start 5.22 4.67)
+		(end 5.22 5.62)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "8e59db49-682e-4b27-af5d-0506b925fc5a")
+	)
+	(fp_line
+		(start 5.22 5.62)
+		(end -5.22 5.62)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "85c0ee9c-1893-4c4d-9065-c95144711d57")
+	)
+	(fp_text user "notch / board edge"
+		(at 0 3.8 0)
+		(layer "Dwgs.User")
+		(uuid "a8441885-43f0-4273-ab43-1caa8523e714")
+		(effects
+			(font
+				(size 0.4 0.4)
+				(thickness 0.06)
+			)
+		)
+	)
+	(fp_text user "${REFERENCE}"
+		(at 0 2.2 0)
+		(layer "F.Fab")
+		(uuid "c2f81df3-0532-4bdf-8c8a-82188330909b")
+		(effects
+			(font
+				(size 0.5 0.5)
+				(thickness 0.08)
+			)
+		)
+	)
+	(pad "" np_thru_hole circle
+		(at -5.155 1.735)
+		(size 0.7 0.7)
+		(drill 0.7)
+		(layers "*.Cu" "*.Mask")
+		(uuid "9283a7e5-5548-4a8d-83cf-5d8ac7ece716")
+	)
+	(pad "" np_thru_hole circle
+		(at 5.155 1.735)
+		(size 0.7 0.7)
+		(drill 0.7)
+		(layers "*.Cu" "*.Mask")
+		(uuid "49a15987-361d-4502-bd85-11eead49721a")
+	)
+	(pad "A5" smd rect
+		(at -0.6 -1.9)
+		(size 0.9 1.1)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "c7baf54b-9dca-4a10-a4b9-83914fee4765")
+	)
+	(pad "A9" smd rect
+		(at 1.8 -1.9)
+		(size 0.9 1.1)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "e3c801c0-79bf-4b78-8c7f-bc6017a8da7a")
+	)
+	(pad "A12" smd rect
+		(at 3 -1.9)
+		(size 0.9 1.1)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "9403cf59-22d9-4420-a9c2-d0ce53637c2f")
+	)
+	(pad "B5" smd rect
+		(at 0.6 -1.9)
+		(size 0.9 1.1)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "a152ceac-5a15-4161-aefc-ba235ddc6448")
+	)
+	(pad "B9" smd rect
+		(at -1.8 -1.9)
+		(size 0.9 1.1)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "5a7585cc-2f62-4d08-8620-23e14efaf186")
+	)
+	(pad "B12" smd rect
+		(at -3 -1.9)
+		(size 0.9 1.1)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "e3e661ba-bfba-4b18-9c53-fc6965f8beb3")
+	)
+	(pad "SH" smd custom
+		(at -5.9475 1.595)
+		(size 0.385 2.01)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(options
+			(clearance outline)
+			(anchor rect)
+		)
+		(primitives
+			(gr_poly
+				(pts
+					(xy 0.4575 -1.005) (xy -0.1925 -1.005) (xy -0.1925 1.005) (xy 0.4575 1.005) (xy 0.4575 0.74) (xy 0.1925 0.74)
+					(xy 0.1925 -0.46) (xy 0.4575 -0.46)
+				)
+				(width 0)
+				(fill yes)
+			)
+		)
+		(uuid "c2b5f2aa-f100-4b8e-a15b-feceb2486c5d")
+	)
+	(pad "SH" smd custom
+		(at 5.9475 1.595)
+		(size 0.385 2.01)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(options
+			(clearance outline)
+			(anchor rect)
+		)
+		(primitives
+			(gr_poly
+				(pts
+					(xy -0.4575 -1.005) (xy 0.1925 -1.005) (xy 0.1925 1.005) (xy -0.4575 1.005) (xy -0.4575 0.74) (xy -0.1925 0.74)
+					(xy -0.1925 -0.46) (xy -0.4575 -0.46)
+				)
+				(width 0)
+				(fill yes)
+			)
+		)
+		(uuid "8642aa77-daac-45f2-8924-c20a8a6bf369")
+	)
+	(embedded_fonts no)
+	(model "${KIPRJMOD}/ShotPuck.3dshapes/USB_C_Receptacle_ShouHan_TYPE-C-6PFS-2JCB1.6-H6.7_IPX8.step"
+		(offset
+			(xyz 0 -1.93 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)

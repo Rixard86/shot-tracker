@@ -100,7 +100,7 @@ PARTS = [
     ("JP1", "Jumper:SolderJumper_2_Bridged", "Jumper:SolderJumper-2_P1.3mm_Bridged_Pad1.0x1.5mm",
      "I_MEAS (cut to measure)", {"1": "BAT_P", "2": "VBAT"}, {}),
     ("J1", "Connector:USB_C_Receptacle_PowerOnly_6P",
-     "ShotPuck:USB_C_Receptacle_HRO_TYPE-C-31-M-17_NoFrontSilk", "TYPE-C-31-M-17",
+     "ShotPuck:USB_C_Receptacle_ShouHan_TYPE-C-6PFS-2JCB1.6-H6.7_IPX8", "TYPE-C 6PFS 2JCB1.6-H6.7 IPX8",
      {"A9": "VIN_RAW", "B9": "VIN_RAW", "A12": "GND", "B12": "GND", "A5": "CC1", "B5": "CC2", "SH": "GND"}, {}),
     ("R10", "Device:R_Small", "Resistor_SMD:R_0402_1005Metric", "5.1k 1%",
      {"1": "CC1", "2": "GND"}, {}),

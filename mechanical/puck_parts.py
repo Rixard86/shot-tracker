@@ -3,12 +3,16 @@ import math
 import cadquery as cq
 
 from geometry import (BOSS_D, BOSS_HEAD_WALL, COUNTERBORE_D, COUNTERBORE_DEPTH, L, P, R, SLEEVE_BORE_CLEAR,
-                      LIP_GAP, LIP_WALL, T_PLATE, WALL, WELL_CLEAR, Z_CAP, Z_CEIL, Z_CELL, Z_KAPTON_TOP, Z_PCB, Z_PCB_TOP,
+                      T_PLATE, WALL, Z_CAP, Z_CEIL, Z_CELL, Z_KAPTON_TOP, Z_PCB, Z_PCB_TOP,
                       Z_SLEEVE_TOP, Z_TOP, boss_xy, cell_dir_deg, connector_pose, module_pose, notch_r)
 
 EDGE_CHAMFER = 0.3
 TOP_FILLET = 0.8
 CUT_MARGIN = 1.0
+BODY_CLEAR = 0.2
+FACE_GAP = 0.05
+OVERMOLD_CLEAR = 0.25
+SEAL_LEAD = 0.2
 
 
 def column(spec):
@@ -33,17 +37,6 @@ def make_plate():
     for x, y in boss_xy():
         p = p.cut(column((x, y, L["bosses"]["tap_drill"] / 2, -CUT_MARGIN, T_PLATE + CUT_MARGIN)))
     return p
-
-
-def stadium(size, z_range):
-    length, width = size
-    z0, z1 = z_range
-    return cq.Workplane("XY").workplane(offset=z0).slot2D(length, width).extrude(z1 - z0)
-
-
-def flange_top():
-    k = L["connector"]
-    return Z_PCB_TOP + k["body_h"] - k["boss_h"]
 
 
 def tube(spec, bore_r):
@@ -82,15 +75,48 @@ def add_bosses(cap):
     return cap
 
 
-def add_opening(cap):
+def port_box(width, spans):
+    (y0, y1), z_range = spans
+    return placed(slab((width, y1 - y0), z_range).translate((0, -(y0 + y1) / 2, 0)), connector_pose())
+
+
+def face_distance():
     k = L["connector"]
-    lip = stadium((k["body_w"] + 2 * LIP_WALL, k["body_l"] + 2 * LIP_WALL), (flange_top() + LIP_GAP, Z_TOP))
-    opening = stadium((k["boss_w"] + WELL_CLEAR, k["body_l"] + WELL_CLEAR), (flange_top(), Z_TOP + CUT_MARGIN))
-    return cap.union(placed(lip, connector_pose())).cut(placed(opening, connector_pose()))
+    return math.hypot(k["x"], k["y"]) + k["face"] + FACE_GAP
+
+
+def port_numbers():
+    skin = Z_TOP - Z_PCB_TOP - L["connector"]["body_h"] - BODY_CLEAR
+    return skin, 2 * math.sqrt(R ** 2 - face_distance() ** 2)
+
+
+def body_well():
+    k = L["connector"]
+    z0 = Z_PCB_TOP + k["mouth_z"] - k["ring_h"] / 2 - BODY_CLEAR
+    spans = ((k["body_back"] - BODY_CLEAR, k["ring_back"]), (z0, Z_PCB_TOP + k["body_h"] + BODY_CLEAR))
+    return port_box(k["body_w"] + 2 * BODY_CLEAR, spans)
+
+
+def seal_hole():
+    k = L["connector"]
+    squeeze = 2 * k["seal_squeeze"]
+    start = k["ring_back"] - SEAL_LEAD
+    hole = cq.Workplane("XZ", origin=(0, -start, Z_PCB_TOP + k["mouth_z"]))
+    hole = hole.slot2D(k["ring_w"] - squeeze, k["ring_h"] - squeeze).extrude(k["face"] + CUT_MARGIN - start)
+    return placed(hole, connector_pose())
+
+
+def plug_flat():
+    k = L["connector"]
+    face = face_distance()
+    z0 = Z_PCB_TOP + k["mouth_z"] - k["overmold_h"] / 2 - OVERMOLD_CLEAR
+    length = R + CUT_MARGIN - face
+    cutter = slab((length, 2 * R), (z0, Z_TOP + CUT_MARGIN)).translate((face + length / 2, 0, 0))
+    return placed(cutter, (0, 0, math.degrees(math.atan2(k["y"], k["x"]))))
 
 
 def make_cap():
-    cap = add_opening(add_bosses(cap_shell()))
+    cap = add_bosses(cap_shell()).cut(body_well()).cut(seal_hole()).cut(plug_flat())
     return cap.cut(column((0, 0, L["sleeve"]["od"] / 2 + SLEEVE_BORE_CLEAR, Z_CEIL - CUT_MARGIN, Z_TOP + CUT_MARGIN)))
 
 
@@ -108,7 +134,9 @@ def make_pcb():
         p = p.cut(column((x, y, L["bosses"]["pcb_hole"] / 2, Z_PCB - CUT_MARGIN, Z_PCB + t + CUT_MARGIN)))
     p = p.cut(column((c["x"], c["y"], notch_r(), Z_PCB - CUT_MARGIN, Z_PCB + t + CUT_MARGIN)))
     channel = slab((2 * R, 2 * notch_r()), (Z_PCB - CUT_MARGIN, Z_PCB + t + CUT_MARGIN)).translate((R, 0, 0))
-    return p.cut(placed(channel, (c["x"], c["y"], cell_dir_deg())))
+    p = p.cut(placed(channel, (c["x"], c["y"], cell_dir_deg())))
+    k = L["connector"]
+    return p.cut(port_box(k["notch_w"], ((k["body_back"], R), (Z_PCB - CUT_MARGIN, Z_PCB + t + CUT_MARGIN))))
 
 
 def make_cell():
@@ -124,7 +152,7 @@ def make_module():
 
 def make_connector():
     k = L["connector"]
-    body = stadium((k["body_w"], k["body_l"]), (Z_PCB_TOP, flange_top()))
-    body = body.union(stadium((k["boss_w"], k["body_l"]), (flange_top(), Z_PCB_TOP + k["body_h"])))
-    return placed(body, connector_pose())
+    z0 = Z_PCB_TOP + k["mouth_z"] - k["ring_h"] / 2
+    body = port_box(k["body_w"], ((k["body_back"], k["ring_back"]), (z0, Z_PCB_TOP + k["body_h"])))
+    return body.union(port_box(k["ring_w"], ((k["ring_back"], k["face"]), (z0, z0 + k["ring_h"]))))
 

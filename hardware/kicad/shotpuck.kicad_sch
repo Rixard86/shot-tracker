@@ -6272,7 +6272,7 @@
 				)
 			)
 		)
-		(property "Value" "TYPE-C-31-M-17"
+		(property "Value" "TYPE-C 6PFS 2JCB1.6-H6.7 IPX8"
 			(at 215.9 72.39 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6282,7 +6282,7 @@
 				)
 			)
 		)
-		(property "Footprint" "ShotPuck:USB_C_Receptacle_HRO_TYPE-C-31-M-17_NoFrontSilk"
+		(property "Footprint" "ShotPuck:USB_C_Receptacle_ShouHan_TYPE-C-6PFS-2JCB1.6-H6.7_IPX8"
 			(at 223.52 50.8 0)
 			(hide yes)
 			(show_name no)
@@ -6293,7 +6293,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/2205231645_SHOU-HAN-TYPE-C-6PFS-2JCB1-6-H6-7-IPX8_C3020041.pdf"
 			(at 223.52 50.8 0)
 			(hide yes)
 			(show_name no)

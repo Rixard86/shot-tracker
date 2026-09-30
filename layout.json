@@ -17,12 +17,12 @@
   "_pcb_dia": "Puck OD = Avalon barebow weight OD (40 mm). Cavity 37 mm (cap_wall 1.5) minus 0.5 mm clearance per side.",
   "bosses": {
     "positions": [
-      [-3.992, 16.01],
-      [-15.505, 5.643],
+      [-3.037, 16.217],
+      [-15.891, 4.394],
       [9.464, -13.516],
       [-11.462, -11.869]
     ],
-    "_positions": "Board x, y. H2, H3 and H4 at r = 16.5 (160, 305 and 226 deg). H1 at r = 16.5, 104 deg: between the module's left end and the USB-C port, so it still holds the board's top; its old spot right of the tube is now inside the copper-free RF side. H4 holds the left arm (PCM and cell contacts). Four screws for shot shock (README D29).",
+    "_positions": "Board x, y. H3 and H4 at r = 16.5 (305 and 226 deg). H1 (100.6 deg) and H2 (164.5 deg, r = 16.49) either side of the USB-C port, moved apart (Richard) so the ground pour reaches the port's wing tabs; the port sits midway (132.58 deg). H4 holds the left arm (PCM and cell contacts). Four screws for shot shock (README D29).",
     "boss_dia": 3.8,
     "pcb_hole": 2.4,
     "screw_hole": 2.2,
@@ -68,12 +68,24 @@
     "antenna_dir_deg": -45.0
   },
   "connector": {
-    "part": "Korean Hroparts TYPE-C-31-M-17, USB-C 6P power-only, right angle SMT (LCSC C283540)",
-    "x": -10.291,
-    "y": 11.43,
-    "rot_deg": 222.0,
-    "mass_g": 0.5,
-    "_note": "Plug axis radial at 132 deg, through the cap wall. The front shell legs sit 0.3 mm inside the rim, so the receptacle face is ~1.2 mm below the cap's outer surface: the cap needs a flat, recessed seat for the plug overmold there, and a ~0.5 mm pocket in its ceiling (the part is ~3.2 mm tall, the cap leaves 2.8 mm). mass_g is an estimate. The mechanical models (mechanical/) are not updated for this port yet."
+    "part": "SHOU HAN TYPE-C 6PFS 2JCB1.6-H6.7 IPX8, waterproof USB-C 6P power-only, recessed into a board-edge notch (LCSC C3020041)",
+    "x": -9.3501,
+    "y": 10.1768,
+    "rot_deg": 222.5757,
+    "mass_g": 0.8,
+    "body_w": 10.8,
+    "notch_w": 10.28,
+    "body_back": -1.05,
+    "body_h": 3.13,
+    "ring_w": 10.44,
+    "ring_h": 4.66,
+    "ring_back": 4.67,
+    "face": 5.62,
+    "mouth_z": 0.8,
+    "seal_squeeze": 0.15,
+    "overmold_w": 12.35,
+    "overmold_h": 6.5,
+    "_note": "x, y, rot_deg: footprint origin and rotation (KiCad J1); the plug axis is radial at 132.58 deg. Lengths along the plug axis are measured forward from the footprint origin (body_back = rear of the body at the notch's back edge, ring_back and face = rear and front of the silicone ring), heights from the board top (mouth_z = centre of the ring and mouth); from the datasheet and LCSC's STEP model (ShotPuck.3dshapes, aligned by its pins). The ring (10.44 x 4.66 x 0.95) seals radially in a hole in the cap wall, squeezed seal_squeeze per side; the cap has a flat at the receptacle face so any plug up to the Type-C overmold maximum (overmold_*) seats fully, and a pocket in its ceiling over the body. mass_g is an estimate."
   },
   "other_components_g": 0.6,
   "bolt": {

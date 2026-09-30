@@ -23,9 +23,6 @@ BOSS_D = L["bosses"]["boss_dia"]
 COUNTERBORE_D = L["bosses"]["head_dia"] + L["bosses"]["counterbore_clear"]
 COUNTERBORE_DEPTH = Z_TOP - L["bosses"]["screw_len"] - L["bosses"]["tip_inset"]
 BOSS_HEAD_WALL = 0.8
-WELL_CLEAR = 0.2
-LIP_WALL = 0.8
-LIP_GAP = 0.1
 SLEEVE_BORE_CLEAR = 0.1
 
 

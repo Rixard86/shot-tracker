@@ -6,7 +6,6 @@ from shapes import MM, attach, bevel, box, cylinder, smooth, tag
 from stack import L, Z_CELL, Z_PCB_TOP
 
 C = L["cell"]
-K = L["connector"]
 Z_CAN = Z_CELL + C["tab_h"]
 Z_CAN_TOP = Z_CAN + C["h"]
 STRIP_T = 0.15
@@ -19,10 +18,6 @@ GASKET_RATIO = 0.86
 CELL_CAP_RISE = 0.05
 GASKET_RISE = 0.025
 CELL_BEVEL = 0.2
-CONTACT_DIA = 1.0
-CONTACT_RISE = 0.3
-MAGNET_DIA = 2.5
-MAGNET_RISE = 0.02
 
 
 def radial(corners, key):
@@ -74,32 +69,3 @@ def build_cell():
 def build_contacts(board):
     for strip in plus_contact() + minus_strap():
         attach(strip, board)
-
-
-def top_disc(spec, name):
-    top = Z_PCB_TOP + K["body_h"]
-    return cylinder({"r": spec[0] / 2, "x": spec[1], "y": 0.0, "z0": top - spec[2], "z1": top + spec[2]}, name)
-
-
-def stadium(spec, name):
-    length, width, z0, z1 = spec
-    half = (length - width) / 2
-    core = tag(box(((-half, -width / 2, z0), (half, width / 2, z1)), name), "black_plastic")
-    for side in (-1, 1):
-        end = cylinder({"r": width / 2, "x": side * half, "y": 0.0, "z0": z0, "z1": z1}, name + "_end")
-        attach(tag(smooth(end), "black_plastic"), core)
-    return core
-
-
-def build_connector():
-    z_flange = Z_PCB_TOP + K["body_h"] - K["boss_h"]
-    body = stadium((K["body_w"], K["body_l"], Z_PCB_TOP, z_flange), "connector")
-    attach(stadium((K["boss_w"], K["body_l"], z_flange, Z_PCB_TOP + K["body_h"]), "connector_boss"), body)
-    for side in (-1, 1):
-        contact = top_disc((CONTACT_DIA, side * K["pitch"] / 2, CONTACT_RISE), "contact")
-        attach(tag(smooth(contact), "gold"), body)
-        magnet = top_disc((MAGNET_DIA, side * K["magnet_pitch"] / 2, MAGNET_RISE), "magnet")
-        attach(tag(smooth(magnet), "nickel"), body)
-    body.rotation_euler.z = math.radians(K["rot_deg"])
-    body.location.x, body.location.y = K["x"] * MM, K["y"] * MM
-    return body

@@ -82,8 +82,8 @@ SWD_PAD_DIA = 1.0
 SWD_PITCH = 2.54
 SWD_PADS = 4
 SWD_COURTYARD = 0.5
-MODEL_OVERRIDES = {"J1": ("${KIPRJMOD}/ShotPuck.3dshapes/USB_C_Receptacle_HRO_TYPE-C-31-M-17.step",
-                          (0.0, -0.9, 0.0), 180.0)}
+MODEL_OVERRIDES = {"J1": ("${KIPRJMOD}/ShotPuck.3dshapes/USB_C_Receptacle_ShouHan_TYPE-C-6PFS-2JCB1.6-H6.7_IPX8.step",
+                          (0.0, -1.93, 0.0), 0.0)}
 BOARD_ATTEMPTS = 4
 VIA_ECHO_TOL_MM = 0.01
 
