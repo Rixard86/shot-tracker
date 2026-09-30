@@ -53,7 +53,7 @@
     "swell_h": 6.6,
     "tab_h": 0.0,
     "mass_g": 1.9,
-    "_swell": "No swell spec for LIR cells: 1.2 mm free above the 5.4 mm cell (Varta asks 1.5 mm for its cells), set so the connector is flush with the cap top. The cap's foam pad fills it and clamps the cell.",
+    "_swell": "No swell spec for LIR cells: 1.2 mm free above the 5.4 mm cell (Varta asks 1.5 mm for its cells), set on the magnetic board so its connector was flush with the cap top, and kept. The cap's foam pad fills it and clamps the cell.",
     "pcb_hole_clear": 0.25,
     "pos_pad": {
       "x": -7.27,
@@ -116,7 +116,7 @@
     "pcb_clear": 0.2,
     "material": "stainless 304 tube 10 x 0.8, cold-drawn (yield >= 500 MPa)",
     "density": 7.9,
-    "_note": "One loose tube from the plate through the Kapton and the PCB to the underside of the cap top, where a lip under the cap locates it; the plate and the cap trap it, so it cannot fall out. The bolt clamps the PC cap top onto the tube: PC is in the clamp path (Richard's prototype test, README D21). The PCB hole (od + 2 x pcb_clear) is merged with the cell notch by a straight slot; the right half of the board reaches the rest only across the top. The tube can turn, so the Kapton tape goes all round it from the plate to the cell top."
+    "_note": "One loose tube from the plate through the Kapton and the PCB to the underside of the cap top, where a lip under the cap locates it; the plate and the cap trap it, so it cannot fall out. The bolt clamps the PC cap top onto the tube: PC is in the clamp path (Richard's prototype test, README D21). The PCB hole (od + 2 x pcb_clear) is merged with the cell notch by a straight slot; everything right of it is copper-free (board_shape.rf_keepout), so no signal crosses it. The tube can turn, so the Kapton tape goes all round it from the plate to the cell top."
   },
   "standoffs": {
     "od": 4.0,
