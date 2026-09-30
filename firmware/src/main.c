@@ -22,8 +22,10 @@
 #include "ble.h"
 #include "capture.h"
 #include "capture_tx.h"
+#include "chg_led.h"
 #include "claim.h"
 #include "event_tx.h"
+#include "factory.h"
 #include "ota.h"
 #include "power.h"
 #include "protocol.h"
@@ -45,6 +47,8 @@ LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 #define ACTIVE_POLL_MS 1000
 #define IDLE_POLL_MS 2000
 #define CLAIM_POLL_MS 250
+#define CHARGER_POLL_MS 500
+#define PAD_POLL_MS 250
 #define CLAIM_BLINK_PERIOD_MS 1000
 #define CLAIM_BLINK_MS 30
 #define PAIRED_BLINKS 2
@@ -398,13 +402,45 @@ static void claim_feedback(void)
 	}
 }
 
+static void charge_feedback(void)
+{
+	static uint32_t last_tick_ms;
+	static bool steady;
+	uint32_t now = k_uptime_get_32();
+
+	if (!power_vbus_present() || claim_is_open()) {
+		if (steady) {
+			steady = false;
+			gpio_pin_set_dt(&led, 0);
+		}
+		return;
+	}
+	if (now - last_tick_ms < CHG_LED_TICK_MS) {
+		return;
+	}
+	last_tick_ms = now;
+	chg_led_mode_t mode = chg_led_mode(power_update());
+	steady = mode == CHG_LED_FULL;
+	gpio_pin_set_dt(&led, steady ? 1 : 0);
+	for (uint8_t i = 0; i < chg_led_pulses(mode); i++) {
+		led_pulse(CHG_LED_PULSE_MS);
+		k_msleep(CHG_LED_GAP_MS);
+	}
+}
+
 static uint32_t poll_period(bool active)
 {
 	if (event_tx_busy() || cap_tx_busy()) {
 		return TX_POLL_MS;
 	}
+	if (factory_pads_held()) {
+		return PAD_POLL_MS;
+	}
 	if (claim_is_open()) {
 		return CLAIM_POLL_MS;
+	}
+	if (power_vbus_present()) {
+		return CHARGER_POLL_MS;
 	}
 	return active ? ACTIVE_POLL_MS : IDLE_POLL_MS;
 }
@@ -416,11 +452,15 @@ int main(void)
 	sp_config_t w;
 
 	power_regout0_3v0(); /* may reset once on first boot */
+	factory_boot_guard();
 	if (ota_init()) {
 		LOG_ERR("watchdog unavailable");
 	}
 
 	gpio_pin_configure_dt(&led, GPIO_OUTPUT_INACTIVE);
+	if (factory_pads_init()) {
+		LOG_ERR("reset pads unavailable");
+	}
 	if (power_init() == 0) {
 		power_update();
 		if (power_should_cutoff()) {
@@ -469,7 +509,7 @@ int main(void)
 
 		k_sem_take(&wake_sem, K_MSEC(poll_period(active)));
 		ota_feed();
-		ota_confirm_when_healthy();
+		ota_confirm_when_healthy(ble_link_secured());
 
 		if (atomic_cas(&accel_pending, 1, 0)) {
 			handle_accel();
@@ -477,6 +517,10 @@ int main(void)
 		handle_ctrl();
 		claim_poll(power_vbus_present());
 		claim_feedback();
+		factory_poll();
+		if (!factory_pads_held()) {
+			charge_feedback();
+		}
 		if (event_tx_busy()) {
 			event_tx_pump();
 		}

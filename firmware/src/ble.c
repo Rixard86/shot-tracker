@@ -38,6 +38,7 @@ static ble_cfg_cb_t on_cfg;
 static ble_conn_cb_t on_conn;
 static ble_tx_done_cb_t on_tx_done;
 static atomic_t notify_in_flight;
+static atomic_t link_secured;
 
 static struct bt_conn *cur_conn;
 static bool advertising;
@@ -183,10 +184,24 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 	}
 }
 
+static void security_changed(struct bt_conn *conn, bt_security_t level, enum bt_security_err err)
+{
+	ARG_UNUSED(conn);
+	if (err == BT_SECURITY_ERR_SUCCESS && level >= BT_SECURITY_L2) {
+		atomic_set(&link_secured, 1);
+	}
+}
+
 BT_CONN_CB_DEFINE(conn_cbs) = {
 	.connected = connected,
 	.disconnected = disconnected,
+	.security_changed = security_changed,
 };
+
+bool ble_link_secured(void)
+{
+	return atomic_get(&link_secured) != 0;
+}
 
 int ble_init(ble_ctrl_cb_t ctrl, ble_cfg_cb_t cfg, ble_conn_cb_t conn)
 {

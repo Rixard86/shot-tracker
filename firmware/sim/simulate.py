@@ -6,7 +6,7 @@ Builds libsd (shot_detect.c + sim_runner.c), generates synthetic archery
 sessions at 3.3 kHz ground truth, runs them through the same IDLE/ACTIVE
 pipeline and sensor model as the firmware, and scores detections. Also
 builds and runs the unit tests of the other portable firmware modules
-(test_capture.c, test_evlog.c).
+(test_capture.c, test_evlog.c, test_chg_led.c, test_recovery.c).
 
     python simulate.py                 # default config, 60 sessions
     python simulate.py --sessions 200 --seed 7
@@ -390,7 +390,8 @@ def margins(res):
         print(f"    {nm:13s} shots {np.round(ps).astype(int)}   non-shots {np.round(pn).astype(int)}")
 
 
-UNIT_TESTS = [("test_capture.c", "capture.c"), ("test_evlog.c", "evlog.c")]
+UNIT_TESTS = [("test_capture.c", "capture.c"), ("test_evlog.c", "evlog.c"), ("test_chg_led.c", "chg_led.c"),
+              ("test_recovery.c", "recovery.c")]
 
 
 def unit_test_passes(pair):

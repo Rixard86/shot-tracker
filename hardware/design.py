@@ -28,6 +28,9 @@ Cell protection (PCM; LIR cells have no protection of their own)
 Current measurement
   JP1 (bridged solder jumper) in series with the cell: cut, insert an
   ammeter, re-bridge with solder.
+Service pads
+  JP2: two bare top pads, reached with the cap off. Bridging them with tweezers
+  pulls BTN (P0.26, internal pull-up) to GND; held for a factory reset.
 Charge status
   STAT -> D2 (cathode) ; D2 anode -> CHG_STAT GPIO with pull-up enabled only
   while VBUS is present (no standby leakage).
@@ -40,7 +43,7 @@ PARTS = [
       "29": "GND", "30": "GND", "45": "GND", "46": "GND", "47": "GND", "55": "GND",
       "17": "VDD", "65": "VBAT", "66": "VBUS_SNS",
       "21": "SDA", "23": "SCL", "19": "ACC_INT1", "33": "CHG_STAT", "27": "CHG_INH",
-      "31": "LED_IO", "44": "SWDIO", "43": "SWDCLK"}, {}),
+      "31": "LED_IO", "7": "BTN", "44": "SWDIO", "43": "SWDCLK"}, {}),
     ("U2", "Sensor_Motion:LSM6DSL", "Package_LGA:LGA-14_3x2.5mm_P0.5mm_LayoutBorder3x4y",
      "LSM6DSO32TR",
      {"1": "GND", "2": "GND", "3": "GND", "4": "ACC_INT1", "5": "VDD", "6": "GND", "7": "GND",
@@ -108,6 +111,8 @@ PARTS = [
      {"1": "CC2", "2": "GND"}, {}),
     ("J2", "Connector_Generic:Conn_01x04", "ShotPuck:SWD_Pads_1x4_P2.54", "SWD pads",
      {"1": "VDD", "2": "SWDIO", "3": "SWDCLK", "4": "GND"}, {}),
+    ("JP2", "Jumper:SolderJumper_2_Open", "ShotPuck:TweezerPads_2x0.8mm_Gap0.4mm", "RESET pads",
+     {"1": "BTN", "2": "GND"}, {}),
     ("H1", "Mechanical:MountingHole", "ShotPuck:MountingHole_2.4mm_NPTH", "M2", {}, {}),
     ("H2", "Mechanical:MountingHole", "ShotPuck:MountingHole_2.4mm_NPTH", "M2", {}, {}),
     ("H3", "Mechanical:MountingHole", "ShotPuck:MountingHole_2.4mm_NPTH", "M2", {}, {}),

@@ -37,6 +37,7 @@
 		accel-int1-gpios = <&gpio0 3 GPIO_ACTIVE_HIGH>;
 		chg-stat-gpios = <&gpio0 15 GPIO_ACTIVE_LOW>;
 		chg-inhibit-gpios = <&gpio0 11 GPIO_ACTIVE_HIGH>;
+		reset-pads-gpios = <&gpio0 26 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
 	};
 
 	aliases {

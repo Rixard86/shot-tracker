@@ -10,12 +10,15 @@ target_sources(app PRIVATE
   src/accel.c
   src/capture.c
   src/capture_tx.c
+  src/chg_led.c
   src/evlog.c
+  src/factory.c
   src/event_tx.c
   src/claim.c
   src/identity.c
   src/ota.c
   src/power.c
+  src/recovery.c
   src/store.c
   src/ble.c
 )

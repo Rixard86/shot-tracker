@@ -2,6 +2,8 @@ config: trig=6000 mg, move=300 mg, pre_still>=500 ms, post_lf>=250 mg [100-600 m
 CAPTURE TESTS: PASS
 wrap: 952 of 3000 events kept (128 per sector)
 EVLOG TESTS: PASS
+CHG LED TESTS: PASS
+RECOVERY TESTS: PASS
 [nominal] sessions=36 sim_time=4.30 h shots=437  recall=99.08%  precision=99.77%  FN=4 {'rej_no_follow': 1, 'rej_not_still': 3}  FP=1 {'stand_knock': 1}  ACTIVE=71.0% of time  wakes=92
   feature ranges over triggered candidates (5th/50th/95th pct):
     peak_hf_mg    shots [11486 29137 63064]   non-shots [ 6433  9436 19345]

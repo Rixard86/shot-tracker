@@ -30,6 +30,7 @@ Do these in order: each step de-risks the next. **Bold** items are blockers.
 - [ ] **I2C on internal pull-ups** (no R5/R6 any more): no I2C errors at 400 kHz over a long ACTIVE run; if in doubt, scope SCL (rise time under 300 ns).
 - [ ] **Wake-on-motion** from IDLE at the default 150 mg threshold (±8 g, 31.25 mg steps): picking up the bow wakes it; the bow lying still does not.
 - [ ] **Charging:** about 21 mA (from R1 = 47k), and termination at 4.20 V ±0.75 %. Confirm both against the LIR1254 datasheet limits before first charge.
+- [ ] **Charger LED:** after the pairing window, one blink every 2 s while charging; steady on once the charger has terminated (STAT high, cell ≥ 4.10 V); dark within 2 s of unplugging. Through JP1, check the charger still terminates (current falls to 0) and the steady LED draws about 1 mA from the cell; leave it on the charger overnight and note how often it tops up (LED back to blinking).
 - [ ] **CHG_STAT and VBUS flags** in STATUS follow the cable.
 - [ ] **Weak supply:** at 4.75 V on the magnetic connector, VBUS is detected (pairing window opens, STATUS shows VBUS) and stays detected while charging; measure the final cell voltage after termination (may end slightly below 4.20 V; the MCP73831 is specified from 5.2 V input).
 - [ ] **Hot-plug:** scope VIN and VBUS_SNS while snapping the plug on and off 20 times from a stiff 5 V supply: VIN stays below 7 V and VBUS_SNS below 5.8 V.
@@ -60,6 +61,8 @@ Do these in order: each step de-risks the next. **Bold** items are blockers.
 - [ ] **OTA upgrade** from a paired phone (nRF Connect Device Manager, *Test and confirm*) to an image with a bumped `VERSION`: upload, reset, swap, reconnect. DIS Firmware Revision shows the new version; `image list` shows it confirmed. Shots, count, config and pairing survived.
 - [ ] **Rollback on reset:** upload in *Test* mode and reset the puck (battery or SWD) within 10 s of the new image starting. It must come back on the previous version.
 - [ ] **Rollback on hang:** upload a test image that hangs in the main loop. The watchdog resets it after about 10 s, and MCUboot boots the previous version.
+- [ ] **Confirm needs a paired link:** after an OTA reset, do not reconnect and reset the puck after 30 s: it must roll back. Repeat, reconnect and pair: it confirms (no rollback on the next reset).
+- [ ] **Reset pads (JP2):** with the cap off, bridge the pads with tweezers: the LED lights; release before 5 s: nothing happens. Hold 5 s: 5 fast blinks, reboot, shot count 0, the phone must pair again (charger window). Boot with the pads already shorted (solder blob): no reset until the short is removed and made again.
 - [ ] **Security:** an unpaired phone cannot use SMP; an image signed with another key uploads but never boots (the puck stays on its version).
 - [ ] Idle current is unchanged with the watchdog running (main loop wakes every 2 s).
 

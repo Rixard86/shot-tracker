@@ -17,6 +17,7 @@ int ble_adv_start(void);
 void ble_adv_stop(void);
 bool ble_is_connected(void);
 bool ble_is_advertising(void);
+bool ble_link_secured(void);
 
 void ble_update_count(const sp_count_t *c);
 void ble_update_status(const sp_status_t *s);

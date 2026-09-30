@@ -1,0 +1,146 @@
+(footprint "TweezerPads_2x0.8mm_Gap0.4mm"
+	(version 20260206)
+	(generator "pcbnew")
+	(generator_version "10.0")
+	(layer "F.Cu")
+	(descr "Two bare round pads, 0.8 mm diameter, 0.4 mm apart, no paste: bridge with tweezers (service input, e.g. factory reset). Copper only, not assembled.")
+	(tags "tweezer pads service reset jumper open")
+	(property "Reference" ""
+		(at 0 -1.05 0)
+		(layer "F.Fab")
+		(uuid "1ac5f0cc-749e-43cc-a3ca-dc826022e050")
+		(effects
+			(font
+				(size 0.5 0.5)
+			)
+		)
+	)
+	(property "Value" "TweezerPads_2x0.8mm_Gap0.4mm"
+		(at 0 1.05 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "3f048d86-8875-432b-839b-0091bce559a6")
+		(effects
+			(font
+				(size 0.5 0.5)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "2cab6b03-b4c8-4b2f-be95-df95b92dd987")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "85d4d9e3-4706-4878-b987-5598d1c3d90a")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(attr exclude_from_pos_files exclude_from_bom allow_soldermask_bridges)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start -1.25 -0.65)
+		(end 1.25 -0.65)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "F.CrtYd")
+		(uuid "ff5023f4-854e-4aca-9d67-55c523d1a922")
+	)
+	(fp_line
+		(start -1.25 0.65)
+		(end -1.25 -0.65)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "F.CrtYd")
+		(uuid "684820ef-a6bb-4e05-80fc-7fa6c458035e")
+	)
+	(fp_line
+		(start 1.25 -0.65)
+		(end 1.25 0.65)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "F.CrtYd")
+		(uuid "27609b0d-9d1e-4c23-ab65-e3283b300619")
+	)
+	(fp_line
+		(start 1.25 0.65)
+		(end -1.25 0.65)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "F.CrtYd")
+		(uuid "c8c5f9a7-f56c-4a89-973a-c6438b90ff25")
+	)
+	(fp_line
+		(start -1 -0.4)
+		(end 1 -0.4)
+		(stroke
+			(width 0.1)
+			(type default)
+		)
+		(layer "F.Fab")
+		(uuid "b49307b7-de41-4777-b282-8b98ed622efb")
+	)
+	(fp_line
+		(start -1 0.4)
+		(end -1 -0.4)
+		(stroke
+			(width 0.1)
+			(type default)
+		)
+		(layer "F.Fab")
+		(uuid "0da1f8e4-88a7-4c1d-be1e-a5ed604a9413")
+	)
+	(fp_line
+		(start 1 -0.4)
+		(end 1 0.4)
+		(stroke
+			(width 0.1)
+			(type default)
+		)
+		(layer "F.Fab")
+		(uuid "a2233626-4fef-47b7-a92d-1e89f7d22e57")
+	)
+	(fp_line
+		(start 1 0.4)
+		(end -1 0.4)
+		(stroke
+			(width 0.1)
+			(type default)
+		)
+		(layer "F.Fab")
+		(uuid "99be6212-13a3-4b92-9084-5b62a4f5de34")
+	)
+	(pad "1" smd circle
+		(at -0.6 0)
+		(size 0.8 0.8)
+		(layers "F.Cu" "F.Mask")
+		(uuid "d68ff326-040b-4f15-9dbc-423bdf9e3038")
+	)
+	(pad "2" smd circle
+		(at 0.6 0)
+		(size 0.8 0.8)
+		(layers "F.Cu" "F.Mask")
+		(uuid "e4a6e67b-2260-41c7-94af-8d59fde6d25b")
+	)
+	(embedded_fonts no)
+)

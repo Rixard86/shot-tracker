@@ -47,9 +47,9 @@ bool ota_image_confirmed(void)
 	return confirmed;
 }
 
-void ota_confirm_when_healthy(void)
+void ota_confirm_when_healthy(bool link_secured)
 {
-	if (confirmed || k_uptime_get_32() - started_ms < CONFIRM_AFTER_MS) {
+	if (confirmed || !link_secured || k_uptime_get_32() - started_ms < CONFIRM_AFTER_MS) {
 		return;
 	}
 	confirmed = boot_write_img_confirmed() == 0;

@@ -29,6 +29,7 @@ MPN = {
     "330R": ("Yageo", "RC0402FR-07330RL"),
     "2.2k": ("Yageo", "RC0402FR-072K2L"),
     "SWD pads": ("-", "4 bottom test pads (VDD, SWDIO, SWDCLK, GND) at 2.54 mm: program with a 4-pin pogo jig"),
+    "RESET pads": ("-", "2 bare top pads (BTN, GND), copper only: bridge with tweezers for a factory reset"),
 }
 
 groups = {}
