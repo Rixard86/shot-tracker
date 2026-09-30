@@ -4,8 +4,8 @@ puck.py - parametric ShotPuck enclosure (CadQuery 2.x) and balance.
 
 Reads ../layout.json (geometry.py) and builds with puck_parts.py:
   plate.step / plate.stl   flat 6061 plate: bolt hole, 3x M2 tapped
-  cap.step / cap.stl       polycarbonate cap: screw counterbores, sleeve bore, connector opening
-  sleeve.stl               steel tube from the plate through the PCB to the cap top (bolt load path)
+  cap.step / cap.stl       polycarbonate cap: screw counterbores, bolt hole, sleeve lip, connector opening
+  sleeve.stl               steel tube from the plate through the PCB into the lip under the cap top (bolt load path)
   standoffs.stl            3 M2 standoffs under the PCB
   assembly.step            all of the above + PCB, cell, module, connector
   mass_report.txt

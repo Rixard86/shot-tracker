@@ -8,14 +8,14 @@ part                     mass g       x       y       z
 plate (6061)               6.43    0.04    0.01    1.00
 standoffs (Al)             0.28   -5.23   -1.19    3.60
 pcb (FR4)                  1.04    0.89    1.79    5.50
-sleeve (steel)             1.46   -0.00   -0.00    6.00
+sleeve (steel)             1.22   -0.00   -0.00    5.35
 cell LIR1254               1.90   -0.00  -11.75    4.80
 module BMD-340             0.60    7.78    7.78    6.85
 USB-C connector            0.80  -10.89   11.85    6.70
 other SMD parts            0.60    0.00    0.00    6.40
-cap (PC)                   2.93    0.45   -0.61    7.63
+cap (PC)                   2.99    0.44   -0.59    7.66
 
-Total mass: 16.04 g
-Centre of mass: x=-0.191 y=-0.522 z=4.16 mm -> 0.556 mm off axis (8.92 g*mm)
+Total mass: 15.86 g
+Centre of mass: x=-0.193 y=-0.528 z=4.10 mm -> 0.562 mm off axis (8.92 g*mm)
 
 Component masses are datasheet/estimated values from layout.json. Weigh the real parts and re-run.

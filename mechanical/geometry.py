@@ -17,7 +17,7 @@ CAV_H = L["cell"]["swell_h"] + L["cell"]["tab_h"]
 Z_CELL = Z_KAPTON_TOP
 Z_CEIL = Z_CELL + CAV_H
 Z_TOP = Z_CEIL + P["cap_top"]
-Z_SLEEVE_TOP = Z_TOP + L["sleeve"]["proud"]
+Z_SLEEVE_TOP = Z_CEIL
 Z_CAP = T_PLATE
 Z_SEAL_TOP = T_PLATE + L["seal"]["cs"] * (1 - L["seal"]["squeeze"])
 Z_BOSS = Z_PCB_TOP + L["bosses"]["boss_gap"]
@@ -26,6 +26,8 @@ COUNTERBORE_D = L["bosses"]["head_dia"] + L["bosses"]["counterbore_clear"]
 COUNTERBORE_DEPTH = Z_TOP - L["bosses"]["screw_len"] - L["bosses"]["tip_inset"]
 BOSS_HEAD_WALL = 0.8
 SLEEVE_BORE_CLEAR = 0.1
+SLEEVE_LIP_WALL = 0.8
+SLEEVE_LIP_DEPTH = 0.6
 
 
 def boss_xy():
