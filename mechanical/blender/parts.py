@@ -5,8 +5,8 @@ import subprocess
 import bpy
 
 import cellconn
-from shapes import MM, activate, attach, bevel, cone, cut, cylinder, empty, smooth, tag, thread, torx
-from stack import (COUNTERBORE_DEPTH, L, OUT, P, R_CAVITY, ROOT, T_PLATE, Z_CAP, Z_CEIL, Z_KAPTON_TOP, Z_PCB,
+from shapes import MM, activate, attach, bevel, cone, cut, cylinder, empty, smooth, tag, thread, torus, torx
+from stack import (COUNTERBORE_DEPTH, L, OUT, R_CAVITY, ROOT, T_PLATE, Z_CEIL, Z_KAPTON_TOP, Z_PCB, Z_PCB_TOP,
                    Z_SLEEVE_TOP, Z_TOP, boss_xy)
 
 KICAD_CLI = os.environ.get("KICAD_CLI", r"C:\Program Files\KiCad\10.0\bin\kicad-cli.exe")
@@ -67,8 +67,23 @@ def ring(spec, name):
     return cut(outer, inner)
 
 
-def build_gasket():
-    return tag(smooth(ring((P["od"] / 2, R_CAVITY, T_PLATE, Z_CAP), "gasket")), "rubber")
+def squashed_ring(spec, name):
+    ring_id, cs, height, z0 = spec
+    obj = torus({"R": ring_id / 2 + cs / 2, "r": cs / 2, "z": z0 + height / 2}, name)
+    obj.scale.z = height / cs
+    return tag(smooth(obj), "rubber")
+
+
+def build_cap():
+    cap = import_stl("cap", "polycarbonate")
+    s, b = L["seal"], L["bosses"]
+    attach(squashed_ring((s["ledge_od"], s["cs"], s["cs"] * (1 - s["squeeze"]), T_PLATE), "seal"), cap)
+    o = b["clamp_oring"]
+    for x, y in boss_xy():
+        clamp = squashed_ring((o["id"], o["cs"], b["boss_gap"], Z_PCB_TOP), "clamp_oring")
+        clamp.location.x, clamp.location.y = x * MM, y * MM
+        attach(clamp, cap)
+    return cap
 
 
 def build_kapton():
@@ -146,13 +161,12 @@ def build_bolt():
 def build_all():
     return {
         "plate": import_stl("plate", "anodised"),
-        "cap": import_stl("cap", "polycarbonate"),
+        "cap": build_cap(),
         "sleeve": import_stl("sleeve", "steel"),
         "spacers": build_spacers(),
         "board": import_board(),
         "cell": cellconn.build_cell(),
         "foam": build_foam(),
-        "gasket": build_gasket(),
         "kapton": build_kapton(),
         "screws": build_screws(),
         "bolt": build_bolt(),

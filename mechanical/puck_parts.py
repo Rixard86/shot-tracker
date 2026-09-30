@@ -3,8 +3,8 @@ import math
 import cadquery as cq
 
 from geometry import (BOSS_D, BOSS_HEAD_WALL, COUNTERBORE_D, COUNTERBORE_DEPTH, L, P, R, SLEEVE_BORE_CLEAR,
-                      T_PLATE, WALL, Z_CAP, Z_CEIL, Z_CELL, Z_KAPTON_TOP, Z_PCB, Z_PCB_TOP,
-                      Z_SLEEVE_TOP, Z_TOP, boss_xy, cell_dir_deg, connector_pose, module_pose, notch_r)
+                      T_PLATE, WALL, Z_BOSS, Z_CAP, Z_CEIL, Z_CELL, Z_KAPTON_TOP, Z_PCB, Z_PCB_TOP,
+                      Z_SEAL_TOP, Z_SLEEVE_TOP, Z_TOP, boss_xy, cell_dir_deg, connector_pose, module_pose, notch_r)
 
 EDGE_CHAMFER = 0.3
 TOP_FILLET = 0.8
@@ -60,7 +60,8 @@ def make_standoffs():
 
 def cap_shell():
     c = column((0, 0, R, Z_CAP, Z_TOP)).faces(">Z").edges().fillet(TOP_FILLET)
-    return c.cut(column((0, 0, R - WALL, Z_CAP - CUT_MARGIN, Z_CEIL)))
+    c = c.cut(column((0, 0, R - WALL, Z_CAP - CUT_MARGIN, Z_CEIL)))
+    return c.cut(tube((0, 0, R + CUT_MARGIN, Z_CAP - CUT_MARGIN, Z_SEAL_TOP), L["seal"]["ledge_od"] / 2))
 
 
 def add_bosses(cap):
@@ -68,7 +69,7 @@ def add_bosses(cap):
     head_r = COUNTERBORE_D / 2 + BOSS_HEAD_WALL
     z_head = Z_TOP - COUNTERBORE_DEPTH - BOSS_HEAD_WALL
     for x, y in boss_xy():
-        cap = cap.union(column((x, y, BOSS_D / 2, Z_PCB_TOP, Z_CEIL)))
+        cap = cap.union(column((x, y, BOSS_D / 2, Z_BOSS, Z_CEIL)))
         cap = cap.union(column((x, y, head_r, z_head, Z_CEIL)))
         cap = cap.cut(column((x, y, b["screw_hole"] / 2, Z_PCB_TOP - CUT_MARGIN, Z_TOP + CUT_MARGIN)))
         cap = cap.cut(column((x, y, COUNTERBORE_D / 2, Z_TOP - COUNTERBORE_DEPTH, Z_TOP + CUT_MARGIN)))

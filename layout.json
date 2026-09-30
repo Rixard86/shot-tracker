@@ -7,9 +7,7 @@
     "pcb_thickness": 0.8,
     "cap_wall": 1.5,
     "cap_top": 1.2,
-    "gasket_t": 0.3,
-    "plate": "6061-T6 flat plate, laser or waterjet cut: centre hole for the bolt, 3x M2 tapped",
-    "gasket": "die-cut 0.5 mm silicone ring under the cap wall, ~0.3 mm compressed",
+    "plate": "6061-T6 flat plate, laser or waterjet cut: centre hole for the bolt, 4x M2 tapped",
     "screw": "M2x8 cheese head (ISO 14580, Torx) from above, through the cap, PCB and standoff into the tapped plate",
     "pcb_standoff": 3.0
   },
@@ -33,7 +31,18 @@
     "screw_len": 8.0,
     "screw_pitch": 0.4,
     "tip_inset": 0.1,
-    "_screw": "The counterbore depth puts the screw tip tip_inset above the plate's underside, so it never touches the weight."
+    "_screw": "The counterbore depth puts the screw tip tip_inset above the plate's underside, so it never touches the weight.",
+    "boss_gap": 0.65,
+    "clamp_oring": {"id": 2.0, "cs": 1.0},
+    "_clamp": "The bosses stop boss_gap above the PCB; an O-ring 2 x 1.0 on each M2 screw under its boss clamps the board (~35 % squeeze, ~15-55 % over the +/-0.2 mm Kapton/standoff/PCB stack) and keeps the screw captive in the cap, so the cap goes on as one unit."
+  },
+  "seal": {
+    "part": "O-ring 37 x 1.0 mm (ID x cross-section), silicone (VMQ) or NBR, 70 Shore A",
+    "id": 37.0,
+    "cs": 1.0,
+    "squeeze": 0.25,
+    "ledge_od": 37.8,
+    "_seal": "The cap wall is stepped: its inner band (cavity to ledge_od) reaches the plate and sets the gap, the outer band stops cs x (1 - squeeze) above it. The O-ring stretches ~2 % onto the ledge, so it stays on the cap during assembly, and is squeezed 25 % between the outer band and the flat plate. The cap wall and the sleeve both seat on the plate."
   },
   "cell": {
     "part": "LIR1254 Li-ion coin cell, plain (no tabs), 3.6-3.7 V, 45-65 mAh",

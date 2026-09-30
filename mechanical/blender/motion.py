@@ -10,11 +10,10 @@ FPS = 30
 END_FRAME = 395
 ASSEMBLED_FRAME = 310
 DOLLY_FRAME = 205
-EXPLODE_MM = {"plate": 0.0, "gasket": 5.0, "kapton": 9.0, "spacers": 14.0, "cell": 22.0, "board": 30.0,
+EXPLODE_MM = {"plate": 0.0, "kapton": 9.0, "spacers": 14.0, "cell": 22.0, "board": 30.0,
               "foam": 38.0, "sleeve": 48.0, "cap": 56.0, "screws": 70.0, "bolt": 88.0}
 CAP_LEVEL = EXPLODE_MM["cap"]
 STEPS = (
-    (("gasket",), (40, 60), 0.0),
     (("kapton",), (60, 80), 0.0),
     (("spacers",), (80, 100), 0.0),
     (("cell",), (100, 125), 0.0),
