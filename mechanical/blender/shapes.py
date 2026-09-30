@@ -8,6 +8,12 @@ TORUS_MAJOR_SEGMENTS = 128
 TORUS_MINOR_SEGMENTS = 16
 SMOOTH_ANGLE_DEG = 35
 BEVEL_SEGMENTS = 2
+THREAD_STEPS = 32
+THREAD_DEPTH = 0.6134
+THREAD_CREST_FLAT = 0.125
+LOBES = 6
+LOBE_POINTS = 96
+CUTTER_ABOVE = 1.0
 
 
 def tag(obj, look):
@@ -53,6 +59,57 @@ def torus(spec, name):
         major_segments=TORUS_MAJOR_SEGMENTS, minor_segments=TORUS_MINOR_SEGMENTS,
         location=(0.0, 0.0, spec["z"] * MM))
     return named(name)
+
+
+def mesh_object(data, name):
+    verts, faces = data
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata([tuple(c * MM for c in v) for v in verts], [], faces)
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.scene.collection.objects.link(obj)
+    return obj
+
+
+def thread(spec, name):
+    pitch, r_major = spec["pitch"], spec["r"]
+    r_root = r_major - THREAD_DEPTH * pitch
+    flank = (1.0 - THREAD_CREST_FLAT) / 2 * pitch
+    profile = [(r_root, 0.0, 0.0), (r_major, 0.0, flank), (r_major, 0.0, pitch - flank), (r_root, 0.0, pitch)]
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata([tuple(c * MM for c in v) for v in profile], [(0, 1), (1, 2), (2, 3)], [])
+    helix = bpy.data.objects.new(name, mesh)
+    bpy.context.scene.collection.objects.link(helix)
+    helix.location = (spec.get("x", 0.0) * MM, spec.get("y", 0.0) * MM, spec["z0"] * MM)
+    mod = helix.modifiers.new("helix", "SCREW")
+    mod.axis = "Z"
+    mod.screw_offset = pitch * MM
+    mod.iterations = int((spec["z1"] - spec["z0"]) / pitch) - 1
+    mod.steps = mod.render_steps = THREAD_STEPS
+    mod.use_normal_calculate = True
+    activate(helix)
+    bpy.ops.object.modifier_apply(modifier=mod.name)
+    core = cylinder(dict(spec, r=r_root), name + "_core")
+    attach(core, helix)
+    return helix, core
+
+
+def lobe_ring(centre, size):
+    mean, swing = (size[0] + size[1]) / 4, (size[0] - size[1]) / 4
+    points = []
+    for i in range(LOBE_POINTS):
+        a = 2 * math.pi * i / LOBE_POINTS
+        r = mean + swing * math.cos(LOBES * a)
+        points.append((centre[0] + r * math.cos(a), centre[1] + r * math.sin(a)))
+    return points
+
+
+def torx(spec, name):
+    x, y, z_top, size, depth = spec
+    ring = lobe_ring((x, y), size)
+    verts = [(px, py, z_top - depth) for px, py in ring] + [(px, py, z_top + CUTTER_ABOVE) for px, py in ring]
+    n = LOBE_POINTS
+    sides = [(i, (i + 1) % n, n + (i + 1) % n, n + i) for i in range(n)]
+    return mesh_object((verts, [tuple(reversed(range(n))), tuple(range(n, 2 * n))] + sides), name)
 
 
 def activate(obj):

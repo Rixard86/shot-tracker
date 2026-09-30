@@ -4,7 +4,7 @@ import os
 import bpy
 
 from shapes import MM
-from stack import OUT
+from stack import L, OUT
 
 FPS = 30
 END_FRAME = 395
@@ -25,10 +25,14 @@ STEPS = (
     (("screws",), (245, 275), 0.0),
     (("bolt",), (275, ASSEMBLED_FRAME), 0.0),
 )
-CAMERA_START = {"distance": 430.0, "target": 45.0, "turn": -35.0}
-CAMERA_END = {"distance": 175.0, "target": 3.0, "turn": 55.0}
-CAMERA_ELEVATION_DEG = 18.0
 RIGHT_ANGLE_DEG = 90.0
+PORT_AXIS_DEG = math.degrees(math.atan2(L["connector"]["y"], L["connector"]["x"]))
+PORT_VIEW_OFFSET_DEG = 15.0
+ORBIT_DEG = 90.0
+END_TURN = PORT_AXIS_DEG + RIGHT_ANGLE_DEG - PORT_VIEW_OFFSET_DEG
+CAMERA_START = {"distance": 340.0, "target": 55.0, "turn": END_TURN - ORBIT_DEG}
+CAMERA_END = {"distance": 190.0, "target": 3.0, "turn": END_TURN}
+CAMERA_ELEVATION_DEG = 18.0
 LENS_MM = 70.0
 CLIP_START = 0.005
 LIGHT_TARGET_Z = 0.01
@@ -37,8 +41,8 @@ LIGHTS = (
     ("fill", (-0.35, -0.15, 0.12), 3.0, 0.30),
     ("rim", (-0.10, 0.40, 0.30), 8.0, 0.15),
 )
-RESOLUTION = (1920, 1080)
-SAMPLES = 128
+RESOLUTION = (1080, 1920)
+SAMPLES = 512
 PREVIEW_SAMPLES = 32
 PREVIEW_SCALE = 50
 PREVIEW_FRAMES = (0, 130, 200, 290, END_FRAME)
@@ -101,9 +105,10 @@ def camera_rig():
     for frame_pose in ((0, CAMERA_START), (DOLLY_FRAME, CAMERA_START), (ASSEMBLED_FRAME, CAMERA_END)):
         key_camera((rig, cam), frame_pose)
     spin(rig)
+    return rig
 
 
-def lights():
+def lights(rig):
     target = bpy.data.objects.new("light_target", None)
     target.location.z = LIGHT_TARGET_Z
     bpy.context.scene.collection.objects.link(target)
@@ -113,6 +118,7 @@ def lights():
         data.size = size
         lamp = bpy.data.objects.new(name, data)
         lamp.location = position
+        lamp.parent = rig
         bpy.context.scene.collection.objects.link(lamp)
         aim = lamp.constraints.new("TRACK_TO")
         aim.target = target
@@ -122,8 +128,7 @@ def lights():
 
 def stage(groups):
     animate(groups)
-    camera_rig()
-    lights()
+    lights(camera_rig())
 
 
 def use_gpu():
@@ -183,6 +188,6 @@ def encode_movie():
     scene.render.image_settings.file_format = "FFMPEG"
     scene.render.ffmpeg.format = "MPEG4"
     scene.render.ffmpeg.codec = "H264"
-    scene.render.ffmpeg.constant_rate_factor = "HIGH"
+    scene.render.ffmpeg.constant_rate_factor = "PERC_LOSSLESS"
     scene.render.filepath = MOVIE_PATH
     bpy.ops.render.render(animation=True)

@@ -5,7 +5,7 @@ import subprocess
 import bpy
 
 import cellconn
-from shapes import MM, activate, attach, bevel, cone, cut, cylinder, empty, smooth, tag
+from shapes import MM, activate, attach, bevel, cone, cut, cylinder, empty, smooth, tag, thread, torx
 from stack import (COUNTERBORE_DEPTH, L, OUT, P, R_CAVITY, ROOT, T_PLATE, Z_CAP, Z_CEIL, Z_KAPTON_TOP, Z_PCB,
                    Z_SLEEVE_TOP, Z_TOP, boss_xy)
 
@@ -19,7 +19,8 @@ EDGE_POINT = re.compile(r"\((?:start|end|mid) ([-\d.]+) ([-\d.]+)\)")
 KAPTON_EDGE_CLEAR = 0.25
 FOAM_DIA = 11.0
 SCREW_DIA = 2.0
-SOCKET_RADIUS = 0.8
+TORX_T6 = (1.75, 1.27)
+CHEESE_EDGE = 0.2
 SOCKET_DEPTH = 0.6
 HEX_SIDES = 6
 BOLT_LEN = 25.0
@@ -99,16 +100,24 @@ def socket(spec, name):
                     name)
 
 
+def threaded(spec, head):
+    helix, core = thread(spec, head.name + "_thread")
+    tag(smooth(core), "black_oxide")
+    attach(tag(smooth(helix), "black_oxide"), head)
+    return head
+
+
 def build_screw(xy):
     x, y = xy
     b = L["bosses"]
     z_head = Z_TOP - COUNTERBORE_DEPTH
     head = cylinder({"r": b["head_dia"] / 2, "x": x, "y": y, "z0": z_head, "z1": z_head + b["head_h"]}, "screw")
-    cut(head, socket((x, y, z_head + b["head_h"], SOCKET_RADIUS, SOCKET_DEPTH), "cutter"))
-    shank = cylinder({"r": SCREW_DIA / 2, "x": x, "y": y, "z0": z_head - b["screw_len"], "z1": z_head},
-                     "screw_shank")
-    attach(tag(smooth(shank), "black_oxide"), head)
-    return tag(smooth(head), "black_oxide")
+    bevel(head, CHEESE_EDGE)
+    activate(head)
+    bpy.ops.object.modifier_apply(modifier="bevel")
+    cut(head, torx((x, y, z_head + b["head_h"], TORX_T6, SOCKET_DEPTH), "cutter"))
+    shank = {"r": SCREW_DIA / 2, "pitch": b["screw_pitch"], "x": x, "y": y, "z0": z_head - b["screw_len"], "z1": z_head}
+    return tag(smooth(threaded(shank, head)), "black_oxide")
 
 
 def build_screws():
@@ -128,8 +137,7 @@ def build_bolt():
     activate(head)
     bpy.ops.object.modifier_apply(modifier="bevel")
     cut(head, socket((0.0, 0.0, z_head + b["head_h"], BOLT_SOCKET_RADIUS, BOLT_SOCKET_DEPTH), "cutter"))
-    shank = cylinder({"r": b["dia"] / 2, "z0": z_head - BOLT_LEN, "z1": z_head}, "bolt_shank")
-    attach(tag(smooth(shank), "black_oxide"), head)
+    threaded({"r": b["dia"] / 2, "pitch": b["pitch"], "z0": z_head - BOLT_LEN, "z1": z_head}, head)
     washer = ring((b["washer_od"] / 2, b["dia"] / 2, Z_SLEEVE_TOP, z_head), "sealing_washer")
     attach(tag(smooth(washer), "steel"), head)
     return tag(smooth(head), "black_oxide")

@@ -31,6 +31,7 @@
     "head_h": 1.3,
     "counterbore_clear": 0.4,
     "screw_len": 8.0,
+    "screw_pitch": 0.4,
     "tip_inset": 0.1,
     "_screw": "The counterbore depth puts the screw tip tip_inset above the plate's underside, so it never touches the weight."
   },
@@ -92,6 +93,7 @@
     "thread": "5/16-24 UNF",
     "clearance_dia": 8.4,
     "dia": 7.94,
+    "pitch": 1.0583,
     "head": "button head socket cap screw, 3/16 in hex",
     "head_dia": 16.7,
     "head_h": 4.4,
