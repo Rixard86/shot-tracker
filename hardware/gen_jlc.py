@@ -43,6 +43,7 @@ JLC_FOOTPRINT_OFFSETS = {
     "DMN63D8LDW": (270.0, 0.0, 0.0),
     "LED yellow-green 0402": (180.0, 0.0, 0.0),
     "MCP73831T-2ACI/OT": (270.0, 0.0, 0.0),
+    "SMF5.0CA": (180.0, 0.0, 0.0),
     "TYPE-C 6PFS 2JCB1.6-H6.7 IPX8": (0.0, 0.0, 0.15),
 }
 NO_OFFSET = (0.0, 0.0, 0.0)

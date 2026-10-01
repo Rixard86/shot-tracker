@@ -44,6 +44,7 @@ Note for the order: *"Please X-ray U1 (BMD-340, LGA) and U2 (LGA-14). J1 is a mi
 | U3 MCP73831 | +270° | pins 2.1 mm off (turned 90°) |
 | Q1, Q2 SOT-363 | +270° | pins 1.7 mm off |
 | D4 LED | +180° | fitted backwards (JLC's pad 1 is the cathode, on the other side) |
+| D3 SMF5.0CA | +180° | pads swapped (JLC numbers them the other way). Harmless, since the TVS is bidirectional, but the preview showed its pin 1 at the opposite end from our silkscreen |
 | J1 USB-C | centroid 0.15 mm | pins 0.15 mm off |
 
 A placement simulation of all 112 placements puts every JLC pad on our same-numbered pad. Most land within 0.1 mm. SOT-363 is within 0.27 mm and SOD-123F within 0.29 mm; those are land-pattern size differences, not placement errors. JLC's placement preview should now look right; confirm it anyway.
@@ -115,3 +116,8 @@ O-rings 36/37/38 × 1.0 and 2 × 1.0 (VMQ/NBR 70A); 4× M2×8 cheese head, nylon
 Changes on 2026-09-30: to meet JLC's minimums, the cap top went 1.2 → 1.33 mm and the plug-overmold clearance 0.25 → 0.20 mm. Then the PCB went 0.8 → 1.2 mm on the same 3 mm standoffs, and the ceiling and cap rose 0.4 mm with it. The puck is now 10.43 mm and 16.72 g, the tube 7.1 mm and the bolt about 0.5 mm longer than planned, with 1.6 mm free above the cell. Nothing new overlaps the plate, board, module or USB-C model; the only overlap is still the 2.1 mm³ seal-ring squeeze, and the largest USB-C plug overmold clears by 0.20 mm.
 
 Changes on 2026-10-01: U2 → LSM6DSO32XTR (see above); C5 removed from `design.py` (it was already off the board), so the netlist check passes; the stray off-board silkscreen text is deleted; the cap's screw holes are Ø2.4. The board, panel, gerbers, BOM/CPL and cap in this package were regenerated and re-checked: DRC 0/0 on board and panel, 0 parity issues, ERC 0 errors, panel = 4 exact copies, placement simulation passes, cap walls ≥ JLC's minimums.
+
+Later on 2026-10-01:
+- **J1's wing-tab pads were enlarged** from 0.99 to 2.0 mm² each, with 0.86 mm² under the tab (was 0.61) and room for solder fillets at the tab's outer edge and ends. They stay 0.31 mm from the notch and 0.25 mm from the leg holes.
+- **D3 got a +180° CPL correction** (table above).
+- **Regenerated:** the board, panel, gerbers and CPL in this package. Board DRC: 0/0, 0 parity issues. Panel DRC: 0/0 on three runs. The panel is still four exact copies of the board. Compared with the previous panel, only the front copper, mask and paste changed, all within 1.7 mm of J1's tabs. The BOM is unchanged, and the placement simulation still passes.

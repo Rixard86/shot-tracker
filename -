@@ -1,8 +1,12 @@
-** Drc report for shotpuck.kicad_pcb **
-** Created on 2026-10-01T08:28:55 **
+** Drc report for shotpuck-panel.kicad_pcb **
+** Created on 2026-10-01T08:06:41 **
 ** Report includes: Errors, Warnings, Exclusions **
 
-** Found 0 DRC violations **
+** Found 1 DRC violations **
+[invalid_outline]: Board has malformed outline (self-intersecting)
+    Local override; error
+    @(103.0000 mm, 20.0061 mm): Segment on Edge.Cuts
+    @(103.0004 mm, 112.5588 mm): Segment on Edge.Cuts
 
 ** Found 0 unconnected pads **
 
