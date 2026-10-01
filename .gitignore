@@ -15,3 +15,4 @@ mechanical/out/board.glb
 mechanical/blender/__pycache__/
 hardware/kicad/*-best.kicad_pcb
 mechanical/out/*.blend1
+hardware/kicad/.history
