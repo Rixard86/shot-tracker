@@ -1,6 +1,6 @@
 # ShotPuck rev A: order package, 2026-09-30
 
-USB-C board (`main` at 36e9f82: the fab fixes of 2026-09-30 and the 2026-10-01 changes listed at the end). Three JLC services, one folder each. Stock and prices are JLC's live figures from 2026-09-30.
+USB-C board (`main` at 36e9f82: the fab fixes of 2026-09-30 and the 2026-10-01 changes listed at the end). Three JLC services, one folder each. Stock and prices are JLC's live figures from 2026-10-01.
 
 | Folder | Service | Upload |
 |---|---|---|
@@ -14,7 +14,7 @@ Upload the panel files above, not `hardware/kicad/fab/shotpuck-gerbers.zip` / `s
 ## Before you order
 
 1. **Ask JLCPCB support** to confirm that C5456944 is type **BMD-340-A-R-10**; types -00/-01 do not work in high-voltage mode (README D14).
-2. U2 is now the **LSM6DSO32XTR (C3663738)**, 177 in stock; the LSM6DSO32TR was down to 39 for the 20 needed. It is the LSM6DSO32 plus a machine-learning core we leave off: same package, pinout, JLC footprint (pad for pad) and registers, so the gerbers, CPL and firmware are unchanged.
+2. U2 is now the **LSM6DSV32XTR (C22461202)**, 5,864 in stock. It replaces the LSM6DSO32XTR (177 in stock) for lower noise at ±32 g. Same pinout and land pattern, and JLC's footprint lands within 0.013 mm of ours at 0°, so the gerbers and CPL are unchanged. It needs **firmware 0.2.2** or later (new IMU driver, 480 Hz).
 3. Quantities for the plate and the cap are your call. Suggestion: 5 of each first, so you can fit the O-rings and tune the seal before printing more.
 
 ## 1. PCB + assembly (JLCPCB)
@@ -23,18 +23,18 @@ Upload the panel files above, not `hardware/kicad/fab/shotpuck-gerbers.zip` / `s
 |---|---|
 | Layers / material | 2, FR-4 |
 | Dimensions | 91.1 × 92.7 mm (read from the gerbers) |
-| PCB qty | 5 (panels) = 20 boards |
+| PCB qty | 5 panels (JLC's minimum) = 20 boards, **4 of them assembled** |
 | Delivery format | Panel by Customer, 1 design (2×2 inside, frame, tooling holes and fiducials already in) |
 | Thickness / finish | **1.2 mm** / ENIG |
 | Copper / via covering | 1 oz / Tented |
 | Min via hole | 0.3 mm (no surcharge) |
 | Order number / marking | Leave the default, **no mark** (or a 2D barcode on the rail for traceability). Do **not** pick "Specify a location": JLC stopped printing order numbers in May 2026, and the panel no longer carries `JLCJLCJLCJLC` |
 | PCBA type | **Standard** (Economic X-rays BGAs only; U1 is an LGA) |
-| Assembly side / PCBA qty | Top / 5 |
+| Assembly side / PCBA qty | Top / **2** (panels; JLC's minimum). The BOM and CPL cover only the bottom-row boards of each panel (designators `_2`, `_3`), so 2 panels × 2 = 4 assembled boards. The top-row boards and the other 3 panels come bare |
 | Tooling holes | Added by customer |
 | Confirm parts placement | Yes |
 
-Note for the order: *"Please X-ray U1 (BMD-340, LGA) and U2 (LGA-14). J1 is a mid-mount USB-C in a board-edge notch; its front sticks out 1.3 mm past the board edge into the routed gap. BT1, J2, JP1 and JP2 are not assembled."*
+Note for the order: *"Please X-ray U1 (BMD-340, LGA) and U2 (LGA-14). J1 is a mid-mount USB-C in a board-edge notch; its front sticks out 1.3 mm past the board edge into the routed gap. BT1, J2, JP1 and JP2 are not assembled. Only the two bottom-row boards of each panel (designators ending _2 and _3) are to be assembled; the two top-row boards (_0, _1) are intentionally left unpopulated."*
 
 **CPL corrections (new).** JLC places its own EasyEDA footprint of each LCSC part at the CPL position and rotation. Several of those footprints differ from ours, so `gen_jlc.py` now corrects them:
 
@@ -47,9 +47,9 @@ Note for the order: *"Please X-ray U1 (BMD-340, LGA) and U2 (LGA-14). J1 is a mi
 | D3 SMF5.0CA | +180° | pads swapped (JLC numbers them the other way). Harmless, since the TVS is bidirectional, but the preview showed its pin 1 at the opposite end from our silkscreen |
 | J1 USB-C | centroid 0.15 mm | pins 0.15 mm off |
 
-A placement simulation of all 112 placements puts every JLC pad on our same-numbered pad. Most land within 0.1 mm. SOT-363 is within 0.27 mm and SOD-123F within 0.29 mm; those are land-pattern size differences, not placement errors. JLC's placement preview should now look right; confirm it anyway.
+A placement simulation of all 112 placements of the full panel puts every JLC pad on our same-numbered pad; the 56 placements in this order are those rows unchanged. Most land within 0.1 mm. SOT-363 is within 0.27 mm and SOD-123F within 0.29 mm; those are land-pattern size differences, not placement errors. JLC's placement preview should now look right; confirm it anyway.
 
-**Parts (20 boards):** all 21 lines are in stock, with 10 extended parts (~$3 setup each). The parts cost about $323, or $16 per board, of which U1 is $171 and U2 $98. The thinnest stock (2026-10-01) is U2 (177), Q1 DMN63D8LDW (244), U4 BQ29700 (257) and U1 (322).
+**Parts (4 boards):** all 21 lines are in stock, with 10 extended parts ($1.50–3 setup each). The parts cost about $68, or $17 per board, of which U1 is $35 and U2 $17. The thinnest stock (2026-10-01) is Q1 DMN63D8LDW (244), U4 BQ29700 (257) and U1 (322), far above the 4 needed. With the $25 setup, the stencil and 5 ENIG panels the whole PCBA order should come to roughly $140–155 before shipping and VAT; JLC's quote is the real figure. Ship with **Global Standard Direct Line**, which collects duty and Swedish VAT at checkout, so DHL does not charge a clearance fee on delivery.
 
 | Check against JLC 1–2 layer capabilities | Design | JLC limit | |
 |---|---|---|---|
@@ -128,3 +128,5 @@ Later on 2026-10-01:
 - **The panel outline's intermittent DRC error is fixed.** KiKit left 9 outline segments shorter than 10 µm: one at the frame's top-left corner, the rest where tabs meet the 0.5 mm milling fillets. KiCad joins outline segments within a small tolerance, and these most likely made it close the frame wrongly on some runs ("self-intersecting outline"). `gen_panel.py` now merges them into their neighbours (the outline moves ≤ 4 µm) and refills the pours. Regenerated: the panel and `shotpuck-panel-gerbers.zip`. Pads, drill and drawings are unchanged; the GND pours differ by about 0.01 mm² per board.
 - **The `JLCJLCJLCJLC` text is removed from the top rail.** JLC's marking page says order numbers are no longer available since May 2026 and asks not to add that text; left in, it would print literally on the frame. `gen_panel.py` no longer adds it. Regenerated: the panel and `shotpuck-panel-gerbers.zip`. Panel DRC: 0/0 on three runs. Compared with the previous panel, only that 15.2 × 1.8 mm piece of front silkscreen is gone; copper, mask, paste, outline and drill are geometrically identical, and the BOM and CPL are unchanged.
 - **Package re-checked against `main` at 36e9f82.** Gerbers, drill files and drill maps exported fresh from the panel match `shotpuck-panel-gerbers.zip` exactly, timestamps aside. `gen_jlc.py` regenerates the BOM and CPL byte for byte. All four panel copies carry the moved U2, C3 and C7, and no `JLCJLCJLCJLC` text. The plate and cap files are identical to `mechanical/out`, and no plate dimension in `layout.json` has changed since the plate drawings were made.
+- **U2 → LSM6DSV32XTR (C22461202).** Only `shotpuck-panel-bom.csv` changed in this package (the U2 line). Gerbers, drill files and drill maps exported fresh from the panel match `shotpuck-panel-gerbers.zip`, timestamps aside, and `gen_jlc.py` regenerates the CPL byte for byte: the part name lives only in the hidden F.Fab value field. Board DRC 0/0 with 0 parity issues, panel DRC 0/0 on three runs, ERC unchanged (0 errors), netlist check PASS.
+- **4 assembled boards instead of 20.** PCBA qty 2 panels, and `gen_jlc.py` (`ASSEMBLED_COPIES = {2, 3}`) writes the BOM and CPL for the bottom-row copies only: 21 lines, 56 placements, each identical to its row in the full-panel CPL. Gerbers and drill files are unchanged. The top-row copies get solder paste but no parts; they are spares for fit tests. To assemble whole panels again, set `ASSEMBLED_COPIES = {0, 1, 2, 3}` and rerun `gen_jlc.py`.

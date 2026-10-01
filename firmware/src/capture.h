@@ -6,11 +6,11 @@
 
 #include "protocol.h"
 
-#define CAP_ODR_HZ 416u
-#define CAP_PRE_SAMPLES 416u
-#define CAP_POST_SAMPLES 208u
+#define CAP_ODR_HZ 480u
+#define CAP_PRE_SAMPLES 480u
+#define CAP_POST_SAMPLES 240u
 #define CAP_WINDOW_SAMPLES (CAP_PRE_SAMPLES + CAP_POST_SAMPLES)
-#define CAP_RING_SAMPLES 1152u
+#define CAP_RING_SAMPLES 1329u
 #define CAP_SLOTS 4u
 #define CAP_ACC_UG_PER_LSB 976u
 #define CAP_GYRO_MDPS_PER_LSB 70u

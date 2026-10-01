@@ -3,7 +3,7 @@
  *
  * Supply: LIR1254 -> BMD-340 VCCH (= nRF52840 VDDH, high-voltage mode, REG0).
  *         REG0 output (VCC = VDD) is programmed to 3.0 V and powers the
- *         LSM6DSO32 and the LED.
+ *         LSM6DSV32X and the LED.
  * Battery voltage: SAADC internal VDDH/5 input, no external divider.
  * Charger: MCP73831 (4.20 V). STAT is read through a diode (low = charging).
  *          The GPIO pull-up is only enabled while VBUS is present, so an

@@ -291,7 +291,7 @@
 				)
 			)
 		)
-		(property "Value" "LSM6DSO32XTR"
+		(property "Value" "LSM6DSV32XTR"
 			(at 0 2.2 225)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -4277,7 +4277,7 @@
 				)
 			)
 		)
-		(property "Value" "LSM6DSO32XTR"
+		(property "Value" "LSM6DSV32XTR"
 			(at 0 2.2 45)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -9897,7 +9897,7 @@
 				)
 			)
 		)
-		(property "Value" "LSM6DSO32XTR"
+		(property "Value" "LSM6DSV32XTR"
 			(at 0 2.2 45)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -34306,7 +34306,7 @@
 				)
 			)
 		)
-		(property "Value" "LSM6DSO32XTR"
+		(property "Value" "LSM6DSV32XTR"
 			(at 0 2.2 225)
 			(unlocked yes)
 			(layer "F.Fab")

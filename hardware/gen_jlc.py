@@ -12,10 +12,11 @@ DEFAULT_BOARD = os.path.join(HERE, "kicad", "panel", "shotpuck-panel.kicad_pcb")
 OUT_DIR = os.path.join(HERE, "kicad", "fab", "jlc")
 HAND_ASSEMBLED = {"BT1", "J2", "JP1", "JP2"}
 PANEL_SUFFIX = "_"
+ASSEMBLED_COPIES = {2, 3}
 
 LCSC = {
     "BMD-340-A-R": "C5456944",
-    "LSM6DSO32XTR": "C3663738",
+    "LSM6DSV32XTR": "C22461202",
     "MCP73831T-2ACI/OT": "C424093",
     "BQ29700DSER": "C183096",
     "DMN63D8LDW": "C211422",
@@ -62,6 +63,12 @@ def base_ref(ref):
     return ref.rsplit(PANEL_SUFFIX, 1)[0] if PANEL_SUFFIX in ref else ref
 
 
+def copy_assembled(ref):
+    if PANEL_SUFFIX not in ref:
+        return True
+    return int(ref.rsplit(PANEL_SUFFIX, 1)[1]) in ASSEMBLED_COPIES
+
+
 def jlc_placement(fp, value):
     rot_offset, dx, dy = JLC_FOOTPRINT_OFFSETS.get(value, NO_OFFSET)
     rot = fp.GetOrientationDegrees()
@@ -76,7 +83,7 @@ def placements(board, parts):
     rows = []
     for fp in board.GetFootprints():
         ref = fp.GetReference()
-        if base_ref(ref) not in parts:
+        if base_ref(ref) not in parts or not copy_assembled(ref):
             continue
         rows.append((ref, *jlc_placement(fp, parts[base_ref(ref)][0])))
     return sorted(rows)

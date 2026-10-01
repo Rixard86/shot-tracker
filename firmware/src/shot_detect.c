@@ -6,7 +6,7 @@
 #include <math.h>
 #include <string.h>
 
-#define GUARD_SAMPLES 8u   /* motion within this many samples of the trigger
+#define GUARD_SAMPLES 10u  /* motion within this many samples of the trigger
                               is attributed to the shot itself (~20 ms)   */
 #define PEAK_WIN_MS 20u
 #define TAU_GRAVITY_S 0.25f /* gravity estimate time constant             */
@@ -14,7 +14,7 @@
 
 void sd_default_config(sd_config_t *c)
 {
-	c->fs_hz = 416.0f;
+	c->fs_hz = 480.0f;
 	c->trig_hf_mg = 6000.0f;
 	c->move_mg = 300.0f;
 	c->pre_still_min_ms = 500;

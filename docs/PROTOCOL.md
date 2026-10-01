@@ -96,7 +96,7 @@ A REPLAY of the whole flash log (about 1000 events) takes roughly 10–20 s at M
 
 ### CAPTURE: bow motion around each shot
 
-For every **accepted** shot the puck records the raw accelerometer and gyroscope from **1.0 s before to 0.5 s after the release trigger** (624 samples at 416 Hz). When the phone is subscribed to CAPTURE, the puck streams it automatically right after the shot's EVENT: one header packet, then data packets until all samples are sent. The last **4 captures are kept in RAM** and can be fetched again with GET_CAPTURE. Rejected candidates are not captured.
+For every **accepted** shot the puck records the raw accelerometer and gyroscope from **1.0 s before to 0.5 s after the release trigger** (720 samples at 480 Hz). When the phone is subscribed to CAPTURE, the puck streams it automatically right after the shot's EVENT: one header packet, then data packets until all samples are sent. The last **4 captures are kept in RAM** and can be fetched again with GET_CAPTURE. Rejected candidates are not captured.
 
 Byte 0 of every packet is the packet type.
 
@@ -106,9 +106,9 @@ Byte 0 of every packet is the packet type.
 |---|---|---|---|
 | 0 | u8 | type | `0x01` |
 | 1 | u32 | seq | Same `seq` as the shot's EVENT |
-| 5 | u16 | n_samples | 624, or **0 if the capture is not available** |
-| 7 | u16 | trigger_index | Sample index of the release trigger (416) |
-| 9 | u16 | odr_hz | 416 |
+| 5 | u16 | n_samples | 720, or **0 if the capture is not available** |
+| 7 | u16 | trigger_index | Sample index of the release trigger (480) |
+| 9 | u16 | odr_hz | 480 |
 | 11 | u16 | acc_ug_per_lsb | 976 (±32 g) |
 | 13 | u16 | gyro_mdps_per_lsb | 70 (±2000 dps) |
 
@@ -123,7 +123,7 @@ Byte 0 of every packet is the packet type.
 
 Convert with `acc_mg = raw × acc_ug_per_lsb / 1000` and `gyro_dps = raw × gyro_mdps_per_lsb / 1000`. Sample `i` is at `(i − trigger_index) / odr_hz` seconds from the trigger, so the EVENT's `t_unix_ms` lines up with index `trigger_index`.
 
-- **Axes** are the LSM6DSO32's own axes. +Z points out of the cap (it reads about +1000 mg with the puck lying cap-up). The X/Y mapping to the bow is fixed by the mounting and must be confirmed once on hardware (VALIDATION.md §2).
+- **Axes** are the LSM6DSV32X's own axes. +Z points out of the cap (it reads about +1000 mg with the puck lying cap-up). The X/Y mapping to the bow is fixed by the mounting and must be confirmed once on hardware (VALIDATION.md §2).
 - A transfer takes about 1–3 s at MTU 247. Packets arrive in order. If a `first` is missing (disconnect), discard the capture and request it again with GET_CAPTURE.
 - A shot less than 1.0 s after the puck woke up has no capture (header `n_samples = 0`), because there is not enough pre-trigger data. The IMU also needs a few tens of ms after a wake before the gyroscope delivers data (datasheet turn-on time 35 ms), so a shot just over 1.0 s after waking can have zero gyro values in its first samples.
 

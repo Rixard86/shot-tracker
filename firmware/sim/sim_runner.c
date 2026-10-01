@@ -1,7 +1,7 @@
 /*
  * sim_runner.c - host-side pipeline around shot_detect.c, mirroring the
  * firmware: IDLE at a slow rate with motion wake, ACTIVE at cfg.fs_hz,
- * LSM6DSO32 accelerometer model (+-32 g clip, 16-bit / 0.976 mg quantisation
+ * LSM6DSV32X accelerometer model (+-32 g clip, 16-bit / 0.976 mg quantisation
  * converted to mg exactly like accel_to_mg(), point sampling = worst-case
  * aliasing, no anti-alias filter assumed).
  */

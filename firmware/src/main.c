@@ -4,9 +4,9 @@
  * Event loop on one thread; all I2C and flash work happens here. ISRs and
  * BT callbacks only set flags / queue messages and give wake_sem.
  *
- *   IDLE   : LSM6DSO32 accelerometer at 12.5 Hz with wake interrupt, gyro
+ *   IDLE   : LSM6DSV32X accelerometer at 15 Hz with wake interrupt, gyro
  *            off, CPU asleep. Advertising stops ADV_LINGER_MS after IDLE.
- *   ACTIVE : 416 Hz accel + gyro FIFO -> shot_detect.c and the capture
+ *   ACTIVE : 480 Hz accel + gyro FIFO -> shot_detect.c and the capture
  *            ring; advertising / connected. Back to IDLE after
  *            cfg.idle_timeout_ms of stillness.
  */

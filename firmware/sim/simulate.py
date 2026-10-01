@@ -3,7 +3,7 @@
 simulate.py - Monte Carlo validation of firmware/src/shot_detect.c.
 
 Builds libsd (shot_detect.c + sim_runner.c), generates synthetic archery
-sessions at 3.3 kHz ground truth, runs them through the same IDLE/ACTIVE
+sessions at 3.36 kHz ground truth, runs them through the same IDLE/ACTIVE
 pipeline and sensor model as the firmware, and scores detections. Also
 builds and runs the unit tests of the other portable firmware modules
 (test_capture.c, test_evlog.c, test_chg_led.c, test_recovery.c).
@@ -27,8 +27,8 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "..", "src")
-FS = 3328.0
-IDLE_HZ = 12.5
+FS = 3360.0
+IDLE_HZ = 15.0
 WAKE_LATENCY_MS = 5
 CC = os.environ.get("CC", "gcc")
 CFLAGS = ["-std=c99", "-O2", "-Wall", "-Wextra", "-Werror"]

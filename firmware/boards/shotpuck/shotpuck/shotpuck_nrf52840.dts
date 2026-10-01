@@ -2,9 +2,9 @@
  * ShotPuck - nRF52840 (u-blox BMD-340), VCCH = Li-ion cell.
  *
  * Pin map (BMD-340 pad -> signal):
- *   P0.05 (21) I2C SDA      -> LSM6DSO32 SDA
- *   P0.07 (23) I2C SCL      -> LSM6DSO32 SCL
- *   P0.03 (19) ACCEL_INT1   <- LSM6DSO32 INT1
+ *   P0.05 (21) I2C SDA      -> LSM6DSV32X SDA
+ *   P0.07 (23) I2C SCL      -> LSM6DSV32X SCL
+ *   P0.03 (19) ACCEL_INT1   <- LSM6DSV32X INT1
  *   P0.15 (33) CHG_STAT     <- MCP73831 STAT via BAT54J (low = charging)
  *   P0.11 (27) CHG_INHIBIT  -> Q1B gate (high = charging disabled)
  *   P0.13 (31) LED          -> LED anode via 1k (active high)

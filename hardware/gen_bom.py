@@ -7,7 +7,7 @@ import design
 
 MPN = {
     "BMD-340-A-R": ("u-blox", "BMD-340-A-R-10"),
-    "LSM6DSO32XTR": ("STMicroelectronics", "LSM6DSO32XTR"),
+    "LSM6DSV32XTR": ("STMicroelectronics", "LSM6DSV32XTR"),
     "MCP73831T-2ACI/OT": ("Microchip", "MCP73831T-2ACI/OT"),
     "DMN63D8LDW": ("Diodes Inc", "DMN63D8LDW-7"),
     "BAT54J": ("Nexperia", "BAT54J,115"),
