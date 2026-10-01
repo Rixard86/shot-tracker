@@ -56,17 +56,18 @@ A placement simulation of all 112 placements puts every JLC pad on our same-numb
 | Track / clearance | 0.15 / 0.127 mm | 0.10 / 0.10 | OK |
 | Via hole / pad (ring) | 0.30 / 0.55 mm (0.125) | 0.15 / 0.25 (0.05) | OK |
 | Via hole to hole | 0.41 mm | 0.20 | OK |
-| NPTH (mouse bites, J1 legs, tooling, screws) | 0.50 / 0.70 / 1.152 / 2.4 mm | ≥ 0.5 | OK |
+| NPTH (mouse bites, J1 legs, tooling, screws) | 0.50 / 0.70 / 2.0 / 2.4 mm | ≥ 0.5 | OK |
 | Copper to outline | ≥ 0.30 mm (rule) | 0.20 | OK |
 | Mask web | none under 0.10 mm | 0.10 | OK |
 | Vias in SMD pads | none | – | OK |
 | Board spacing / mouse bites | ≥ 2.5 mm / Ø0.5 at 0.8 mm | ≥ 2 mm / Ø0.5–0.8 | OK |
+| Mouse-bite tabs | sides, bottom 3 mm with 5–6 holes; top 2.3 mm with 5 holes; Ø0.5 at 0.8 mm (0.3 mm gap) | 3–4 mm for 25–50 mm boards; ≥ 5 holes per set, Ø0.6 with a 0.35–0.4 mm gap (min 0.3); ≥ 2 sets | OK (hole gap at the minimum) |
 | Panel size (Standard PCBA) | 91.1 × 92.7 mm | ≥ 70 × 70, ≤ 250 × 250 | OK |
 | Thickness 1.2 mm + ENIG (gerber job file says 1.2) | 1.2 | offered | OK |
 | Silkscreen line / text height | board artwork 0.2 mm (fixed); KiCad footprint outlines 0.12 mm, D4 0.10 mm; "RST" 0.8 mm | ≥ 0.15 / ≥ 1.0 | Footprint outlines and "RST" below guideline: cosmetic, may print faint |
 | Inner corners (router Ø1.0 mm) | panel milled with 0.5 mm radius, the same as the board's J1 notch fillets | ≥ R0.5 | OK |
 
-Also verified: KiCad 10 DRC 0/0 on the board and the panel, 0 schematic-parity issues; the panel was regenerated from the board with your silkscreen fix (2026-09-30 21:01) and holds four exact copies of it; BOM/CPL regenerate from the panel unchanged. The gerbers now carry separate `-PTH.drl` / `-NPTH.drl` files, as JLC asks, and the silkscreen is clipped at the mask. Copper, mask, paste and outline are unchanged from the committed files.
+Also verified: KiCad 10 DRC 0/0 on the board and the panel, 0 schematic-parity issues; the panel was regenerated from the board with your silkscreen fix (2026-09-30 21:01) and holds four exact copies of it; BOM/CPL regenerate from the panel unchanged. The gerbers now carry separate `-PTH.drl` / `-NPTH.drl` files, as JLC asks, and the silkscreen is clipped at the mask. There is no drill map: JLC's upload page "highly recommends" one, but the PTH/NPTH split is what it needs, so ignore that warning. Copper, mask, paste and outline are unchanged from the committed files.
 
 ## 2. Base plate (JLCCNC)
 
@@ -121,3 +122,7 @@ Later on 2026-10-01:
 - **J1's wing-tab pads were enlarged** from 0.99 to 2.0 mm² each, with 0.86 mm² under the tab (was 0.61) and room for solder fillets at the tab's outer edge and ends. They stay 0.31 mm from the notch and 0.25 mm from the leg holes.
 - **D3 got a +180° CPL correction** (table above).
 - **Regenerated:** the board, panel, gerbers and CPL in this package. Board DRC: 0/0, 0 parity issues. Panel DRC: 0/0 on three runs. The panel is still four exact copies of the board. Compared with the previous panel, only the front copper, mask and paste changed, all within 1.7 mm of J1's tabs. The BOM is unchanged, and the placement simulation still passes.
+- **Fiducials moved to 3.85 mm from the rail edge** (was 2.5 mm), as JLC asks. Same size (1 mm copper, 2 mm opening), still 5 mm from the side, and the opening stays on the 5 mm rail. Regenerated: the panel and `shotpuck-panel-gerbers.zip`. Panel DRC: 0/0 on two of three runs; the other run showed only the known frame-corner outline artefact. Only the six fiducial flashes changed (copper, mask, silkscreen clearance); drill, outline, paste, zone fills, BOM and CPL are unchanged.
+- **Tooling holes enlarged to Ø2.0 mm** (was 1.152 mm), as JLC prefers. Still three, 2.5 mm in from both rail edges; each hole's wall is 1.5 mm from the panel edge and 0.84 mm from the nearest fiducial's mask opening. Regenerated: the panel and `shotpuck-panel-gerbers.zip`. Panel DRC: 0/0 on two of three runs; the other run showed only the known frame-corner outline artefact. Only the three tooling holes changed (NPTH drill, mask, silkscreen clearance); outline, copper, paste, BOM and CPL are unchanged.
+- **U2 moved 0.9 mm inward, away from the top tab** (Richard, by hand), with C3, C6 and C7 and their tracks. Its courtyard is now 1.1 mm from the tab's mouse bites (was 0.34 mm; JLC suggests 1.5 mm). **The top tab is 2.3 mm wide** at x = +0.8 (was 1.5 mm at +1.2), so it has 5 holes like the others, as JLC asks; the GND via stays 0.36 mm from the bites and H1's courtyard is 0.29 mm away. Regenerated: the panel, `shotpuck-panel-gerbers.zip` and the CPL. Board DRC: 0/0, 0 parity issues. Panel DRC: 0/0 on 8 of 8 runs (with the outline fix below). In the CPL only U2, C3, C6 and C7 moved (rotations unchanged); the BOM is unchanged.
+- **The panel outline's intermittent DRC error is fixed.** KiKit left 9 outline segments shorter than 10 µm: one at the frame's top-left corner, the rest where tabs meet the 0.5 mm milling fillets. KiCad joins outline segments within a small tolerance, and these most likely made it close the frame wrongly on some runs ("self-intersecting outline"). `gen_panel.py` now merges them into their neighbours (the outline moves ≤ 4 µm) and refills the pours. Regenerated: the panel and `shotpuck-panel-gerbers.zip`. Pads, drill and drawings are unchanged; the GND pours differ by about 0.01 mm² per board.

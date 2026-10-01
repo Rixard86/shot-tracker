@@ -23,12 +23,14 @@ LIB_TABLE = ('(fp_lib_table\n  (lib (name "ShotPuck")(type "KiCad")(uri "${KIPRJ
 KIKIT_PREFIX = "KIKIT:"
 TAB_WIDTH_MM = 3.0
 TAB_ORIGIN_OUT_MM = 0.5
-TOP_TAB_X = 1.2
-TOP_TAB_WIDTH_MM = 1.5
+TOP_TAB_X = 0.8
+TOP_TAB_WIDTH_MM = 2.3
 TOP = (0, 1)
 BOTTOM_TAB_X = -8.5
 SIDE_TAB_Y = -4.0
 TABS = [(TOP, TOP_TAB_X), ((0, -1), BOTTOM_TAB_X), ((-1, 0), SIDE_TAB_Y), ((1, 0), SIDE_TAB_Y)]
+SLIVER_MM = 0.01
+JOIN_TOL_NM = 100
 
 SETTINGS = [
     "--layout", "grid; rows: 2; cols: 2; hspace: 3mm; vspace: 2.5mm; hbackbone: 2mm; "
@@ -36,8 +38,8 @@ SETTINGS = [
     "--tabs", "annotation",
     "--cuts", "mousebites; drill: 0.5mm; spacing: 0.8mm; offset: 0.2mm; prolong: 0.5mm",
     "--framing", "frame; width: 5mm; space: 3mm",
-    "--tooling", "3hole; hoffset: 2.5mm; voffset: 2.5mm; size: 1.152mm",
-    "--fiducials", "3fid; hoffset: 5mm; voffset: 2.5mm; coppersize: 1mm; opening: 2mm",
+    "--tooling", "3hole; hoffset: 2.5mm; voffset: 2.5mm; size: 2mm",
+    "--fiducials", "3fid; hoffset: 5mm; voffset: 3.85mm; coppersize: 1mm; opening: 2mm",
     "--text", "simple; text: JLCJLCJLCJLC; anchor: mt; voffset: 2.5mm; hjustify: center; vjustify: center",
     "--post", "millradius: 0.5mm; refillzones: true",
 ]
@@ -82,6 +84,34 @@ def write_tabbed_board():
     shutil.copyfile(PROJECT, TABBED_PROJECT)
 
 
+def touching(a, b):
+    return abs(a.x - b.x) <= JOIN_TOL_NM and abs(a.y - b.y) <= JOIN_TOL_NM
+
+
+def merge_sliver(segments, sliver):
+    start, end = sliver.GetStart(), sliver.GetEnd()
+    mid = pcbnew.VECTOR2I((start.x + end.x) // 2, (start.y + end.y) // 2)
+    for seg in segments:
+        if touching(seg.GetStart(), start) or touching(seg.GetStart(), end):
+            seg.SetStart(mid)
+        if touching(seg.GetEnd(), start) or touching(seg.GetEnd(), end):
+            seg.SetEnd(mid)
+
+
+def remove_outline_slivers():
+    board = pcbnew.LoadBoard(PANEL)
+    segments = [d for d in board.GetDrawings()
+                if d.GetLayer() == pcbnew.Edge_Cuts and d.GetShape() == pcbnew.SHAPE_T_SEGMENT]
+    slivers = [s for s in segments if pcbnew.ToMM(s.GetLength()) < SLIVER_MM]
+    for sliver in slivers:
+        segments.remove(sliver)
+        merge_sliver(segments, sliver)
+        board.Delete(sliver)
+    pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+    pcbnew.SaveBoard(PANEL, board)
+    print("merged", len(slivers), "outline slivers")
+
+
 def main():
     os.makedirs(PANEL_DIR, exist_ok=True)
     write_tabbed_board()
@@ -91,6 +121,7 @@ def main():
     finally:
         for path in (TABBED, TABBED_PROJECT):
             os.remove(path)
+    remove_outline_slivers()
     with open(os.path.join(PANEL_DIR, "fp-lib-table"), "w") as f:
         f.write(LIB_TABLE)
     print("wrote", PANEL)

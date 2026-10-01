@@ -158,7 +158,7 @@ Zip `kicad\fab\gerbers\` into `kicad\fab\shotpuck-gerbers.zip`. The single board
 
 Freerouting routes the signals only (GND comes from the pours, fan-out and stitching vias) and is not deterministic. `gen_pcb.py` re-routes up to 4 times until nothing is unconnected; if it still does not end with `0 DRC violations` and `0 unconnected pads`, run it again. ERC: 0 errors; the 2 warnings are the intentional straps of LSM6DSO32 SA0 and SDx to GND.
 
-**Hand edits:** `gen_pcb.py` does not draw J1's board-edge notch (10.28 × 5.22 mm with two Ø0.70 NPTH leg holes), and the GND via at (−0.41, 16.09), the JP2 reset pads and the silkscreen text were added by hand in KiCad. Re-running `gen_pcb.py` overwrites the board without them, so back it up and redo them (HANDOVER §6).
+**Hand edits:** `gen_pcb.py` does not draw J1's board-edge notch (10.28 × 5.22 mm with two Ø0.70 NPTH leg holes), and the GND via at (−0.41, 16.09), the JP2 reset pads and the silkscreen text were added by hand in KiCad; U2, C3, C6 and C7 were moved inward by hand, away from the top panel tab. Re-running `gen_pcb.py` overwrites the board without them, so back it up and redo them (HANDOVER §6).
 
 **Mechanical:** `C:\zp\.cq\Scripts\python.exe mechanical/puck.py` (CadQuery 2.8 in a Python 3.12 venv; CadQuery has no Python 3.14 wheels). It writes the mass and balance report; there is no trim weight. `C:\zp\.cq\Scripts\python.exe mechanical/plate_drawing.py` writes the plate drawing (`out/plate_drawing.pdf`) from the same `layout.json`, and the cheaper prototype variant in 5052 sheet (`out/plate_drawing_5052.pdf` + `out/plate_5052.step`, no chamfer).
 
@@ -173,7 +173,7 @@ kicad-cli pcb export gerbers -o kicad\fab\panel\gerbers -l F.Cu,B.Cu,F.Paste,B.P
 kicad-cli pcb export drill -o kicad\fab\panel\gerbers --excellon-separate-th kicad\panel\shotpuck-panel.kicad_pcb
 ```
 
-Zip `kicad\fab\panel\gerbers\` into `shotpuck-panel-gerbers.zip`. The drill is split into `-PTH.drl` (vias) and `-NPTH.drl` (mouse bites, J1 legs, tooling, screw holes), as JLCPCB asks. Do not refill the zones on export: the panel's saved fill is the one DRC checked. `gen_jlc.py` rotates and shifts U1 (BMD-340, +2.0 mm to its pad-array centre), U3, Q1, Q2 (+270°), D4 (+180°, JLC's pad 1 is its cathode on the other side), D3 (+180°, JLC numbers its pads the other way; the TVS is bidirectional, so this only fixes the preview) and J1 (0.15 mm) so JLC's own footprints land on ours; this was checked pad by pad against the EasyEDA footprints of the LCSC parts.
+Zip `kicad\fab\panel\gerbers\` into `shotpuck-panel-gerbers.zip`. The drill is split into `-PTH.drl` (vias) and `-NPTH.drl` (mouse bites, J1 legs, tooling, screw holes), as JLCPCB asks. No drill map is exported: JLC only "highly recommends" one, and the PTH/NPTH split is what it needs. Do not refill the zones on export: the panel's saved fill is the one DRC checked. `gen_jlc.py` rotates and shifts U1 (BMD-340, +2.0 mm to its pad-array centre), U3, Q1, Q2 (+270°), D4 (+180°, JLC's pad 1 is its cathode on the other side), D3 (+180°, JLC numbers its pads the other way; the TVS is bidirectional, so this only fixes the preview) and J1 (0.15 mm) so JLC's own footprints land on ours; this was checked pad by pad against the EasyEDA footprints of the LCSC parts.
 
 ## Fabrication & assembly
 
