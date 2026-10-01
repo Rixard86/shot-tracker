@@ -1,4 +1,5 @@
 import csv
+import math
 import os
 import sys
 
@@ -14,7 +15,7 @@ PANEL_SUFFIX = "_"
 
 LCSC = {
     "BMD-340-A-R": "C5456944",
-    "LSM6DSO32TR": "C1864162",
+    "LSM6DSO32XTR": "C3663738",
     "MCP73831T-2ACI/OT": "C424093",
     "BQ29700DSER": "C183096",
     "DMN63D8LDW": "C211422",
@@ -36,6 +37,16 @@ LCSC = {
     "TYPE-C 6PFS 2JCB1.6-H6.7 IPX8": "C3020041",
 }
 
+JLC_FOOTPRINT_OFFSETS = {
+    "BMD-340-A-R": (0.0, 2.0, 0.0),
+    "DMN2004DWK": (270.0, 0.0, 0.0),
+    "DMN63D8LDW": (270.0, 0.0, 0.0),
+    "LED yellow-green 0402": (180.0, 0.0, 0.0),
+    "MCP73831T-2ACI/OT": (270.0, 0.0, 0.0),
+    "TYPE-C 6PFS 2JCB1.6-H6.7 IPX8": (0.0, 0.0, 0.15),
+}
+NO_OFFSET = (0.0, 0.0, 0.0)
+
 
 def assembled_parts():
     parts = {}
@@ -50,14 +61,23 @@ def base_ref(ref):
     return ref.rsplit(PANEL_SUFFIX, 1)[0] if PANEL_SUFFIX in ref else ref
 
 
+def jlc_placement(fp, value):
+    rot_offset, dx, dy = JLC_FOOTPRINT_OFFSETS.get(value, NO_OFFSET)
+    rot = fp.GetOrientationDegrees()
+    a = math.radians(rot)
+    pos = fp.GetPosition()
+    x = pcbnew.ToMM(pos.x) + dx * math.cos(a) - dy * math.sin(a)
+    y = -pcbnew.ToMM(pos.y) + dx * math.sin(a) + dy * math.cos(a)
+    return x, y, rot + rot_offset
+
+
 def placements(board, parts):
     rows = []
     for fp in board.GetFootprints():
         ref = fp.GetReference()
         if base_ref(ref) not in parts:
             continue
-        pos = fp.GetPosition()
-        rows.append((ref, pcbnew.ToMM(pos.x), -pcbnew.ToMM(pos.y), fp.GetOrientationDegrees()))
+        rows.append((ref, *jlc_placement(fp, parts[base_ref(ref)][0])))
     return sorted(rows)
 
 

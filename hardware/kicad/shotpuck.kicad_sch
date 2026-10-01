@@ -9720,7 +9720,7 @@
 				)
 			)
 		)
-		(property "Value" "LSM6DSO32TR"
+		(property "Value" "LSM6DSO32XTR"
 			(at 227.33 210.82 0)
 			(show_name no)
 			(do_not_autoplace no)

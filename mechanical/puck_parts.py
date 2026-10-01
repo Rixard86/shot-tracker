@@ -11,7 +11,7 @@ TOP_FILLET = 0.8
 CUT_MARGIN = 1.0
 BODY_CLEAR = 0.2
 FACE_GAP = 0.05
-OVERMOLD_CLEAR = 0.25
+OVERMOLD_CLEAR = 0.2
 SEAL_LEAD = 0.2
 
 
@@ -31,8 +31,10 @@ def slab(size, z_range):
     return cq.Workplane("XY").workplane(offset=z0).rect(w, h).extrude(z1 - z0)
 
 
-def make_plate():
-    p = cq.Workplane("XY").circle(R).extrude(T_PLATE).faces("<Z").edges().chamfer(EDGE_CHAMFER)
+def make_plate(chamfer=EDGE_CHAMFER):
+    p = cq.Workplane("XY").circle(R).extrude(T_PLATE)
+    if chamfer:
+        p = p.faces("<Z").edges().chamfer(chamfer)
     p = p.cut(column((0, 0, L["bolt"]["clearance_dia"] / 2, -CUT_MARGIN, T_PLATE + CUT_MARGIN)))
     for x, y in boss_xy():
         p = p.cut(column((x, y, L["bosses"]["tap_drill"] / 2, -CUT_MARGIN, T_PLATE + CUT_MARGIN)))

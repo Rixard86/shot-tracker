@@ -39,7 +39,7 @@ SETTINGS = [
     "--tooling", "3hole; hoffset: 2.5mm; voffset: 2.5mm; size: 1.152mm",
     "--fiducials", "3fid; hoffset: 5mm; voffset: 2.5mm; coppersize: 1mm; opening: 2mm",
     "--text", "simple; text: JLCJLCJLCJLC; anchor: mt; voffset: 2.5mm; hjustify: center; vjustify: center",
-    "--post", "millradius: 1mm; refillzones: true",
+    "--post", "millradius: 0.5mm; refillzones: true",
 ]
 
 

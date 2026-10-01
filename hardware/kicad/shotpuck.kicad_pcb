@@ -3,7 +3,7 @@
 	(generator "pcbnew")
 	(generator_version "10.0")
 	(general
-		(thickness 0.8)
+		(thickness 1.2)
 		(legacy_teardrops no)
 	)
 	(paper "A4")
@@ -2423,7 +2423,7 @@
 		)
 		(fp_line
 			(start -0.3 0.25)
-			(end -0.299999 -0.25)
+			(end -0.299998 -0.25)
 			(stroke
 				(width 0.1)
 				(type solid)
@@ -3124,7 +3124,7 @@
 				)
 			)
 		)
-		(property "Value" "LSM6DSO32TR"
+		(property "Value" "LSM6DSO32XTR"
 			(at 0 2.2 45)
 			(layer "F.Fab")
 			(hide yes)
@@ -7625,7 +7625,7 @@
 		(start 143 92.75)
 		(end 143.869556 92.294541)
 		(stroke
-			(width 0.1)
+			(width 0.2)
 			(type default)
 		)
 		(layer "F.SilkS")
@@ -7635,7 +7635,7 @@
 		(start 143.5 93)
 		(end 143 92.75)
 		(stroke
-			(width 0.1)
+			(width 0.2)
 			(type default)
 		)
 		(layer "F.SilkS")
@@ -7645,7 +7645,7 @@
 		(start 143.5 93)
 		(end 143.5 93.5)
 		(stroke
-			(width 0.1)
+			(width 0.2)
 			(type default)
 		)
 		(layer "F.SilkS")
@@ -7655,7 +7655,7 @@
 		(start 143.5 93)
 		(end 147.111175 91.0614)
 		(stroke
-			(width 0.1)
+			(width 0.2)
 			(type default)
 		)
 		(layer "F.SilkS")
@@ -7665,7 +7665,7 @@
 		(start 143.5 93.5)
 		(end 144.327352 93.078538)
 		(stroke
-			(width 0.1)
+			(width 0.2)
 			(type default)
 		)
 		(layer "F.SilkS")
@@ -7675,7 +7675,7 @@
 		(start 143.869556 92.294541)
 		(end 144.427153 92.502273)
 		(stroke
-			(width 0.1)
+			(width 0.2)
 			(type default)
 		)
 		(layer "F.SilkS")
@@ -7685,7 +7685,7 @@
 		(start 144.427153 92.502273)
 		(end 144.327352 93.078538)
 		(stroke
-			(width 0.1)
+			(width 0.2)
 			(type default)
 		)
 		(layer "F.SilkS")
@@ -7695,7 +7695,7 @@
 		(center 147.111175 91.0614)
 		(end 147.361175 91.3114)
 		(stroke
-			(width 0.1)
+			(width 0.2)
 			(type default)
 		)
 		(fill no)
@@ -7704,20 +7704,9 @@
 	)
 	(gr_circle
 		(center 147.111175 91.0614)
-		(end 147.611175 91.5614)
-		(stroke
-			(width 0.1)
-			(type default)
-		)
-		(fill no)
-		(layer "F.SilkS")
-		(uuid "4270874c-2f27-493c-be87-123b8e780d78")
-	)
-	(gr_circle
-		(center 147.111175 91.0614)
 		(end 147.861175 91.8114)
 		(stroke
-			(width 0.1)
+			(width 0.2)
 			(type default)
 		)
 		(fill no)
@@ -7726,20 +7715,9 @@
 	)
 	(gr_circle
 		(center 147.111175 91.0614)
-		(end 148.361175 91.8114)
-		(stroke
-			(width 0.1)
-			(type default)
-		)
-		(fill no)
-		(layer "F.SilkS")
-		(uuid "0efa339f-08a8-49f4-8847-af4df96de4a2")
-	)
-	(gr_circle
-		(center 147.111175 91.0614)
 		(end 148.611175 92.0614)
 		(stroke
-			(width 0.1)
+			(width 0.2)
 			(type default)
 		)
 		(fill no)
@@ -7748,14 +7726,14 @@
 	)
 	(gr_circle
 		(center 147.111175 91.0614)
-		(end 148.861175 92.3114)
+		(end 149.5 91.5)
 		(stroke
-			(width 0.1)
+			(width 0.2)
 			(type default)
 		)
 		(fill no)
 		(layer "F.SilkS")
-		(uuid "33a6b16d-8b55-4e0f-80c6-21f8a3284aac")
+		(uuid "c735c340-8668-4e7a-a655-f813c095ac7a")
 	)
 	(gr_line
 		(start 114.0637 91.395476)
@@ -9823,17 +9801,6 @@
 				(bold yes)
 			)
 			(justify left bottom)
-		)
-	)
-	(gr_text "ShotPuck rev A"
-		(at 11 6 0)
-		(layer "B.SilkS")
-		(uuid "843f7a45-57d4-4250-a274-948bcbd85e2b")
-		(effects
-			(font
-				(size 1 1)
-			)
-			(justify mirror)
 		)
 	)
 	(segment

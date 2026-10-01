@@ -2,12 +2,14 @@
 """
 plate_drawing.py - manufacturing drawing of the base plate (A4, 2:1) from ../layout.json.
 
-    python plate_drawing.py   # writes out/plate_drawing.pdf
+    python plate_drawing.py   # writes out/plate_drawing.pdf (6061-T6) and the 5052 sheet-metal
+                              # prototype variant out/plate_drawing_5052.pdf + out/plate_5052.step
 """
 import datetime
 import math
 import os
 
+import cadquery as cq
 import matplotlib
 
 matplotlib.use("Agg")
@@ -15,7 +17,15 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Arc, Circle, Polygon, Rectangle
 
 from geometry import L, OUT, R, T_PLATE, boss_xy
-from puck_parts import EDGE_CHAMFER
+from puck_parts import EDGE_CHAMFER, make_plate
+
+VARIANTS = {
+    "plate_drawing.pdf": {"title": "ShotPuck base plate", "material": "6061-T6",
+                          "process": "Laser or waterjet cut.", "chamfer": EDGE_CHAMFER, "step": None},
+    "plate_drawing_5052.pdf": {"title": "ShotPuck base plate (prototype, sheet metal)", "material": "5052-H32",
+                               "process": "Laser cut, flat sheet, no chamfer.", "chamfer": 0.0,
+                               "step": "plate_5052.step"},
+}
 
 MM_PER_INCH = 25.4
 PAGE_W, PAGE_H = 297.0, 210.0
@@ -45,7 +55,6 @@ THIN, THICK = 0.3, 0.8
 SMALL, NORMAL, BIG = 7, 8, 12
 HIDDEN = (0, (3, 2))
 CENTRE = (0, (8, 2, 1, 2))
-OUTPUT = os.path.join(OUT, "plate_drawing.pdf")
 
 
 def paper(point, origin):
@@ -81,10 +90,11 @@ def diameter_label(ax, spec):
     ax.annotate(text, xy=tip, xytext=at, fontsize=NORMAL, arrowprops={"arrowstyle": "->", "lw": THIN})
 
 
-def top_view(ax):
+def top_view(ax, variant):
     o = TOP_VIEW_CENTRE
     ax.add_patch(Circle(o, R * SCALE, fill=False, lw=THICK))
-    ax.add_patch(Circle(o, (R - EDGE_CHAMFER) * SCALE, fill=False, lw=THIN, ls=HIDDEN))
+    if variant["chamfer"]:
+        ax.add_patch(Circle(o, (R - variant["chamfer"]) * SCALE, fill=False, lw=THIN, ls=HIDDEN))
     bolt_r = L["bolt"]["clearance_dia"] / 2
     ax.add_patch(Circle(o, bolt_r * SCALE, fill=False, lw=THICK))
     centre_mark(ax, (o, (R + CENTRE_LINE_OVERHANG) * SCALE))
@@ -98,9 +108,9 @@ def top_view(ax):
             fontsize=NORMAL, ha="center", va="top")
 
 
-def side_view(ax):
+def side_view(ax, variant):
     x0, y0 = SIDE_VIEW_CENTRE
-    half, t, c = R * SCALE, T_PLATE * SCALE, EDGE_CHAMFER * SCALE
+    half, t, c = R * SCALE, T_PLATE * SCALE, variant["chamfer"] * SCALE
     outline = [(x0 - half + c, y0), (x0 + half - c, y0), (x0 + half, y0 + c), (x0 + half, y0 + t),
                (x0 - half, y0 + t), (x0 - half, y0 + c)]
     ax.add_patch(Polygon(outline, closed=True, fill=False, lw=THICK))
@@ -112,7 +122,9 @@ def side_view(ax):
     xd = x0 + half + DIM_OFFSET
     ax.annotate("", xy=(xd, y0), xytext=(xd, y0 + t), arrowprops={"arrowstyle": "<->", "lw": THIN})
     ax.text(xd + LABEL_OFFSET[0], y0 + t / 2, f"{T_PLATE:.1f}", fontsize=NORMAL, va="center")
-    label = f"SIDE VIEW (underside down)   2:1   chamfer {EDGE_CHAMFER:g} × 45° on the underside edge"
+    label = "SIDE VIEW (underside down)   2:1"
+    if variant["chamfer"]:
+        label += f"   chamfer {variant['chamfer']:g} × 45° on the underside edge"
     ax.text(x0, y0 - VIEW_LABEL_GAP, label, fontsize=NORMAL, ha="center", va="top")
 
 
@@ -132,41 +144,43 @@ def hole_table(ax):
             ax.text(x0 + col, y, text, fontsize=SMALL, weight="bold" if i == 0 else "normal")
 
 
-def notes():
-    return [
-        f"1. Material: aluminium 6061-T6, {T_PLATE:.1f} mm sheet. Laser or waterjet cut.",
-        f"2. 4× {thread_callout()}\n    at H1–H4. The threads are required: do not leave plain holes.",
-        f"3. Centre hole Ø{L['bolt']['clearance_dia']:g} through, for a {L['bolt']['thread']} bolt.",
-        f"4. {EDGE_CHAMFER:g} × 45° chamfer on the outer edge of the underside only\n"
-        "    (the face that seats on the weight).",
-        "5. Deburr all edges and holes. The top face seals against an O-ring near\n"
+def notes(variant):
+    chamfer = variant["chamfer"]
+    items = [
+        f"Material: aluminium {variant['material']}, {T_PLATE:.1f} mm sheet. {variant['process']}",
+        f"4× {thread_callout()}\n    at H1–H4. The threads are required: do not leave plain holes.",
+        f"Centre hole Ø{L['bolt']['clearance_dia']:g} through, for a {L['bolt']['thread']} bolt.",
+        f"{chamfer:g} × 45° chamfer on the outer edge of the underside only\n"
+        "    (the face that seats on the weight)." if chamfer else None,
+        "Deburr all edges and holes. The top face seals against an O-ring near\n"
         "    the rim: keep it flat and free of scratches and burrs.",
-        "6. General tolerances ISO 2768-m.",
-        "7. Finish: none required. If anodised, mask the threads.",
+        "General tolerances ISO 2768-m.",
+        "Finish: none required. If anodised, mask the threads.",
     ]
+    return [f"{i}. {text}" for i, text in enumerate((t for t in items if t), start=1)]
 
 
-def notes_block(ax):
+def notes_block(ax, variant):
     x0, y = NOTES_ORIGIN
     ax.text(x0, y, "NOTES", fontsize=NORMAL, weight="bold")
     y -= NOTE_LINE + NOTE_GAP
-    for note in notes():
+    for note in notes(variant):
         ax.text(x0, y, note, fontsize=SMALL, va="top", linespacing=1.3)
         y -= NOTE_LINE * (note.count("\n") + 1) + NOTE_GAP
 
 
-def title_block(ax):
+def title_block(ax, variant):
     x, y, w, h = TITLE_BOX
     ax.add_patch(Rectangle((x, y), w, h, fill=False, lw=THICK))
-    lines = [("ShotPuck base plate", BIG, "bold"),
-             (f"6061-T6, t = {T_PLATE:.1f} mm   Ø{2 * R:g}   Scale 2:1 on A4   Units mm", NORMAL, "normal"),
+    lines = [(variant["title"], BIG, "bold"),
+             (f"{variant['material']}, t = {T_PLATE:.1f} mm   Ø{2 * R:g}   Scale 2:1 on A4   Units mm", NORMAL, "normal"),
              (f"Generated {datetime.date.today().isoformat()} by mechanical/plate_drawing.py from layout.json",
               SMALL, "normal")]
     for drop, (text, size, weight) in zip(TITLE_ROW_DROPS, lines):
         ax.text(x + TITLE_PAD, y + h - drop, text, fontsize=size, weight=weight, va="top")
 
 
-def build_figure():
+def build_figure(variant):
     fig = plt.figure(figsize=(PAGE_W / MM_PER_INCH, PAGE_H / MM_PER_INCH))
     ax = fig.add_axes((0, 0, 1, 1))
     ax.set_xlim(0, PAGE_W)
@@ -175,15 +189,22 @@ def build_figure():
     ax.axis("off")
     frame = (PAGE_MARGIN, PAGE_MARGIN)
     ax.add_patch(Rectangle(frame, PAGE_W - 2 * PAGE_MARGIN, PAGE_H - 2 * PAGE_MARGIN, fill=False, lw=THICK))
-    for draw in (top_view, side_view, hole_table, notes_block, title_block):
-        draw(ax)
+    top_view(ax, variant)
+    side_view(ax, variant)
+    hole_table(ax)
+    notes_block(ax, variant)
+    title_block(ax, variant)
     return fig
 
 
 def main():
     os.makedirs(OUT, exist_ok=True)
-    build_figure().savefig(OUTPUT)
-    print("wrote", OUTPUT)
+    for name, variant in VARIANTS.items():
+        build_figure(variant).savefig(os.path.join(OUT, name))
+        print("wrote", os.path.join(OUT, name))
+        if variant["step"]:
+            cq.exporters.export(make_plate(variant["chamfer"]), os.path.join(OUT, variant["step"]))
+            print("wrote", os.path.join(OUT, variant["step"]))
 
 
 if __name__ == "__main__":

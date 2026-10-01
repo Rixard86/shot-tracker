@@ -106,7 +106,7 @@ def main():
     # ------------------------------------------------ placement (flow)
     # (title, refs, region x0, y0, x_max) - A3 frame is ~410 x 287 mm
     groups = [
-        ("MCU / radio (nRF52840 high-voltage mode)", ["U1", "C4", "C5", "R9", "C9"], 22.86, 35.56, 190.5),
+        ("MCU / radio (nRF52840 high-voltage mode)", ["U1", "C4", "R9", "C9"], 22.86, 35.56, 190.5),
         ("Programming & status LED", ["J2", "R4", "D4", "JP2"], 22.86, 170.18, 190.5),
         ("Charging input & charger", ["J1", "R10", "R11", "D3", "D1", "C1", "U3", "R1"],
          203.2, 35.56, 405.0),

@@ -12,9 +12,9 @@ Power path
   the RC keeps hot-plug spikes off the 5.8 V abs-max VBUS pin
   VIN -> U3 MCP73831-2 (4.20 V, 21 mA via R1 = 47k) -> VBAT (LIR1254, 45-65 mAh)
   VBAT -> U1 VCCH (u-blox BMD-340, nRF52840 high-voltage mode, REG0 -> VCC = VDD 3.0 V)
-  VDD  -> U2 LSM6DSO32 (VDD + VDDIO), LED, SWD VCC sense
+  VDD  -> U2 LSM6DSO32X (VDD + VDDIO), LED, SWD VCC sense
 IMU
-  U2 LSM6DSO32 on I2C at 0x6A (SA0 = GND, CS = VDD selects I2C). Aux master
+  U2 LSM6DSO32X on I2C at 0x6A (SA0 = GND, CS = VDD selects I2C). Aux master
   pins SDx/SCx to GND; INT2, OCS_Aux, SDO_Aux unconnected.
 Charge inhibit (temperature, firmware)
   PROG -> R1 -> Q1A drain; Q1A gate pulled to VIN by R2 (charging allowed
@@ -45,7 +45,7 @@ PARTS = [
       "21": "SDA", "23": "SCL", "19": "ACC_INT1", "33": "CHG_STAT", "27": "CHG_INH",
       "31": "LED_IO", "7": "BTN", "44": "SWDIO", "43": "SWDCLK"}, {}),
     ("U2", "Sensor_Motion:LSM6DSL", "Package_LGA:LGA-14_3x2.5mm_P0.5mm_LayoutBorder3x4y",
-     "LSM6DSO32TR",
+     "LSM6DSO32XTR",
      {"1": "GND", "2": "GND", "3": "GND", "4": "ACC_INT1", "5": "VDD", "6": "GND", "7": "GND",
       "8": "VDD", "12": "VDD", "13": "SCL", "14": "SDA"}, {}),
     ("U3", "Battery_Management:MCP73831-2-OT", "Package_TO_SOT_SMD:SOT-23-5", "MCP73831T-2ACI/OT",
@@ -76,8 +76,6 @@ PARTS = [
     ("C3", "Device:C_Small", "Capacitor_SMD:C_0402_1005Metric", "4.7u 6.3V",
      {"1": "VBAT", "2": "GND"}, {}),
     ("C4", "Device:C_Small", "Capacitor_SMD:C_0402_1005Metric", "4.7u 6.3V",
-     {"1": "VDD", "2": "GND"}, {}),
-    ("C5", "Device:C_Small", "Capacitor_SMD:C_0402_1005Metric", "100n",
      {"1": "VDD", "2": "GND"}, {}),
     ("C6", "Device:C_Small", "Capacitor_SMD:C_0402_1005Metric", "100n",
      {"1": "VDD", "2": "GND"}, {}),

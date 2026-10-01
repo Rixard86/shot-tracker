@@ -1,69 +1,10 @@
 ** Drc report for shotpuck.kicad_pcb **
-** Created on 2026-09-29T18:04:14 **
+** Created on 2026-10-01T00:16:30 **
 ** Report includes: Errors, Warnings, Exclusions **
 
-** Found 5 DRC violations **
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; warning
-    @(1.4849 mm, -6.7883 mm): Via [CHG_STAT] on F.Cu - B.Cu
-[silk_edge_clearance]: Silkscreen clipped by board edge
-    Rule: board setup constraints silk; warning
-    @(-15.4391 mm, -9.2538 mm): Segment on Edge.Cuts
-    @(-15.0329 mm, -9.8517 mm): Segment of J1 on F.Silkscreen
-[silk_edge_clearance]: Silkscreen clipped by board edge
-    Rule: board setup constraints silk; warning
-    @(-8.4851 mm, -15.8746 mm): Segment on Edge.Cuts
-    @(-8.2257 mm, -15.9809 mm): Segment of J1 on F.Silkscreen
-[silk_over_copper]: Silkscreen clipped by solder mask
-    Local override; warning
-    @(-5.6160 mm, -13.0826 mm): Segment of J1 on F.Silkscreen
-    @(-7.6159 mm, -14.9152 mm): PTH pad SH [GND] of J1
-[silk_over_copper]: Silkscreen clipped by solder mask
-    Local override; warning
-    @(-12.4233 mm, -6.9534 mm): Segment of J1 on F.Silkscreen
-    @(-14.0367 mm, -9.1339 mm): PTH pad SH [GND] of J1
+** Found 0 DRC violations **
 
-** Found 10 unconnected pads **
-[unconnected_items]: Missing connection between items
-    Local override; error
-    @(-14.5595 mm, 7.3795 mm): Track [PCM_BAT] on F.Cu, length 0.6781 mm
-    @(-15.4000 mm, 4.7900 mm): Pad 2 [PCM_BAT] of R7 on F.Cu
-[unconnected_items]: Missing connection between items
-    Local override; error
-    @(-15.2000 mm, 7.9100 mm): Pad 1 [PCM_VM] of R8 on F.Cu
-    @(-13.9750 mm, 9.1500 mm): Pad 6 [PCM_VM] of U4 on F.Cu
-[unconnected_items]: Missing connection between items
-    Local override; error
-    @(-10.8100 mm, -2.2000 mm): Track [CHG_INH] on F.Cu, length 0.7212 mm
-    @(2.0153 mm, -10.4299 mm): Pad 27 [CHG_INH] of U1 on F.Cu
-[unconnected_items]: Missing connection between items
-    Local override; error
-    @(-13.5375 mm, 2.4500 mm): Pad 3 [VBAT] of U3 on F.Cu
-    @(-13.3350 mm, 3.2600 mm): Track [VBAT] on F.Cu, length 1.2680 mm
-[unconnected_items]: Missing connection between items
-    Local override; error
-    @(-11.8213 mm, 3.0143 mm): Track [VBAT] on F.Cu, length 0.5242 mm
-    @(-0.1175 mm, -10.2740 mm): Track [VBAT] on F.Cu, length 0.6353 mm
-[unconnected_items]: Missing connection between items
-    Local override; error
-    @(1.7678 mm, -11.4552 mm): Pad 66 [VBUS_SNS] of U1 on F.Cu
-    @(-2.9210 mm, -8.9413 mm): Track [VBUS_SNS] on F.Cu, length 0.2324 mm
-[unconnected_items]: Missing connection between items
-    Local override; error
-    @(-15.6000 mm, -1.0900 mm): Pad 1 [VIN] of R2 on F.Cu
-    @(-11.2625 mm, 2.4500 mm): Pad 4 [VIN] of U3 on F.Cu
-[unconnected_items]: Missing connection between items
-    Local override; error
-    @(-11.2625 mm, 2.4500 mm): Pad 4 [VIN] of U3 on F.Cu
-    @(-8.5175 mm, -1.3640 mm): Pad 1 [VIN] of D1 on F.Cu
-[unconnected_items]: Missing connection between items
-    Local override; error
-    @(-3.6790 mm, -8.2587 mm): Pad 1 [VIN] of R9 on F.Cu
-    @(-9.3659 mm, -4.2914 mm): Track [VIN] on F.Cu, length 1.1998 mm
-[unconnected_items]: Missing connection between items
-    Local override; error
-    @(-13.5375 mm, 0.5500 mm): Pad 1 [STAT] of U3 on F.Cu
-    @(-9.0000 mm, 2.4000 mm): Pad 1 [STAT] of D2 on F.Cu
+** Found 0 unconnected pads **
 
 ** Found 0 Footprint errors **
 
