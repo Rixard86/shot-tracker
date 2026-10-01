@@ -150,7 +150,7 @@ kicad-cli sch erc --severity-all -o kicad\erc.rpt kicad\shotpuck.kicad_sch
 "C:\Program Files\KiCad\10.0\bin\python.exe" gen_pcb.py            # place, route, bridge GND islands, DRC
 "C:\Program Files\KiCad\10.0\bin\python.exe" gen_bom.py
 kicad-cli pcb export gerbers -o kicad\fab\gerbers -l F.Cu,B.Cu,F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,F.Mask,B.Mask,Edge.Cuts --subtract-soldermask kicad\shotpuck.kicad_pcb
-kicad-cli pcb export drill -o kicad\fab\gerbers --excellon-separate-th kicad\shotpuck.kicad_pcb
+kicad-cli pcb export drill -o kicad\fab\gerbers --excellon-separate-th --generate-map --map-format gerberx2 kicad\shotpuck.kicad_pcb
 kicad-cli pcb export pos --format csv --units mm --side both -o kicad\fab\shotpuck-pos.csv kicad\shotpuck.kicad_pcb
 ```
 
@@ -170,10 +170,10 @@ Freerouting routes the signals only (GND comes from the pours, fan-out and stitc
 "C:\Program Files\KiCad\10.0\bin\python.exe" gen_panel.py      # 2x2 in a frame, 4 tabs per board, mouse bites, fiducials, tooling holes
 "C:\Program Files\KiCad\10.0\bin\python.exe" gen_jlc.py        # kicad/fab/jlc/shotpuck-panel-bom.csv + -cpl.csv
 kicad-cli pcb export gerbers -o kicad\fab\panel\gerbers -l F.Cu,B.Cu,F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,F.Mask,B.Mask,Edge.Cuts --subtract-soldermask kicad\panel\shotpuck-panel.kicad_pcb
-kicad-cli pcb export drill -o kicad\fab\panel\gerbers --excellon-separate-th kicad\panel\shotpuck-panel.kicad_pcb
+kicad-cli pcb export drill -o kicad\fab\panel\gerbers --excellon-separate-th --generate-map --map-format gerberx2 kicad\panel\shotpuck-panel.kicad_pcb
 ```
 
-Zip `kicad\fab\panel\gerbers\` into `shotpuck-panel-gerbers.zip`. The drill is split into `-PTH.drl` (vias) and `-NPTH.drl` (mouse bites, J1 legs, tooling, screw holes), as JLCPCB asks. No drill map is exported: JLC only "highly recommends" one, and the PTH/NPTH split is what it needs. Do not refill the zones on export: the panel's saved fill is the one DRC checked. `gen_jlc.py` rotates and shifts U1 (BMD-340, +2.0 mm to its pad-array centre), U3, Q1, Q2 (+270°), D4 (+180°, JLC's pad 1 is its cathode on the other side), D3 (+180°, JLC numbers its pads the other way; the TVS is bidirectional, so this only fixes the preview) and J1 (0.15 mm) so JLC's own footprints land on ours; this was checked pad by pad against the EasyEDA footprints of the LCSC parts.
+Zip `kicad\fab\panel\gerbers\` into `shotpuck-panel-gerbers.zip`. The drill is split into `-PTH.drl` (vias) and `-NPTH.drl` (mouse bites, J1 legs, tooling, screw holes), as JLCPCB asks. Each comes with a `-drl_map.gbr` drill map, which JLC's KiCad guide asks for. Do not refill the zones on export: the panel's saved fill is the one DRC checked. `gen_jlc.py` rotates and shifts U1 (BMD-340, +2.0 mm to its pad-array centre), U3, Q1, Q2 (+270°), D4 (+180°, JLC's pad 1 is its cathode on the other side), D3 (+180°, JLC numbers its pads the other way; the TVS is bidirectional, so this only fixes the preview) and J1 (0.15 mm) so JLC's own footprints land on ours; this was checked pad by pad against the EasyEDA footprints of the LCSC parts.
 
 ## Fabrication & assembly
 
