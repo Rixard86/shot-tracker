@@ -1,4 +1,4 @@
-# ShotPuck rev A: order package, 2026-09-30
+# ShotPuck rev 0A: order package, 2026-09-30
 
 USB-C board (`main` at 36e9f82: the fab fixes of 2026-09-30 and the 2026-10-01 changes listed at the end). Three JLC services, one folder each. Stock and prices are JLC's live figures from 2026-10-01.
 

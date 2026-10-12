@@ -62,7 +62,7 @@ MAX_STEP = 0.05 * MICRO
 REL_TOL = 1e-7
 ABS_TOL = 1e-10
 WORST_ROWS_SHOWN = 12
-REV_A_FLAG = "--rev-a"
+REV_0A_FLAG = "--rev-0a"
 
 
 @dataclass(frozen=True)
@@ -153,8 +153,8 @@ def print_table(title, rows):
 
 
 def run_sweep(args):
-    r9_from_raw = REV_A_FLAG not in args
-    print(f"R9 fed from {'VIN_RAW (since 2026-10-12)' if r9_from_raw else 'VIN (rev A)'}")
+    r9_from_raw = REV_0A_FLAG not in args
+    print(f"R9 fed from {'VIN_RAW (rev 0B)' if r9_from_raw else 'VIN (rev 0A)'}")
     with ProcessPoolExecutor() as pool:
         rows = list(pool.map(run_case, sweep_cases(r9_from_raw)))
     failed = [case for case, result in rows if not result["ok"]]

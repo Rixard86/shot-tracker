@@ -17,6 +17,7 @@ Service
 
 PROJECT = "shotpuck-mini"
 SCH_TITLE = "ShotPuck mini - square board, CR2450"
+SCH_REV = "A"
 
 PARTS = [
     ("U1", "ShotPuck:BMD-340", "ShotPuck:u-blox_BMD-340", "BMD-340-A-R",

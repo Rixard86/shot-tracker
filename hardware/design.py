@@ -10,7 +10,7 @@ Power path
   to GND (ESD, hot-plug) -> D1 BAT54J (blocks back-feed into the port) -> VIN
   VIN_RAW -> R9 1k -> VBUS_SNS (C9 100n) -> U1 VBUS: charger detect only (USB unused, ~24 uA),
   the RC keeps hot-plug spikes off the 5.8 V abs-max VBUS pin. Fed before D1 so C1 cannot
-  hold a hot-plug overshoot on it (rev A boards: fed from VIN)
+  hold a hot-plug overshoot on it (rev 0A boards: fed from VIN)
   VIN -> U3 MCP73831-2 (4.20 V, 21 mA via R1 = 47k) -> VBAT (LIR1254, 45-65 mAh)
   VBAT -> U1 VCCH (u-blox BMD-340, nRF52840 high-voltage mode, REG0 -> VCC = VDD 3.0 V)
   VDD  -> U2 LSM6DSV32X (VDD + VDDIO), LED, SWD VCC sense
@@ -120,6 +120,7 @@ PARTS = [
 
 PROJECT = "shotpuck"
 SCH_TITLE = "ShotPuck - arrow shot counter"
+SCH_REV = "0B"
 
 # (title, refs, region x0, y0, x_max) - A3 frame is ~410 x 287 mm
 SCH_GROUPS = [
