@@ -8,8 +8,9 @@ Power path
   J1 USB-C power-only receptacle (VBUS = VIN_RAW) on the left rim, plug through the cap wall;
   R10/R11 5.1k pull CC1/CC2 down so USB-C sources turn on 5 V. D3 SMF5.0CA bidirectional TVS
   to GND (ESD, hot-plug) -> D1 BAT54J (blocks back-feed into the port) -> VIN
-  VIN -> R9 1k -> VBUS_SNS (C9 100n) -> U1 VBUS: charger detect only (USB unused, ~24 uA),
-  the RC keeps hot-plug spikes off the 5.8 V abs-max VBUS pin
+  VIN_RAW -> R9 1k -> VBUS_SNS (C9 100n) -> U1 VBUS: charger detect only (USB unused, ~24 uA),
+  the RC keeps hot-plug spikes off the 5.8 V abs-max VBUS pin. Fed before D1 so C1 cannot
+  hold a hot-plug overshoot on it (rev A boards: fed from VIN)
   VIN -> U3 MCP73831-2 (4.20 V, 21 mA via R1 = 47k) -> VBAT (LIR1254, 45-65 mAh)
   VBAT -> U1 VCCH (u-blox BMD-340, nRF52840 high-voltage mode, REG0 -> VCC = VDD 3.0 V)
   VDD  -> U2 LSM6DSV32X (VDD + VDDIO), LED, SWD VCC sense
@@ -93,7 +94,7 @@ PARTS = [
     ("R8", "Device:R_Small", "Resistor_SMD:R_0402_1005Metric", "2.2k",
      {"1": "PCM_VM", "2": "GND"}, {}),
     ("R9", "Device:R_Small", "Resistor_SMD:R_0402_1005Metric", "1k",
-     {"1": "VIN", "2": "VBUS_SNS"}, {}),
+     {"1": "VIN_RAW", "2": "VBUS_SNS"}, {}),
     ("C9", "Device:C_Small", "Capacitor_SMD:C_0402_1005Metric", "100n",
      {"1": "VBUS_SNS", "2": "GND"}, {}),
     ("C8", "Device:C_Small", "Capacitor_SMD:C_0402_1005Metric", "100n",

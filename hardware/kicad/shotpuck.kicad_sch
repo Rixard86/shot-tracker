@@ -6055,7 +6055,7 @@
 		)
 		(uuid "98522b91-1d32-57e9-90a2-d44d11f2dffe")
 	)
-	(label "VIN"
+	(label "VIN_RAW"
 		(at 52.07 85.09 270)
 		(effects
 			(font
