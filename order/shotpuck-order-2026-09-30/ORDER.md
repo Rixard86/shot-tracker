@@ -2,6 +2,10 @@
 
 USB-C board (`main` at 36e9f82: the fab fixes of 2026-09-30 and the 2026-10-01 changes listed at the end). Three JLC services, one folder each. Stock and prices are JLC's live figures from 2026-10-01.
 
+**Ordered** (Richard) from `shotpuck-order-2026-09-30.zip`, which matches this folder at e059581 apart from line endings: the PCB with PCBA on 2 panels (4 assembled boards), and the cap (JLC3DP order 13698800A-W2026101020127812). The base plate is not ordered yet. JLC3DP flagged the cap's 0.40 mm seal band; Richard uploaded the new `3_Cap_JLC3DP/cap.step` to the order as its replacement on 2026-10-12 (changes at the end).
+
+**Paid in full** on 2026-10-12, $217.63: PCB $35.37 (5 panels), PCBA $151.71 (2 panels), cap $3.76 (8 pcs, the 0.8 mm-band file), shipping $26.79 (DHL Express; Global Standard Direct Line was not offered for this order, so expect DHL to charge Swedish VAT and its clearance fee on delivery). JLC support confirmed that C5456944 is **BMD-340-A-R-10**. JLC's BOM matches `shotpuck-panel-bom.csv` line for line (21 lines, same LCSC parts and designators; parts $69.09).
+
 | Folder | Service | Upload |
 |---|---|---|
 | `1_PCB_JLCPCB` | JLCPCB PCB + Standard PCBA | `shotpuck-panel-gerbers.zip`, then `shotpuck-panel-bom.csv` + `shotpuck-panel-cpl.csv` |
