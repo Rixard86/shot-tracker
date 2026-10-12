@@ -23,9 +23,12 @@ firmware/sysbuild.*         MCUboot + signing setup (refuses MCUboot's public de
 firmware/shotpuck_full.hex  MCUboot + signed app, for the first flash via the SWD test pads
 firmware/shotpuck_update.bin  signed app image for OTA updates
 hardware/design.py          the circuit (single source of truth)
-hardware/gen_sch.py         -> kicad/shotpuck.kicad_sch
-hardware/check_netlist.py   KiCad netlist vs design.py
+hardware/design_mini.py     ShotPuck mini circuit: 33 x 33 mm square board for a Picatinny-rail case, CR2450 on the back
+hardware/gen_sch.py         -> kicad/shotpuck.kicad_sch (`gen_sch.py design_mini` -> kicad/shotpuck-mini.kicad_sch)
+hardware/check_netlist.py   KiCad netlist vs design.py (`check_netlist.py design_mini` for the mini)
 hardware/gen_pcb.py         -> kicad/shotpuck.kicad_pcb (place, keep-outs, route, DRC)
+hardware/gen_mini_pcb.py    -> kicad/shotpuck-mini.kicad_pcb (outline, CR2450 clip footprint, parts placed,
+                            antenna keep-out, GND pours; unrouted, routed by hand, never overwritten)
 hardware/board_shape.py     board outline, cell notch, bolt hole and antenna zone (shapely, from layout.json)
 hardware/islands.py         post-fill GND island bridging used by gen_pcb.py
 hardware/gen_bom.py         -> kicad/fab/shotpuck-bom.csv

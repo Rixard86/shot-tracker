@@ -1,22 +1,24 @@
 #!/usr/bin/env python3
 """check_netlist.py - verify KiCad's netlist of the generated schematic
-matches design.py exactly (every pin on the intended net, NC pins alone)."""
+matches design.py (or the design module given) exactly (every pin on the intended net, NC pins alone)."""
+import importlib
 import os
 import subprocess
 import sys
 
-import design
 import sexp
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SCH = os.path.join(HERE, "kicad", "shotpuck.kicad_sch")
-NET = os.path.join(HERE, "kicad", "shotpuck.net")
+KI = os.path.join(HERE, "kicad")
 
 
-def main():
-    subprocess.check_call(["kicad-cli", "sch", "export", "netlist", "-o", NET, SCH],
+def main(design_name="design"):
+    design = importlib.import_module(design_name)
+    sch_path = os.path.join(KI, design.PROJECT + ".kicad_sch")
+    net_path = os.path.join(KI, design.PROJECT + ".net")
+    subprocess.check_call(["kicad-cli", "sch", "export", "netlist", "-o", net_path, sch_path],
                           stdout=subprocess.DEVNULL)
-    tree = sexp.parse(open(NET).read())[0]
+    tree = sexp.parse(open(net_path).read())[0]
     nets = next(x for x in tree if isinstance(x, list) and x and x[0] == "nets")
     got = {}          # (ref, pin) -> net name as KiCad resolved it
     for n in nets[1:]:
@@ -48,4 +50,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(*sys.argv[1:2])
