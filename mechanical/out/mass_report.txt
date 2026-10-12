@@ -6,16 +6,16 @@ USB-C port: 0.80 mm of cap top left over the connector; plug flat 9.0 mm wide (o
 
 part                     mass g       x       y       z
 plate (6061)               6.43    0.04    0.01    1.00
-standoffs (Al)             0.28   -5.23   -1.19    3.60
+standoffs (brass)          0.64   -5.23   -1.19    3.60
 pcb (FR4)                  1.56    0.89    1.79    5.70
 sleeve (steel)             1.30   -0.00   -0.00    5.55
 cell LIR1254               1.90   -0.00  -11.75    4.80
 module BMD-340             0.60    7.78    7.78    7.25
 USB-C connector            0.80  -10.89   11.85    7.10
 other SMD parts            0.60    0.00    0.00    6.80
-cap (PC)                   3.25    0.42   -0.54    8.04
+cap (PC)                   3.31    0.45   -0.47    7.94
 
-Total mass: 16.72 g
-Centre of mass: x=-0.152 y=-0.445 z=4.36 mm -> 0.470 mm off axis (7.87 g*mm)
+Total mass: 17.13 g
+Centre of mass: x=-0.250 y=-0.447 z=4.34 mm -> 0.512 mm off axis (8.77 g*mm)
 
 Component masses are datasheet/estimated values from layout.json. Weigh the real parts and re-run.

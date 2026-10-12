@@ -90,12 +90,13 @@ You allowed a cheaper prototype material. JLCCNC's sheet-metal service stocks on
 
 ## 3. Cap (JLC3DP)
 
-SLA, **8001 Resin, Translucent**. The Transparent grade is sanded and oil-sprayed by default, which changes the O-ring ledge and port-seal fits; Translucent is only de-supported, and the LED still shows through. Note for the order: *"The thinnest wall is at your SLA minimum (0.80 mm top over the side-port pocket); please print as modelled. Please keep support marks off the stepped bottom rim and the side port hole."*
+SLA, **8001 Resin, Translucent**. The Transparent grade is sanded and oil-sprayed by default, which changes the O-ring ledge and port-seal fits; Translucent is only de-supported, and the LED still shows through. Note for the order: *"The thinnest wall is at your SLA minimum (0.80 mm top over the side-port pocket); please print as modelled. Please keep support marks off the stepped bottom rim and the side port hole."* That note was wrong: the seal band at the bottom rim was 0.40 mm, and JLC3DP flagged it (2026-10-12). It is 0.80 mm now; see the changes at the end.
 
 | Check | Design | JLC3DP SLA guideline | |
 |---|---|---|---|
-| Model | 1 valid solid, 40 × 40 × 8.43 mm, 2.72 cm³; STL matches | min 5 × 5 × 5 mm | OK |
+| Model | 1 valid solid, 40 × 40 × 8.43 mm, 2.76 cm³ (was 2.71); STL matches | min 5 × 5 × 5 mm | OK |
 | Walls: top 1.33, side 1.5 mm | 1.33 / 1.5 | 1.0 for a ~50 mm part | OK |
+| Seal band at the bottom rim (O-ring seat) | 0.80 mm wide × 0.75 mm high, rising 1.2 mm more inside; 5 round gaps (was 0.40 mm all round) | 0.8 | OK (at the minimum) |
 | Band under the port flat, over the seal O-ring | 0.90 mm (was 0.45) | 0.5 for a 5 × 5 feature | OK |
 | Cap top over the USB-C pocket | 0.80 mm, ~9 × 7 mm (was 0.67) | 0.8 for a 10 × 10 feature | OK (at the minimum) |
 | Port-flat ends, counterbore rings, tube lip | 0.73–0.8 mm, features < 6 mm | 0.5 (5 × 5); fasteners ≥ 1.5 recommended | OK |
@@ -106,7 +107,7 @@ SLA, **8001 Resin, Translucent**. The Transparent grade is sanded and oil-spraye
 
 ## 4. Not in this package (buy separately)
 
-O-rings 36/37/38 × 1.0 and 2 × 1.0 (VMQ/NBR 70A); 4× M2×8 cheese head, nylon patch; 4× M2 spacers 3 mm (OD 4); 304 tube Ø10 × 0.8, cut to 7.1 mm; a foam pad for the 1.6 mm gap above the cell; Kapton; LIR1254 cells; 0.15 × 2 mm nickel strip; the 5/16-24 button head bolt and bonded washer (README "Needs your input").
+O-rings 36/37/38 × 1.0 and 2 × 1.0 (VMQ/NBR 70A); 4× M2×5 cheese head, nylon patch (M2×8 until the standoffs below); 4× brass male-female hex standoffs M2×3+3, 3 mm across flats, studs ground to 2.0 mm or less (**ordered** 2026-10-12, Amazon.se ORANXIN B0CZNQCVJ1, 20 pcs); 304 tube Ø10 × 0.8, cut to 7.1 mm; a foam pad for the 1.6 mm gap above the cell; Kapton; LIR1254 cells; 0.15 × 2 mm nickel strip; the 5/16-24 button head bolt and bonded washer (README "Needs your input").
 
 ## 5. Risks to check on the first boards
 
@@ -130,3 +131,11 @@ Later on 2026-10-01:
 - **Package re-checked against `main` at 36e9f82.** Gerbers, drill files and drill maps exported fresh from the panel match `shotpuck-panel-gerbers.zip` exactly, timestamps aside. `gen_jlc.py` regenerates the BOM and CPL byte for byte. All four panel copies carry the moved U2, C3 and C7, and no `JLCJLCJLCJLC` text. The plate and cap files are identical to `mechanical/out`, and no plate dimension in `layout.json` has changed since the plate drawings were made.
 - **U2 → LSM6DSV32XTR (C22461202).** Only `shotpuck-panel-bom.csv` changed in this package (the U2 line). Gerbers, drill files and drill maps exported fresh from the panel match `shotpuck-panel-gerbers.zip`, timestamps aside, and `gen_jlc.py` regenerates the CPL byte for byte: the part name lives only in the hidden F.Fab value field. Board DRC 0/0 with 0 parity issues, panel DRC 0/0 on three runs, ERC unchanged (0 errors), netlist check PASS.
 - **4 assembled boards instead of 20.** PCBA qty 2 panels, and `gen_jlc.py` (`ASSEMBLED_COPIES = {2, 3}`) writes the BOM and CPL for the bottom-row copies only: 21 lines, 56 placements, each identical to its row in the full-panel CPL. Gerbers and drill files are unchanged. The top-row copies get solder paste but no parts; they are spares for fit tests. To assemble whole panels again, set `ASSEMBLED_COPIES = {0, 1, 2, 3}` and rerun `gen_jlc.py`.
+
+Changes on 2026-10-12 (JLC3DP order 13698800A-W2026101020127812):
+- **JLC3DP flagged the cap's seal band at 0.40 mm.** That band is the inner step of the bottom rim, between the cavity and the O-ring ledge, 0.75 mm high. The 2026-09-30 wall scan had missed it. It is now **0.80 mm** (`seal.band_wall`), grown inward to Ø36.2. Inside the cap it rises 0.6 mm above the step and then chamfers back to the wall over another 0.6 mm (Richard), so it meets the wall 1.95 mm above the plate. The ledge, O-ring and squeeze are unchanged.
+- **Five round gaps** go fully through the band and its rise (Richard): circles around each standoff (R 2.8; the standoffs reach the old cavity wall) and around the cell (R 7.55; it can slide out to the cavity wall in its open PCB notch). They reach 0.4 mm past the ledge, and the band's corners are rounded R 0.2. The gaps are 3.8 mm open at each standoff and 8.0 mm at the cell, wider at the inner edge, and each band end tapers to its tip over 0.6 mm (1.1 mm at the cell). A standoff shifted 0.2 mm outward, or the cell anywhere in its travel, touches nothing in the band; the old band was hit in both cases. In a gap the O-ring is held down by the wall above, so its squeeze is unchanged.
+- **Kapton:** cut it Ø35.7, 0.25 mm inside the band, with a tab about 6.5 mm wide under the cell, out to the cavity wall inside the cell gap. It must not reach under the band, or the cap seats high there.
+- **Files:** the new `cap.step`/`cap.stl` in `3_Cap_JLC3DP` are for the "replace file" upload. The files first uploaded are in `3_Cap_JLC3DP/original_0.40mm_band/`, and `shotpuck-order-2026-09-30.zip` still holds them too. Only the band changed: the difference between the two caps lies entirely between 0 and 1.95 mm above the plate. Puck 16.78 g, COM 0.45 mm off axis.
+- **Fit:** the band clears the Ø36.0 PCB by only 0.1 mm per side (was 0.5), less than the PCB outline (±0.2 mm) and SLA (±0.2 mm) tolerances. The cap goes on tilted, port side first so the USB-C ring clears the wall below its hole, then the far side is lowered. If the band catches on the board edge, ease its inner face (Richard will post-process).
+- **Still below 0.8 mm:** the port-flat ends, counterbore rings and tube lip (0.73–0.8 mm, features under 6 mm; table above), and the tapered band ends at the gaps. If JLC3DP flags them, they are intended.

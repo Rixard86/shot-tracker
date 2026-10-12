@@ -131,7 +131,7 @@ def build_screw(xy):
     activate(head)
     bpy.ops.object.modifier_apply(modifier="bevel")
     cut(head, torx((x, y, z_head + b["head_h"], TORX_T6, SOCKET_DEPTH), "cutter"))
-    shank = {"r": SCREW_DIA / 2, "pitch": b["screw_pitch"], "x": x, "y": y, "z0": z_head - b["screw_len"], "z1": z_head}
+    shank = {"r": SCREW_DIA / 2, "pitch": b["screw_pitch"], "x": x, "y": y, "z0": z_head - b["standoff_screw_len"], "z1": z_head}
     return tag(smooth(threaded(shank, head)), "black_oxide")
 
 

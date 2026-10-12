@@ -13,6 +13,13 @@ BODY_CLEAR = 0.2
 FACE_GAP = 0.05
 OVERMOLD_CLEAR = 0.2
 SEAL_LEAD = 0.2
+BAND_GAP_CLEAR = 0.2
+BAND_GAP_REACH = 0.4
+BAND_GAP_FILLET = 0.2
+BAND_RISE = 0.6
+BAND_CHAMFER_H = 0.6
+BAND_OVERLAP = 0.05
+EDGE_TOL = 1e-4
 
 
 def column(spec):
@@ -64,6 +71,64 @@ def cap_shell():
     c = column((0, 0, R, Z_CAP, Z_TOP)).faces(">Z").edges().fillet(TOP_FILLET)
     c = c.cut(column((0, 0, R - WALL, Z_CAP - CUT_MARGIN, Z_CEIL)))
     return c.cut(tube((0, 0, R + CUT_MARGIN, Z_CAP - CUT_MARGIN, Z_SEAL_TOP), L["seal"]["ledge_od"] / 2))
+
+
+def band_inner_r():
+    s = L["seal"]
+    return s["ledge_od"] / 2 - s["band_wall"]
+
+
+def band_top():
+    return Z_SEAL_TOP + BAND_RISE + BAND_CHAMFER_H
+
+
+def band_ring():
+    r_in, r_out, r_wall = band_inner_r(), L["seal"]["ledge_od"] / 2, R - WALL
+    z_rise = Z_SEAL_TOP + BAND_RISE
+    pts = [(r_in, Z_CAP), (r_out, Z_CAP), (r_out, Z_SEAL_TOP), (r_wall + BAND_OVERLAP, Z_SEAL_TOP),
+           (r_wall + BAND_OVERLAP, band_top()), (r_wall, band_top()), (r_in, z_rise)]
+    return cq.Workplane("XZ").polyline(pts).close().revolve(360, (0, 0, 0), (0, 1, 0))
+
+
+def gap_circles():
+    c = L["cell"]
+    d_cell = math.hypot(c["x"], c["y"])
+    cell_keep = notch_r() + R - WALL - c["dia"] / 2 - d_cell
+    reach = L["seal"]["ledge_od"] / 2 + BAND_GAP_REACH
+    parts = [(x, y, L["standoffs"]["od"] / 2) for x, y in boss_xy()] + [(c["x"], c["y"], cell_keep)]
+    return [(x, y, max(reach - math.hypot(x, y), keep + BAND_GAP_CLEAR)) for x, y, keep in parts]
+
+
+def is_band_corner(v, circles):
+    r = math.hypot(v.X, v.Y)
+    on_rim = min(abs(r - band_inner_r()), abs(r - L["seal"]["ledge_od"] / 2)) < EDGE_TOL
+    return on_rim and any(abs(math.hypot(v.X - x, v.Y - y) - rho) < EDGE_TOL for x, y, rho in circles)
+
+
+def gap_sketch():
+    r_in, r_out = band_inner_r(), L["seal"]["ledge_od"] / 2
+    circles = gap_circles()
+    band = cq.Sketch().circle(r_out).circle(r_in, mode="s")
+    for x, y, rho in circles:
+        band = band.push([(x, y)]).circle(rho, mode="s").reset()
+    ring = cq.Sketch().circle(r_out + CUT_MARGIN).circle(r_in - CUT_MARGIN, mode="s")
+    for face in band._faces.Faces():
+        corners = [v for v in face.Vertices() if is_band_corner(v, circles)]
+        ring = ring.face(face.fillet2D(BAND_GAP_FILLET, corners), mode="s")
+    return ring
+
+
+def gap_cutters():
+    sk = gap_sketch()
+    z_low, z_high = Z_CAP - CUT_MARGIN, band_top() + BAND_OVERLAP
+    low = cq.Workplane("XY").workplane(offset=z_low).placeSketch(sk).extrude(Z_SEAL_TOP - z_low)
+    high = cq.Workplane("XY").workplane(offset=Z_SEAL_TOP).placeSketch(sk).extrude(z_high - Z_SEAL_TOP)
+    return low, high.intersect(column((0, 0, R - WALL, Z_SEAL_TOP, z_high)))
+
+
+def add_seal_band(cap):
+    low, high = gap_cutters()
+    return cap.union(band_ring()).cut(low).cut(high)
 
 
 def add_bosses(cap):
@@ -127,7 +192,8 @@ def add_sleeve_lip(cap):
 
 
 def make_cap():
-    return add_sleeve_lip(add_bosses(cap_shell()).cut(body_well()).cut(seal_hole()).cut(plug_flat()))
+    cap = add_bosses(add_seal_band(cap_shell()))
+    return add_sleeve_lip(cap.cut(body_well()).cut(seal_hole()).cut(plug_flat()))
 
 
 def make_pcb():

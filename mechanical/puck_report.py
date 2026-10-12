@@ -6,7 +6,7 @@ import cadquery as cq
 from geometry import CAV_H, L, OUT, P, T_PLATE, Z_TOP
 from puck_parts import port_numbers
 
-NAMES = ["plate (6061)", "standoffs (Al)", "pcb (FR4)", "sleeve (steel)", "cell LIR1254", "module BMD-340",
+NAMES = ["plate (6061)", "standoffs (brass)", "pcb (FR4)", "sleeve (steel)", "cell LIR1254", "module BMD-340",
          "USB-C connector", "other SMD parts", "cap (PC)"]
 STL = {"tolerance": 0.02, "angularTolerance": 0.1}
 COLORS = {"plate": (0.25, 0.25, 0.28), "standoffs": (0.75, 0.75, 0.78), "cap": (0.85, 0.9, 1.0, 0.35),

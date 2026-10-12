@@ -9,7 +9,7 @@
     "cap_top": 1.33,
     "_cap_top": "1.33 (was 1.2) so the cap top left over the USB-C body pocket is 0.80 mm, JLC3DP's minimum SLA wall for a ~10 mm feature (2026-09-30).",
     "plate": "6061-T6 flat plate, laser or waterjet cut: centre hole for the bolt, 4x M2 tapped",
-    "screw": "M2x8 cheese head (ISO 14580, Torx) from above, through the cap, PCB and standoff into the tapped plate",
+    "screw": "M2x5 cheese head (ISO 14580, Torx) from above, through the cap and PCB into a brass male-female standoff screwed into the tapped plate",
     "pcb_standoff": 3.0
   },
   "pcb_dia": 36.0,
@@ -31,9 +31,10 @@
     "head_h": 1.3,
     "counterbore_clear": 0.4,
     "screw_len": 8.0,
+    "standoff_screw_len": 5.0,
     "screw_pitch": 0.4,
     "tip_inset": 0.1,
-    "_screw": "The counterbore depth puts the screw tip tip_inset above the plate's underside, so it never touches the weight.",
+    "_screw": "The counterbore depth puts an M2x8 (screw_len) tip tip_inset above the plate's underside; the cap is ordered with that counterbore. Since 2026-10-12 the screw is an M2x5 (standoff_screw_len) on the same seat, 2 mm into a brass standoff, and the standoff's stud, ground to 2.0 mm, ends tip_inset above the underside so it never touches the weight.",
     "boss_gap": 0.65,
     "clamp_oring": {"id": 2.0, "cs": 1.0},
     "_clamp": "The bosses stop boss_gap above the PCB; an O-ring 2 x 1.0 on each M2 screw under its boss clamps the board (~35 % squeeze, ~15-55 % over the +/-0.2 mm Kapton/standoff/PCB stack) and keeps the screw captive in the cap, so the cap goes on as one unit."
@@ -44,6 +45,8 @@
     "cs": 1.0,
     "squeeze": 0.25,
     "ledge_od": 37.8,
+    "band_wall": 0.8,
+    "_band_wall": "The inner band is 0.8 mm (was 0.40, cavity to ledge_od), JLC3DP's minimum SLA wall (2026-10-12). Inside the cavity it rises 0.6 mm above the step and chamfers back to the wall over 0.6 mm (puck_parts BAND_RISE, BAND_CHAMFER_H). It reaches into the cavity, so round gaps go fully through it around the four standoffs and around the cell's travel in its open PCB notch (circles reaching BAND_GAP_REACH past the ledge, corners rounded BAND_GAP_FILLET); there the O-ring is held down by the wall above. It clears the Ø36 PCB by only 0.1 mm per side, so the cap goes on tilted, port side first, and the band may need easing where it catches. The Kapton disc stays clear of the band: Ø35.7 with a tab under the cell inside its gap.",
     "_seal": "The cap wall is stepped: its inner band (cavity to ledge_od) reaches the plate and sets the gap, the outer band stops cs x (1 - squeeze) above it. The O-ring stretches ~2 % onto the ledge, so it stays on the cap during assembly, and is squeezed 25 % between the outer band and the flat plate. The cap wall and the sleeve both seat on the plate."
   },
   "cell": {
@@ -121,10 +124,10 @@
     "_note": "One loose tube from the plate through the Kapton and the PCB to the underside of the cap top, where a lip under the cap locates it; the plate and the cap trap it, so it cannot fall out. The bolt clamps the PC cap top onto the tube: PC is in the clamp path (Richard's prototype test, README D21). The PCB hole (od + 2 x pcb_clear) is merged with the cell notch by a straight slot; everything right of it is copper-free (board_shape.rf_keepout), so no signal crosses it. The tube can turn, so the Kapton tape goes all round it from the plate to the cell top."
   },
   "standoffs": {
-    "od": 4.0,
-    "id": 2.2,
-    "density": 2.7,
-    "part": "M2 round spacer, 3 mm long, OD 4 mm, aluminium",
-    "_note": "One under the PCB at each screw; OD within the copper-free boss ring (3.8 + 2 x 0.3 mm) on both layers."
+    "od": 3.46,
+    "id": 2.0,
+    "density": 8.5,
+    "part": "ORANXIN M2x3+3 brass hex standoff, male-female: 3 mm across flats, 3 mm body, M2 stud ground to 2.0 mm (Amazon.se B0CZNQCVJ1, ordered 2026-10-12)",
+    "_note": "One under the PCB at each screw, its stud screwed into the tapped plate through the Kapton. Modelled as a round body over the hex corners (od = 3.46), which also gives about its mass with the stud; it clears the Ø37 cavity wall by 0.27 mm and stays within the copper-free boss ring (3.8 + 2 x 0.3 mm) on both layers."
   }
 }
