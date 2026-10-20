@@ -2,13 +2,13 @@
 
 USB-C board (`main` at 36e9f82: the fab fixes of 2026-09-30 and the 2026-10-01 changes listed at the end). Three JLC services, one folder each. Stock and prices are JLC's live figures from 2026-10-01.
 
-**Ordered** (Richard) from `shotpuck-order-2026-09-30.zip`, which matches this folder at e059581 apart from line endings: the PCB with PCBA on 2 panels (4 assembled boards), and the cap (JLC3DP order 13698800A-W2026101020127812). The base plate is not ordered yet. JLC3DP flagged the cap's 0.40 mm seal band; Richard uploaded the new `3_Cap_JLC3DP/cap.step` to the order as its replacement on 2026-10-12 (changes at the end).
+**Ordered** (Richard) from `shotpuck-order-2026-09-30.zip`, which matches this folder at e059581 apart from line endings: the PCB with PCBA on 2 panels (4 assembled boards; 8 since JLC asked for whole panels and the BOM and CPL were replaced on 2026-10-15, see the changes at the end), and the cap (JLC3DP order 13698800A-W2026101020127812). The base plate is not ordered yet. JLC3DP flagged the cap's 0.40 mm seal band; Richard uploaded the new `3_Cap_JLC3DP/cap.step` to the order as its replacement on 2026-10-12 (changes at the end).
 
-**Paid in full** on 2026-10-12, $217.63: PCB $35.37 (5 panels), PCBA $151.71 (2 panels), cap $3.76 (8 pcs, the 0.8 mm-band file), shipping $26.79 (DHL Express; Global Standard Direct Line was not offered for this order, so expect DHL to charge Swedish VAT and its clearance fee on delivery). JLC support confirmed that C5456944 is **BMD-340-A-R-10**. JLC's BOM matches `shotpuck-panel-bom.csv` line for line (21 lines, same LCSC parts and designators; parts $69.09).
+**Paid in full** on 2026-10-12, $217.63: PCB $35.37 (5 panels), PCBA $151.71 (2 panels), cap $3.76 (8 pcs, the 0.8 mm-band file), shipping $26.79 (DHL Express; Global Standard Direct Line was not offered for this order, so expect DHL to charge Swedish VAT and its clearance fee on delivery). JLC support confirmed that C5456944 is **BMD-340-A-R-10**. JLC's BOM matches `shotpuck-panel-bom.csv` line for line (21 lines, same LCSC parts and designators; parts $69.09). After the BOM/CPL replacement the PCBA was requoted at $228.39 (+$76.68, parts $144.66); JLC support confirmed the updated order as submitted on 2026-10-19.
 
 | Folder | Service | Upload |
 |---|---|---|
-| `1_PCB_JLCPCB` | JLCPCB PCB + Standard PCBA | `shotpuck-panel-gerbers.zip`, then `shotpuck-panel-bom.csv` + `shotpuck-panel-cpl.csv` |
+| `1_PCB_JLCPCB` | JLCPCB PCB + Standard PCBA | `shotpuck-panel-gerbers.zip`, then `shotpuck-panel-bom.csv` + `shotpuck-panel-cpl.csv` (replaced on 2026-10-15 by the two files in `replacement_full_panel_2026-10-15/`) |
 | `2_Plate_JLCCNC/A_sheet-metal_5052_prototype` | JLCCNC Sheet Metal (recommended for prototypes) | `plate_5052.step`, drawing `plate_drawing_5052.pdf` as the thread file |
 | `2_Plate_JLCCNC/B_cnc_6061` | JLCCNC CNC Machining (production material) | `plate.step`, drawing `plate_drawing.pdf` |
 | `3_Cap_JLC3DP` | JLC3DP SLA resin | `cap.step` (`cap.stl` if the STEP upload fails) |
@@ -27,18 +27,18 @@ Upload the panel files above, not `hardware/kicad/fab/shotpuck-gerbers.zip` / `s
 |---|---|
 | Layers / material | 2, FR-4 |
 | Dimensions | 91.1 × 92.7 mm (read from the gerbers) |
-| PCB qty | 5 panels (JLC's minimum) = 20 boards, **4 of them assembled** |
+| PCB qty | 5 panels (JLC's minimum) = 20 boards, **8 of them assembled** (4 until 2026-10-15) |
 | Delivery format | Panel by Customer, 1 design (2×2 inside, frame, tooling holes and fiducials already in) |
 | Thickness / finish | **1.2 mm** / ENIG |
 | Copper / via covering | 1 oz / Tented |
 | Min via hole | 0.3 mm (no surcharge) |
 | Order number / marking | Leave the default, **no mark** (or a 2D barcode on the rail for traceability). Do **not** pick "Specify a location": JLC stopped printing order numbers in May 2026, and the panel no longer carries `JLCJLCJLCJLC` |
 | PCBA type | **Standard** (Economic X-rays BGAs only; U1 is an LGA) |
-| Assembly side / PCBA qty | Top / **2** (panels; JLC's minimum). The BOM and CPL cover only the bottom-row boards of each panel (designators `_2`, `_3`), so 2 panels × 2 = 4 assembled boards. The top-row boards and the other 3 panels come bare |
+| Assembly side / PCBA qty | Top / **2** (panels; JLC's minimum). Since 2026-10-15 the BOM and CPL cover all four boards of each panel, so 2 panels × 4 = 8 assembled boards; the other 3 panels come bare. (Ordered first with only the bottom-row boards `_2`, `_3`; JLC does not assemble part of a panel) |
 | Tooling holes | Added by customer |
 | Confirm parts placement | Yes |
 
-Note for the order: *"Please X-ray U1 (BMD-340, LGA) and U2 (LGA-14). J1 is a mid-mount USB-C in a board-edge notch; its front sticks out 1.3 mm past the board edge into the routed gap. BT1, J2, JP1 and JP2 are not assembled. Only the two bottom-row boards of each panel (designators ending _2 and _3) are to be assembled; the two top-row boards (_0, _1) are intentionally left unpopulated."*
+Note for the order: *"Please X-ray U1 (BMD-340, LGA) and U2 (LGA-14). J1 is a mid-mount USB-C in a board-edge notch; its front sticks out 1.3 mm past the board edge into the routed gap. BT1, J2, JP1 and JP2 are not assembled. Only the two bottom-row boards of each panel (designators ending _2 and _3) are to be assembled; the two top-row boards (_0, _1) are intentionally left unpopulated."* Since 2026-10-15 the order's remark reads: *"J1 is a mid-mount USB-C in a board-edge notch; its front sticks out 1.3 mm past the board edge into the routed gap. BT1, J2, JP1 and JP2 are not assembled. All four boards on each panel are to be assembled (BOM/CPL replaced on 2026-10-15)."* X-ray inspection is charged in the order ($13.28).
 
 **CPL corrections (new).** JLC places its own EasyEDA footprint of each LCSC part at the CPL position and rotation. Several of those footprints differ from ours, so `gen_jlc.py` now corrects them:
 
@@ -143,3 +143,10 @@ Changes on 2026-10-12 (JLC3DP order 13698800A-W2026101020127812):
 - **Files:** the new `cap.step`/`cap.stl` in `3_Cap_JLC3DP` are for the "replace file" upload. The files first uploaded are in `3_Cap_JLC3DP/original_0.40mm_band/`, and `shotpuck-order-2026-09-30.zip` still holds them too. Only the band changed: the difference between the two caps lies entirely between 0 and 1.95 mm above the plate. Puck 16.78 g, COM 0.45 mm off axis.
 - **Fit:** the band clears the Ø36.0 PCB by only 0.1 mm per side (was 0.5), less than the PCB outline (±0.2 mm) and SLA (±0.2 mm) tolerances. The cap goes on tilted, port side first so the USB-C ring clears the wall below its hole, then the far side is lowered. If the band catches on the board edge, ease its inner face (Richard will post-process).
 - **Still below 0.8 mm:** the port-flat ends, counterbore rings and tube lip (0.73–0.8 mm, features under 6 mm; table above), and the tapered band ends at the gaps. If JLC3DP flags them, they are intended.
+
+Changes on 2026-10-15 (JLCPCB PCBA order SMT026100162407_Y2):
+- **JLC does not assemble part of a panel.** Their engineers flagged the BOM/CPL as "insufficient to mount all the boards"; asked, support confirmed partial-panel assembly is not possible and enabled file replacement. All four boards of each panel are now assembled: **8 boards**.
+- **Files:** `1_PCB_JLCPCB/replacement_full_panel_2026-10-15/` holds the uploaded BOM (21 lines) and CPL (112 placements). They were generated from e059581 with `ASSEMBLED_COPIES = {0, 1, 2, 3}`. That commit regenerates the ordered BOM/CPL byte for byte. The `_2`/`_3` rows are identical to the ordered CPL, and the whole CPL is identical to the full-panel CPL that passed the placement simulation (d86eec3). The first files stay in `1_PCB_JLCPCB/` as the record of the original upload. Gerbers unchanged.
+- **U4 → BQ29700DSET (C2876282).** JLC's BOM check found U4 BQ29700DSER (C183096) 2 short for 8 boards, and LCSC had none. The DSET is the same TI part on a 250-piece reel; JLC's EasyEDA footprint for it is the same footprint as the DSER's, pad for pad, so the CPL is unchanged. 8 pcs from JLC stock, $6.51. The replacement BOM's U4 line names it.
+- **Placement preview checked:** all four boards populated; the pin-1 and polarity marks of U1, U2, U3, U4, Q1, Q2, D1, D2 and D4 sit on our pin-1 and anode pads.
+- **Price:** PCBA $228.39 (was $151.71): parts $144.66, other fees +$1.11. PCB unchanged at $35.37.
