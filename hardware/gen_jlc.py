@@ -12,13 +12,13 @@ DEFAULT_BOARD = os.path.join(HERE, "kicad", "panel", "shotpuck-panel.kicad_pcb")
 OUT_DIR = os.path.join(HERE, "kicad", "fab", "jlc")
 HAND_ASSEMBLED = {"BT1", "J2", "JP1", "JP2"}
 PANEL_SUFFIX = "_"
-ASSEMBLED_COPIES = {2, 3}
+ASSEMBLED_COPIES = {0, 1, 2, 3}
 
 LCSC = {
     "BMD-340-A-R": "C5456944",
     "LSM6DSV32XTR": "C22461202",
     "MCP73831T-2ACI/OT": "C424093",
-    "BQ29700DSER": "C183096",
+    "BQ29700DSER": "C2876282",
     "DMN63D8LDW": "C211422",
     "DMN2004DWK": "C156343",
     "BAT54J": "C130415",
