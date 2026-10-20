@@ -108,12 +108,10 @@
     "clearance_dia": 8.4,
     "dia": 7.94,
     "pitch": 1.0583,
-    "head": "button head socket cap screw, 3/16 in hex",
+    "head": "button head socket cap screw (ISO 7380 style dome: thin rim, spherical top), 3/16 in hex",
     "head_dia": 16.7,
     "head_h": 4.4,
-    "washer_od": 14.0,
-    "washer_t": 1.5,
-    "_note": "The Avalon weight bolt as a button head, longer by the puck height plus the sealing washer: it goes through the cap top, the sleeve and the weight into the riser. Bonded sealing washer under the head."
+    "_note": "The Avalon weight bolt as a button head, longer by the puck height: it goes through the cap top, the sleeve and the weight into the riser. No washer: the head bears on the PC cap top (the bonded sealing washer was dropped on 2026-10-12, Richard)."
   },
   "sleeve": {
     "od": 10.0,

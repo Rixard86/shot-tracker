@@ -1,3 +1,4 @@
+import math
 import os
 import re
 import subprocess
@@ -5,7 +6,7 @@ import subprocess
 import bpy
 
 import cellconn
-from shapes import MM, activate, attach, bevel, cone, cut, cylinder, empty, smooth, tag, thread, torus, torx
+from shapes import MM, activate, attach, bevel, cut, cylinder, empty, lathe, smooth, tag, thread, torus, torx
 from stack import (COUNTERBORE_DEPTH, L, OUT, R_CAVITY, ROOT, T_PLATE, Z_CEIL, Z_KAPTON_TOP, Z_PCB, Z_PCB_TOP,
                    Z_TOP, boss_xy)
 
@@ -26,8 +27,9 @@ HEX_SIDES = 6
 BOLT_LEN = 25.0
 BOLT_SOCKET_RADIUS = 2.75
 BOLT_SOCKET_DEPTH = 2.5
-BUTTON_TOP_RATIO = 0.75
-BUTTON_ROUND = 1.2
+BUTTON_RIM_H = 0.4
+BUTTON_EDGE_ROUND = 0.3
+DOME_STEPS = 24
 CUTTER_MARGIN = 0.5
 
 
@@ -142,19 +144,23 @@ def build_screws():
     return group
 
 
+def dome_profile(b):
+    r, rise = b["head_dia"] / 2, b["head_h"] - BUTTON_RIM_H
+    sphere_r = (r * r + rise * rise) / (2 * rise)
+    centre_z = b["head_h"] - sphere_r
+    edge_angle = math.asin(r / sphere_r)
+    angles = [edge_angle * (1 - i / DOME_STEPS) for i in range(DOME_STEPS + 1)]
+    return [(0.0, 0.0), (r, 0.0)] + [(sphere_r * math.sin(a), centre_z + sphere_r * math.cos(a)) for a in angles]
+
+
 def build_bolt():
     b = L["bolt"]
-    z_head = Z_TOP + b["washer_t"]
-    r = b["head_dia"] / 2
-    head = cone({"r0": r, "r1": r * BUTTON_TOP_RATIO, "x": 0.0, "y": 0.0, "z0": z_head, "z1": z_head + b["head_h"]},
-                "bolt")
-    bevel(head, BUTTON_ROUND)
+    head = lathe([(r, Z_TOP + z) for r, z in dome_profile(b)], "bolt")
+    bevel(head, BUTTON_EDGE_ROUND)
     activate(head)
     bpy.ops.object.modifier_apply(modifier="bevel")
-    cut(head, socket((0.0, 0.0, z_head + b["head_h"], BOLT_SOCKET_RADIUS, BOLT_SOCKET_DEPTH), "cutter"))
-    threaded({"r": b["dia"] / 2, "pitch": b["pitch"], "z0": z_head - BOLT_LEN, "z1": z_head}, head)
-    washer = ring((b["washer_od"] / 2, b["dia"] / 2, Z_TOP, z_head), "sealing_washer")
-    attach(tag(smooth(washer), "steel"), head)
+    cut(head, socket((0.0, 0.0, Z_TOP + b["head_h"], BOLT_SOCKET_RADIUS, BOLT_SOCKET_DEPTH), "cutter"))
+    threaded({"r": b["dia"] / 2, "pitch": b["pitch"], "z0": Z_TOP - BOLT_LEN, "z1": Z_TOP}, head)
     return tag(smooth(head), "black_oxide")
 
 

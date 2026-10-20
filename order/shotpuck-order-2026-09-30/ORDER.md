@@ -30,6 +30,7 @@ Upload the panel files above, not `hardware/kicad/fab/shotpuck-gerbers.zip` / `s
 | PCB qty | 5 panels (JLC's minimum) = 20 boards, **8 of them assembled** (4 until 2026-10-15) |
 | Delivery format | Panel by Customer, 1 design (2×2 inside, frame, tooling holes and fiducials already in) |
 | Thickness / finish | **1.2 mm** / ENIG |
+| Solder mask / silkscreen | **Black** / white (as ordered) |
 | Copper / via covering | 1 oz / Tented |
 | Min via hole | 0.3 mm (no surcharge) |
 | Order number / marking | Leave the default, **no mark** (or a 2D barcode on the rail for traceability). Do **not** pick "Specify a location": JLC stopped printing order numbers in May 2026, and the panel no longer carries `JLCJLCJLCJLC` |
@@ -111,7 +112,7 @@ SLA, **8001 Resin, Translucent**. The Transparent grade is sanded and oil-spraye
 
 ## 4. Not in this package (buy separately)
 
-O-rings 36/37/38 × 1.0 and 2 × 1.0 (VMQ/NBR 70A); 4× M2×5 cheese head, nylon patch (M2×8 until the standoffs below); 4× brass male-female hex standoffs M2×3+3, 3 mm across flats, studs ground to 2.0 mm or less (**ordered** 2026-10-12, Amazon.se ORANXIN B0CZNQCVJ1, 20 pcs); 304 tube Ø10 × 0.8, cut to 7.1 mm; a foam pad for the 1.6 mm gap above the cell; Kapton; LIR1254 cells; 0.15 × 2 mm nickel strip; the 5/16-24 button head bolt and bonded washer (README "Needs your input").
+O-rings 36/37/38 × 1.0 and 2 × 1.0 (VMQ/NBR 70A); 4× M2×5 cheese head, nylon patch (M2×8 until the standoffs below); 4× brass male-female hex standoffs M2×3+3, 3 mm across flats, studs ground to 2.0 mm or less (**ordered** 2026-10-12, Amazon.se ORANXIN B0CZNQCVJ1, 20 pcs); 304 tube Ø10 × 0.8, cut to 7.1 mm; a foam pad for the 1.6 mm gap above the cell; Kapton; LIR1254 cells; 0.15 × 2 mm nickel strip; the 5/16-24 button head bolt, no washer (README "Needs your input").
 
 ## 5. Risks to check on the first boards
 

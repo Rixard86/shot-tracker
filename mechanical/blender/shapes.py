@@ -14,6 +14,7 @@ THREAD_CREST_FLAT = 0.125
 LOBES = 6
 LOBE_POINTS = 96
 CUTTER_ABOVE = 1.0
+LATHE_MERGE = 1e-4
 
 
 def tag(obj, look):
@@ -91,6 +92,28 @@ def thread(spec, name):
     core = cylinder(dict(spec, r=r_root), name + "_core")
     attach(core, helix)
     return helix, core
+
+
+def lathe(profile, name):
+    verts = [(r * MM, 0.0, z * MM) for r, z in profile]
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [(i, i + 1) for i in range(len(verts) - 1)], [])
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.scene.collection.objects.link(obj)
+    mod = obj.modifiers.new("lathe", "SCREW")
+    mod.axis = "Z"
+    mod.angle = 2 * math.pi
+    mod.screw_offset = 0.0
+    mod.steps = mod.render_steps = ROUND_SEGMENTS
+    mod.use_merge_vertices = True
+    mod.merge_threshold = LATHE_MERGE * MM
+    activate(obj)
+    bpy.ops.object.modifier_apply(modifier=mod.name)
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.mesh.normals_make_consistent(inside=False)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    return obj
 
 
 def lobe_ring(centre, size):
