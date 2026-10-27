@@ -33,11 +33,10 @@ SLIVER_MM = 0.01
 JOIN_TOL_NM = 100
 
 SETTINGS = [
-    "--layout", "grid; rows: 2; cols: 2; hspace: 3mm; vspace: 2.5mm; hbackbone: 2mm; "
-    "rotation: 180deg; alternation: rows; renameref: {orig}_{n}",
+    "--layout", "grid; rows: 1; cols: 2; hspace: 3mm; renameref: {orig}_{n}",
     "--tabs", "annotation",
     "--cuts", "mousebites; drill: 0.5mm; spacing: 0.8mm; offset: 0.2mm; prolong: 0.5mm",
-    "--framing", "frame; width: 5mm; space: 3mm",
+    "--framing", "frame; width: 5mm; space: 3mm; mintotalheight: 70mm",
     "--tooling", "3hole; hoffset: 2.5mm; voffset: 2.5mm; size: 2mm",
     "--fiducials", "3fid; hoffset: 5mm; voffset: 3.85mm; coppersize: 1mm; opening: 2mm",
     "--post", "millradius: 0.5mm; refillzones: true",

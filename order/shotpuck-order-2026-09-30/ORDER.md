@@ -6,6 +6,8 @@ USB-C board (`main` at 36e9f82: the fab fixes of 2026-09-30 and the 2026-10-01 c
 
 **Paid in full** on 2026-10-12, $217.63: PCB $35.37 (5 panels), PCBA $151.71 (2 panels), cap $3.76 (8 pcs, the 0.8 mm-band file), shipping $26.79 (DHL Express; Global Standard Direct Line was not offered for this order, so expect DHL to charge Swedish VAT and its clearance fee on delivery). JLC support confirmed that C5456944 is **BMD-340-A-R-10**. JLC's BOM matches `shotpuck-panel-bom.csv` line for line (21 lines, same LCSC parts and designators; parts $69.09). After the BOM/CPL replacement the PCBA was requoted at $228.39 (+$76.68, parts $144.66); JLC support confirmed the updated order as submitted on 2026-10-19.
 
+**Cancelled** on 2026-10-26: JLC cancelled the PCBA order Y14-SMT026101963486 because it was not paid before the component reservation ran out. JLC support says the order paid on 2026-10-12 (Y2) was cancelled and refunded, and a cancelled order cannot be restored. The PCB and PCBA have to be ordered again (see the changes at the end). Richard chose to order rev 0B instead: `../shotpuck-order-2026-10-26/`.
+
 | Folder | Service | Upload |
 |---|---|---|
 | `1_PCB_JLCPCB` | JLCPCB PCB + Standard PCBA | `shotpuck-panel-gerbers.zip`, then `shotpuck-panel-bom.csv` + `shotpuck-panel-cpl.csv` (replaced on 2026-10-15 by the two files in `replacement_full_panel_2026-10-15/`) |
@@ -155,4 +157,11 @@ Changes on 2026-10-15 (JLCPCB PCBA order SMT026100162407_Y2):
 Changes on 2026-10-22 (JLCPCB PCBA order SMT026101963486):
 - **JLC asked whether to buy parts for BT1, J2, JP1 and JP2.** No: they are bare pads (the cell, the SWD pads, a jumper bridged in copper, the reset pads).
 - **JLC flagged J1 (C3020041): "the package cannot match the pads".** Their placement-preview picture shows a top-row J1 (42.6°). They offered A (pick another part), B (leave it off, refund), C (cancel) or D (solder as is, no complaint). Checked against JLC's EasyEDA footprint and 3D model, placed at the CPL position on the ordered panel (e059581): the six signal pads land on ours, JLC's leg holes are within 0.095 mm of ours, and the footprint's own board-outline cut-out matches the notch (10.28 mm wide, depth within 0.1 mm). The model clears the notch back wall; only the back corner of each leg root enters the board, 0.05 mm with JLC's Ø0.75 production drill, in the top 0.2 mm (see the J1 risk in §5). The flag most likely comes from the shell pads, which differ from JLC's library pads since they were enlarged on 2026-10-01, and from the body hanging past the board edge.
-- **Richard answered D** (2026-10-22): no extra parts; solder C3020041 at J1 as placed, on all 8 boards.
+- **Richard answered D** (2026-10-22): no extra parts; solder C3020041 at J1 as placed, on all 8 boards. JLC (Swee) confirmed on 2026-10-23 that the order proceeds as confirmed.
+
+Changes on 2026-10-26 (JLCPCB PCBA order Y14-SMT026101963486):
+- **JLC cancelled the order** ("PCBA Order Cancelled Due to Component Reservation Timeout", 2026-10-26 14:50 UTC): the component reservation expired without payment. After the review, JLC had moved the PCBA to order Y14, which had to be paid; no invoice or payment request for it reached Richard by email.
+- **JLC support** (chat TKIM2026102700398, dated 2026-10-27 China time): Y2, the order paid on 2026-10-12, was cancelled and refunded. Y14 was never paid, so it has no refund. A cancelled order cannot be restored, so it has to be placed again (Order History → "Reorder").
+- **Still to check:** that the Y2 refund arrives, and whether the cap order (13698800A-W2026101020127812) is still active, since it was to ship with the PCBs.
+- **Next time:** after any JLC review or requote, look in Order History for an unpaid order and pay it before the component reservation runs out.
+- **Rev 0B instead** (Richard, 2026-10-26): since everything has to be ordered again, the new order is the rev 0B board (R9 fed from VIN_RAW), packaged in `../shotpuck-order-2026-10-26/` with two boards per panel (4 assembled boards). This package stays as the record of the rev 0A order.
