@@ -39,6 +39,10 @@ h1 { font-family: var(--display); font-weight: 600; font-size: clamp(26px, 4vw, 
 button:focus-visible { outline: 2px solid var(--band); outline-offset: 2px; }
 .slider { display: inline-flex; align-items: center; gap: 8px; font: 500 14px/1 var(--body); color: var(--muted); }
 .slider input { width: 170px; accent-color: var(--band); }
+.slider output { min-width: 7ch; color: var(--fg); font-variant-numeric: tabular-nums; }
+.cut-controls { display: inline-flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
+.cut-controls[hidden] { display: none; }
+.cut-controls .slider input { width: 130px; }
 .main { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 18px; align-items: start; }
 @media (max-width: 860px) { .main { grid-template-columns: minmax(0, 1fr); } }
 .stage { position: relative; border: 1px solid var(--line); border-radius: 8px; background: var(--stage); height: clamp(420px, calc(100vh - 230px), 1200px); overflow: hidden; touch-action: none; }
@@ -73,7 +77,7 @@ button:focus-visible { outline: 2px solid var(--band); outline-offset: 2px; }
   <header>
     <div class="eyebrow">SHOTPUCK REV 0A · AS ORDERED 2026-10-12 · 3D ASSEMBLY</div>
     <h1>ShotPuck assembly</h1>
-    <p class="lead">The rev 0A puck in 3D, from the base plate up to the centre bolt. <b>Press Play, drag the slider or shift-scroll to take it apart</b>, cut it in half to see the stack, hide parts on the right, and compare the cap's 0.80 mm seal band with the 0.40 mm original that JLC3DP flagged.</p>
+    <p class="lead">The rev 0A puck in 3D, from the base plate up to the centre bolt. <b>Press Play, drag the slider or shift-scroll to take it apart</b>, cut it in half at any angle to see the stack, hide parts on the right, and compare the cap's 0.80 mm seal band with the 0.40 mm original that JLC3DP flagged.</p>
   </header>
 
   <div class="toolbar">
@@ -87,6 +91,10 @@ button:focus-visible { outline: 2px solid var(--band); outline-offset: 2px; }
       <button id="view-side" type="button" aria-pressed="false">Side</button>
     </div>
     <button id="cut" class="toggle" type="button" aria-pressed="false">Cut in half</button>
+    <span class="cut-controls" id="cut-controls" hidden>
+      <label class="slider"><span>Angle</span><input type="range" id="cut-angle" min="0" max="359" step="1" value="0" aria-label="Cut line angle in degrees from +x, seen from the cap"><output id="cut-angle-out" for="cut-angle"></output></label>
+      <label class="slider"><span>Offset</span><input type="range" id="cut-offset" step="0.1" value="0" aria-label="Cut plane offset in mm"><output id="cut-offset-out" for="cut-offset"></output></label>
+    </span>
     <button id="see" class="toggle" type="button" aria-pressed="true">See-through cap</button>
     <button id="play" class="toggle" type="button" aria-pressed="false">▶ Play</button>
     <label class="slider"><span>Assembled</span><input type="range" id="explode" min="0" max="100" value="0" aria-label="Assembled to exploded"><span>Exploded</span></label>
@@ -213,9 +221,14 @@ const EXPLODE_SMOOTH_S = 0.15;
 const EXPLODE_EPSILON = 0.0005;
 const PLAY_PERIOD_S = 6;
 const WHEEL_LINE_PX = 16;
+const DEG = Math.PI / 180;
+const CUT_NORMAL_TURN_DEG = 90;
+const CUT_OFFSET_DECIMALS = 1;
 const stage = document.getElementById("stage");
 const canvas = document.getElementById("view");
 const labelsEl = document.getElementById("labels");
+const cutAngleInput = document.getElementById("cut-angle");
+const cutOffsetInput = document.getElementById("cut-offset");
 const state = { version: "new", cut: false, see: true, explode: 0, explodeTarget: 0 };
 
 const token = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -618,8 +631,6 @@ sectionMat.userData.section = true;
 const section = new THREE.Mesh(new THREE.PlaneGeometry(SECTION_SIZE, SECTION_SIZE), sectionMat);
 section.renderOrder = 2;
 section.onAfterRender = r => r.clearStencil();
-clipPlane.coplanarPoint(section.position);
-section.lookAt(section.position.clone().sub(clipPlane.normal));
 scene.add(section);
 
 const tags = D.gaps.map(g => {
@@ -628,7 +639,7 @@ const tags = D.gaps.map(g => {
   el.textContent = `${g.name} · ${g.width.toFixed(1)} mm`;
   labelsEl.appendChild(el);
   const a = g.deg * Math.PI / 180;
-  return { el, at: cad(LABEL_R * Math.cos(a), LABEL_R * Math.sin(a), L.zCap), cadY: Math.sin(a) };
+  return { el, at: cad(LABEL_R * Math.cos(a), LABEL_R * Math.sin(a), L.zCap) };
 });
 
 function applyTheme() {
@@ -648,6 +659,18 @@ function applySee() {
 function applyCut() {
   materials.forEach(m => { m.clippingPlanes = state.cut && !m.userData.section ? [clipPlane] : null; m.needsUpdate = true; });
   section.visible = state.cut;
+  document.getElementById("cut-controls").hidden = !state.cut;
+}
+
+function placeCut() {
+  const deg = Number(cutAngleInput.value), offset = Number(cutOffsetInput.value);
+  const normalRad = (deg + CUT_NORMAL_TURN_DEG) * DEG;
+  clipPlane.normal.copy(cad(Math.cos(normalRad), Math.sin(normalRad), 0));
+  clipPlane.constant = -offset;
+  clipPlane.coplanarPoint(section.position);
+  section.lookAt(section.position.clone().sub(clipPlane.normal));
+  document.getElementById("cut-angle-out").textContent = `${deg}°`;
+  document.getElementById("cut-offset-out").textContent = `${offset > 0 ? "+" : ""}${offset.toFixed(CUT_OFFSET_DECIMALS)} mm`;
 }
 
 function press(ids, active) {
@@ -698,7 +721,7 @@ function placeTags() {
   const below = camera.position.y < capY + 1;
   tags.forEach(t => {
     const p = t.at.clone().setY(capY).project(camera);
-    const show = state.version === "new" && below && p.z < 1 && !(state.cut && t.cadY < 0) && !parts.plate.visible;
+    const show = state.version === "new" && below && p.z < 1 && !(state.cut && clipPlane.distanceToPoint(t.at) < 0) && !parts.plate.visible;
     t.el.hidden = !show;
     if (!show) return;
     t.el.style.left = `${(p.x + 1) / 2 * w}px`;
@@ -744,6 +767,9 @@ document.getElementById("cut").addEventListener("click", e => {
   e.currentTarget.setAttribute("aria-pressed", String(state.cut));
   applyCut();
 });
+cutOffsetInput.min = -L.R;
+cutOffsetInput.max = L.R;
+[cutAngleInput, cutOffsetInput].forEach(input => input.addEventListener("input", placeCut));
 Object.keys(parts).forEach(k => {
   const box = document.getElementById(`p-${k}`);
   const sync = () => { parts[k].visible = box.checked; };
@@ -786,6 +812,7 @@ new MutationObserver(applyTheme).observe(document.documentElement, { attributes:
 new ResizeObserver(resize).observe(stage);
 
 applyTheme();
+placeCut();
 applyCut();
 applySee();
 setVersion("new");

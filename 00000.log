@@ -1,0 +1,23 @@
+cli mode, Current OrcaSlicer Version 2.4.2
+Will start to read model file now, file count :1
+allow_multicolor_oneplate 1, allow_rotations 1 skip_modified_gcodes 0 avoid_extrusion_cali_region 0 loaded_filament_ids size 0, clone_objects size 0, skip_useless_pick 0, allow_newer_file 0, allow_mix_temp 0
+plate_to_slice=0, normative_check=1, use_first_fila_as_default=0
+read model file:mechanical/out/plate_fdm.stl
+TriangleMesh::repair() started
+TriangleMesh::repair() finished
+object mechanical/out/plate_fdm.stl, id :5, from stl or other 3mf
+Slic3r::CLI::run:before load settings, file count=2
+Slic3r::CLI::run::<lambda_e4e3d71a1f1ff4e2a068f554347fe46d>::operator ():load setting file C:/Users/rixar/AppData/Local/Temp/claude/5ced2130ad32f0e7/bb322a70-0aa7-4ac6-9ca5-de6b08c42061/scratchpad/orca_test/m.json, with rule 1
+no substitutions performed from file C:/Users/rixar/AppData/Local/Temp/claude/5ced2130ad32f0e7/bb322a70-0aa7-4ac6-9ca5-de6b08c42061/scratchpad/orca_test/m.json
+loaded machine config C:/Users/rixar/AppData/Local/Temp/claude/5ced2130ad32f0e7/bb322a70-0aa7-4ac6-9ca5-de6b08c42061/scratchpad/orca_test/m.json, type My Ender-3 V2, name User, inherits , printer_model_id 
+Slic3r::CLI::run::<lambda_e4e3d71a1f1ff4e2a068f554347fe46d>::operator ():load setting file C:/Users/rixar/AppData/Local/Temp/claude/5ced2130ad32f0e7/bb322a70-0aa7-4ac6-9ca5-de6b08c42061/scratchpad/orca_test/p.json, with rule 1
+no substitutions performed from file C:/Users/rixar/AppData/Local/Temp/claude/5ced2130ad32f0e7/bb322a70-0aa7-4ac6-9ca5-de6b08c42061/scratchpad/orca_test/p.json
+loaded process config C:/Users/rixar/AppData/Local/Temp/claude/5ced2130ad32f0e7/bb322a70-0aa7-4ac6-9ca5-de6b08c42061/scratchpad/orca_test/p.json, type 0.20mm Standard @Creality Ender3V2, name User, inherits 
+Slic3r::CLI::run::<lambda_e4e3d71a1f1ff4e2a068f554347fe46d>::operator ():load setting file C:/Users/rixar/AppData/Local/Temp/claude/5ced2130ad32f0e7/bb322a70-0aa7-4ac6-9ca5-de6b08c42061/scratchpad/orca_test/f.json, with rule 1
+no substitutions performed from file C:/Users/rixar/AppData/Local/Temp/claude/5ced2130ad32f0e7/bb322a70-0aa7-4ac6-9ca5-de6b08c42061/scratchpad/orca_test/f.json
+loaded filament 1 from file C:/Users/rixar/AppData/Local/Temp/claude/5ced2130ad32f0e7/bb322a70-0aa7-4ac6-9ca5-de6b08c42061/scratchpad/orca_test/f.json, type User, name add-north E-PLA @My Ender-3 V2, inherits 
+current printer , new printer My Ender-3 V2, current process , new process 0.20mm Standard @Creality Ender3V2
+current printer inherits , new printer inherits , current process inherits , new process inherits 
+index 0, new print compatible printer Creality Ender-3 V2 0.4 nozzle
+new printer My Ender-3 V2, inherited from , new process 0.20mm Standard @Creality Ender3V2, inherited from  ,compatible 0
+Slic3r::CLI::run 2652: process not compatible with printer.
