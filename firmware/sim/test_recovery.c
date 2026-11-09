@@ -13,6 +13,9 @@
 #define STACK_OVERFLOW_REASON 2u
 #define HUGE_REASON 1000u
 #define SOME_CRASHES 41u
+#define UNPLUG_AFTER_MS 10000u
+#define LONG_CHARGE_MS 600000u
+#define POLL_STEP_MS 250u
 
 static int failures;
 
@@ -169,6 +172,34 @@ static void test_crash_count(void)
 	      "saturates");
 }
 
+static bool window_at(pairing_window_t *w, bool vbus, uint32_t now_ms)
+{
+	vbus_sample_t sample = {.vbus = vbus, .now_ms = now_ms};
+
+	return pairing_window_step(w, &sample);
+}
+
+static void test_pairing_window(uint32_t start)
+{
+	pairing_window_t w = {0};
+
+	check(!window_at(&w, false, start), "no charger: no window");
+	check(window_at(&w, true, start + POLL_STEP_MS), "charger attached: window opens");
+	check(window_at(&w, true, start + POLL_STEP_MS + RECOVERY_PAIRING_WINDOW_MS - 1u),
+	      "open until 60 s");
+	check(!window_at(&w, true, start + POLL_STEP_MS + RECOVERY_PAIRING_WINDOW_MS),
+	      "closed after 60 s with the charger still attached");
+	check(!window_at(&w, true, start + LONG_CHARGE_MS), "a long charge does not reopen it");
+	check(!window_at(&w, false, start + LONG_CHARGE_MS + POLL_STEP_MS), "unplugged: closed");
+	uint32_t replug = start + LONG_CHARGE_MS + 2u * POLL_STEP_MS;
+	check(window_at(&w, true, replug), "plugging in again opens a fresh window");
+	check(!window_at(&w, false, replug + UNPLUG_AFTER_MS), "unplugging closes it at once");
+	check(!window_at(&w, false, replug + UNPLUG_AFTER_MS + POLL_STEP_MS), "stays closed");
+
+	pairing_window_t boot = {0};
+	check(window_at(&boot, true, start), "boot with the charger attached opens the window");
+}
+
 int main(void)
 {
 	test_bridged_at_boot();
@@ -181,6 +212,8 @@ int main(void)
 	test_crash_mark();
 	test_reset_classify();
 	test_crash_count();
+	test_pairing_window(0u);
+	test_pairing_window(NEAR_WRAP_MS);
 	printf("RECOVERY TESTS: %s\n", failures ? "FAIL" : "PASS");
 	return failures ? 1 : 0;
 }

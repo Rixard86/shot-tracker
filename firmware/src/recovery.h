@@ -10,6 +10,7 @@
 #define RECOVERY_LOW_BATTERY_READINGS 3u
 #define RECOVERY_CRASH_REASON_MAX 0xFDu
 #define RECOVERY_CRASH_COUNT_MAX 0xFFFFu
+#define RECOVERY_PAIRING_WINDOW_MS 60000u
 
 typedef struct {
 	bool armed;
@@ -21,6 +22,17 @@ typedef struct {
 	bool bridged;
 	uint32_t now_ms;
 } pad_sample_t;
+
+typedef struct {
+	bool open;
+	bool vbus_seen;
+	uint32_t opened_at_ms;
+} pairing_window_t;
+
+typedef struct {
+	bool vbus;
+	uint32_t now_ms;
+} vbus_sample_t;
 
 typedef struct {
 	uint8_t crash_mark;
@@ -45,5 +57,6 @@ uint8_t crash_mark_reason(uint8_t mark);
 uint8_t reset_classify(const reset_flags_t *f);
 bool reset_is_crash(uint8_t cause);
 uint16_t crash_count_next(uint16_t count, uint8_t cause);
+bool pairing_window_step(pairing_window_t *w, const vbus_sample_t *s);
 
 #endif

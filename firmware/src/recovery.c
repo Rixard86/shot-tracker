@@ -117,3 +117,17 @@ uint16_t crash_count_next(uint16_t count, uint8_t cause)
 	}
 	return (uint16_t)(count + 1u);
 }
+
+bool pairing_window_step(pairing_window_t *w, const vbus_sample_t *s)
+{
+	if (s->vbus && !w->vbus_seen) {
+		w->open = true;
+		w->opened_at_ms = s->now_ms;
+	}
+	w->vbus_seen = s->vbus;
+	if (!s->vbus || s->now_ms - w->opened_at_ms >= RECOVERY_PAIRING_WINDOW_MS) {
+		w->open = false;
+	}
+	return w->open;
+}
+

@@ -6,15 +6,15 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/atomic.h>
 
+#include "recovery.h"
+
 LOG_MODULE_REGISTER(claim, LOG_LEVEL_INF);
 
-#define CLAIM_WINDOW_MS 60000u
 #define UNENCRYPTED_LINK_MS 30000u
 
 static atomic_t window_open;
 static atomic_t paired;
-static bool vbus_seen;
-static uint32_t opened_at_ms;
+static pairing_window_t window;
 
 static void drop_if_unencrypted(struct bt_conn *conn, void *data)
 {
@@ -101,17 +101,13 @@ int claim_init(void)
 
 void claim_poll(bool vbus)
 {
-	uint32_t now = k_uptime_get_32();
+	vbus_sample_t sample = {.vbus = vbus, .now_ms = k_uptime_get_32()};
+	bool was_open = window.open;
+	bool open = pairing_window_step(&window, &sample);
 
-	if (vbus && !vbus_seen) {
-		opened_at_ms = now;
-		atomic_set(&window_open, 1);
-		LOG_INF("pairing window open");
-	}
-	vbus_seen = vbus;
-	if (atomic_get(&window_open) && now - opened_at_ms >= CLAIM_WINDOW_MS) {
-		atomic_clear(&window_open);
-		LOG_INF("pairing window closed");
+	atomic_set(&window_open, open ? 1 : 0);
+	if (open != was_open) {
+		LOG_INF("pairing window %s", open ? "open" : "closed");
 	}
 }
 

@@ -1,11 +1,15 @@
 # ShotPuck BLE protocol (v3)
 
+Firmware 0.3.2 (still v3):
+- The pairing window closes as soon as the charger is removed (still at most 60 s), see *Pairing*.
+- Firmware uploads over Bluetooth work only while the charger is attached; otherwise the puck refuses each upload chunk with SMP rc 6 (see *Firmware update*).
+
 Firmware 0.3.1 (still v3; the existing layouts are unchanged):
 - While the pairing window is open, the advertising data carries a **pairing marker** (manufacturer data), so an app can pair as soon as the charger goes in (see *Discovery and identity*).
 - A link that is **not encrypted 30 s after it connects is dropped**. Connect and pair in one go; never hold an unpaired link open while the user does something.
 - A CONTROL write that finds the command queue full fails with ATT error 0x11 (see *CONTROL*).
 - `seq` never goes backwards, also across a factory reset.
-- Fixes 0.3.0's link loss about 2 s after a bonded phone changes its subscriptions (a stack overflow in the firmware's settings store). Update 0.3.0 pucks by cable: an OTA session subscribes too and can be cut the same way.
+- Fixes 0.3.0's link loss about 2 s after a bonded phone changes its subscriptions (a stack overflow in the firmware's settings store). 0.3.0 is obsolete; no puck runs it.
 - New read-only **DIAG** characteristic (`…0008…`): why the puck last restarted, a crash count and stack headroom (see *DIAG*).
 - While events or captures are streaming, the puck asks for a 15–30 ms connection interval, and goes back to 105–210 ms 5 s after the transfer ends.
 
@@ -42,7 +46,7 @@ Source of truth: `firmware/src/protocol.h`. All multi-byte values are **little-e
 
 Everything in the ShotPuck service needs an **encrypted link**, which a phone only gets by pairing (bonding) with the puck. Reading COUNT, CONFIG or STATUS, subscribing to any notification, and writing CONTROL or CONFIG all fail without it (ATT "insufficient encryption/authentication"). The Device Information Service and the standard Battery Service stay open.
 
-- **Pairing window:** the puck accepts a *new* pairing only for **60 s after the charger is attached** (also after a boot with the charger attached). The LED blinks once a second while the window is open, and blinks twice when a phone has paired. Outside the window, pairing requests are rejected. Phones that are already paired reconnect and encrypt at any time.
+- **Pairing window:** the puck accepts a *new* pairing only for **60 s after the charger is attached, and only while it stays attached** (0.3.2; also after a boot with the charger attached). Removing the charger closes the window at once. The LED blinks once a second while the window is open, and blinks twice when a phone has paired. Outside the window, pairing requests are rejected. Phones that are already paired reconnect and encrypt at any time.
 - **Charger LED** (after the pairing window, while the charger stays attached; `firmware/src/chg_led.c`): one short blink every 2 s while charging; **steady on** when the charger reports done and the cell reads ≥ 4.10 V; three quick blinks every 2 s when charging is paused by the temperature gate; dark if the charger is attached but neither charging nor full (no input power or a fault). The steady LED starts only after the MCP73831 has terminated, so its ~1 mA never holds the charge current above the termination threshold. It slowly drains the cell; when the charger tops up (below its recharge threshold), the LED blinks again until done. STATUS carries the same state (`SP_ST_VBUS`, `SP_ST_CHARGING`, `SP_ST_CHG_INHIBIT`).
 - **Factory reset (reset pads JP2, cap off):** bridge the two round pads beside the module with tweezers. The LED lights while they are bridged (within about 2 s); held for 5 s, the puck erases its settings, pairings, shot count, shot log and captures (the LED stays on for about 10 s while it erases), blinks 5 times fast and reboots. `seq` carries on from where it was, so later events never reuse an earlier seq. Only a bridge made while the puck runs counts: pads already shorted at boot do nothing until released. After 3 crash or watchdog resets in a row, each within a minute of boot, the firmware erases its settings and pairings by itself; the shot log and captures stay. Phones must forget the puck and pair again (through the charger window).
 - Method: LE Secure Connections, "Just Works" (no PIN). iOS and Android show their standard pairing prompt.
@@ -55,7 +59,7 @@ App flow for adding a puck (firmware 0.3.1; no unencrypted link is held while th
 3. As soon as its advertising carries the pairing marker, stop the scan, connect and trigger pairing straight away. On Android, call `createBond()`. On iOS, read an encrypted characteristic such as COUNT, which makes iOS pair.
 4. Over the now encrypted link, read the DIS serial number and COUNT. Store the serial as this user's puck. From then on, connect only to that serial and use it as `device_id`.
 
-Pucks on firmware 0.3.0 never show the marker: offer a manual "Pair now" button on the charger step that does step 3 at once. If pairing fails with "pairing not allowed", the window was closed: disconnect and ask the user to reattach the charger.
+Ask the user to keep the charger in until the phone has paired: unplugging closes the window (0.3.2). If pairing fails with "pairing not allowed", the window was closed: disconnect and ask the user to plug the charger in again.
 
 ## Service `7a1e0001-5b0c-4f3a-9c6e-3a5d2b9e0a01`
 
@@ -209,6 +213,7 @@ The puck runs **MCUboot** and exposes the standard **MCUmgr SMP** service, so no
 
 - SMP service `8D53DC1D-1DB7-4CD3-868B-8A527460AA84`, characteristic `DA2E7828-FBCE-4E01-AE9E-261174997C48`. It requires the same encrypted (paired) link as everything else.
 - In the Flutter app, use Nordic's **`mcumgr_flutter`** plugin (wraps the iOS/Android nRF Connect Device Manager libraries) with the file `shotpuck_update.bin`. The nRF Connect Device Manager app works for manual updates.
+- **Charger required (0.3.2):** the puck accepts upload data only while the charger is attached. Each upload request is checked; without the charger the puck answers SMP `rc` 6 (`MGMT_ERR_EBADSTATE`) and writes nothing, and unplugging during an upload stops it at the next chunk (the incomplete image never boots). Check STATUS `SP_ST_VBUS` before starting and tell the user to plug the charger in. Image state changes (test, confirm) and reset are not gated.
 - Recommended mode **Test and confirm**: upload (roughly 20–40 s at MTU 247), mark as test, reset. MCUboot then swaps the images (the puck is unavailable for about 10–20 s), the new version boots and advertises, and the phone reconnects and confirms it.
 - The puck also confirms a new image by itself once a paired phone has connected over an encrypted link and the image has run 10 s. Reconnect and pair (encrypt) after the OTA reset; until then the image stays on trial. If the new image crashes or hangs before that (the watchdog resets a hang after 10 s), MCUboot **rolls back** to the previous version on the next boot.
 - Only images signed with the ShotPuck private key are accepted: MCUboot checks the ECDSA-P256 signature before it boots anything.
