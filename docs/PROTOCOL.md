@@ -5,6 +5,7 @@ Firmware 0.3.1 (still v3; the existing layouts are unchanged):
 - A link that is **not encrypted 30 s after it connects is dropped**. Connect and pair in one go; never hold an unpaired link open while the user does something.
 - A CONTROL write that finds the command queue full fails with ATT error 0x11 (see *CONTROL*).
 - `seq` never goes backwards, also across a factory reset.
+- Fixes 0.3.0's link loss about 2 s after a bonded phone changes its subscriptions (a stack overflow in the firmware's settings store). Update 0.3.0 pucks by cable: an OTA session subscribes too and can be cut the same way.
 - New read-only **DIAG** characteristic (`…0008…`): why the puck last restarted, a crash count and stack headroom (see *DIAG*).
 - While events or captures are streaming, the puck asks for a 15–30 ms connection interval, and goes back to 105–210 ms 5 s after the transfer ends.
 
