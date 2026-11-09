@@ -128,7 +128,11 @@ static int finish(capw_t *w)
 {
 	w->active = false;
 	capenc_finish(&w->enc);
-	if (drain(w) != 0 || capstore_commit(w->deps.store) != 0) {
+	if (drain(w) != 0) {
+		capstore_abort(w->deps.store);
+		return 0;
+	}
+	if (capstore_commit(w->deps.store) != 0) {
 		return 0;
 	}
 	w->committed_seq = w->current.seq;

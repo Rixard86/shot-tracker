@@ -1,20 +1,30 @@
-config: trig=6000 mg, move=300 mg, pre_still>=500 ms, post_lf>=250 mg [100-600 ms], fs=480 Hz
 CAPTURE TESTS: PASS
 wrap: 952 of 3000 events kept (128 per sector)
 EVLOG TESTS: PASS
 CHG LED TESTS: PASS
 RECOVERY TESTS: PASS
-[nominal] sessions=36 sim_time=4.47 h shots=494  recall=99.60%  precision=100.00%  FN=2 {'rej_not_still': 1, 'missed_trigger': 1}  FP=0 {}  ACTIVE=81.2% of time  wakes=98
+CODEC TESTS: PASS
+CAPSTORE TESTS: PASS
+info: standard captures held 158, ratio 3.31 (synthetic signal)
+info: extended captures held 38, ratio 4.29 (synthetic signal)
+CAPWRITER TESTS: PASS
+info: 5373 single write/erase faults, 0 lost the next capture (live or after a reboot)
+CAPWRITER FAULT TESTS: PASS
+LED SEQ TESTS: PASS
+WIRE TESTS: PASS
+EVQ TESTS: PASS
+config: trig=6000 mg, move=300 mg, pre_still>=500 ms, post_lf>=250 mg [100-600 ms], fs=480 Hz
+[nominal] sessions=36 sim_time=4.47 h shots=494  recall=99.60%  precision=100.00%  FN=2 {'rej_not_still': 1, 'missed_trigger': 1}  FP=0 {}  ACTIVE=81.1% of time  wakes=98
   feature ranges over triggered candidates (5th/50th/95th pct):
     peak_hf_mg    shots [10366 30482 57245]   non-shots [ 6393  9856 22120]
     pre_still_ms  shots [ 969 4162 7447]   non-shots [   20    20 13607]
     post_lf_mg    shots [ 396  720 1104]   non-shots [  5 366 828]
-[hard-cases] sessions=36 sim_time=4.38 h shots=448  recall=99.11%  precision=99.78%  FN=4 {'missed_trigger': 3, 'rej_not_still': 1}  FP=1 {'grab': 1}  ACTIVE=81.8% of time  wakes=100
+[hard-cases] sessions=36 sim_time=4.38 h shots=448  recall=99.11%  precision=99.78%  FN=4 {'missed_trigger': 3, 'rej_not_still': 1}  FP=1 {'grab': 1}  ACTIVE=81.7% of time  wakes=100
   feature ranges over triggered candidates (5th/50th/95th pct):
     peak_hf_mg    shots [11165 26965 56825]   non-shots [ 6255 10389 26053]
     pre_still_ms  shots [ 973 4420 7473]   non-shots [   20    22 13699]
     post_lf_mg    shots [ 390  713 1158]   non-shots [  5 314 804]
-[weak-bow (info)] sessions=18 sim_time=2.12 h shots=223  recall=81.17%  precision=100.00%  FN=42 {'rej_no_follow': 18, 'missed_trigger': 22, 'rej_not_still': 2}  FP=0 {}  ACTIVE=79.3% of time  wakes=45
+[weak-bow (info)] sessions=18 sim_time=2.12 h shots=223  recall=81.17%  precision=100.00%  FN=42 {'rej_no_follow': 18, 'missed_trigger': 22, 'rej_not_still': 2}  FP=0 {}  ACTIVE=79.2% of time  wakes=45
   feature ranges over triggered candidates (5th/50th/95th pct):
     peak_hf_mg    shots [ 6819 11037 17547]   non-shots [ 6262 10264 17906]
     pre_still_ms  shots [1101 4351 7518]   non-shots [   20    20 11184]

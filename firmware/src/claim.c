@@ -9,11 +9,64 @@
 LOG_MODULE_REGISTER(claim, LOG_LEVEL_INF);
 
 #define CLAIM_WINDOW_MS 60000u
+#define UNENCRYPTED_LINK_MS 30000u
 
 static atomic_t window_open;
 static atomic_t paired;
 static bool vbus_seen;
 static uint32_t opened_at_ms;
+
+static void drop_if_unencrypted(struct bt_conn *conn, void *data)
+{
+	struct bt_conn_info info;
+
+	ARG_UNUSED(data);
+	if (bt_conn_get_info(conn, &info) || info.state != BT_CONN_STATE_CONNECTED) {
+		return;
+	}
+	if (bt_conn_get_security(conn) < BT_SECURITY_L2) {
+		LOG_INF("link not encrypted in time: disconnecting");
+		bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+	}
+}
+
+static void drop_unencrypted(struct k_work *work)
+{
+	ARG_UNUSED(work);
+	bt_conn_foreach(BT_CONN_TYPE_LE, drop_if_unencrypted, NULL);
+}
+
+static K_WORK_DELAYABLE_DEFINE(encrypt_deadline, drop_unencrypted);
+
+static void guard_connected(struct bt_conn *conn, uint8_t err)
+{
+	ARG_UNUSED(conn);
+	if (!err) {
+		k_work_reschedule(&encrypt_deadline, K_MSEC(UNENCRYPTED_LINK_MS));
+	}
+}
+
+static void guard_disconnected(struct bt_conn *conn, uint8_t reason)
+{
+	ARG_UNUSED(conn);
+	ARG_UNUSED(reason);
+	k_work_cancel_delayable(&encrypt_deadline);
+}
+
+static void guard_security_changed(struct bt_conn *conn, bt_security_t level,
+				   enum bt_security_err err)
+{
+	ARG_UNUSED(conn);
+	if (err == BT_SECURITY_ERR_SUCCESS && level >= BT_SECURITY_L2) {
+		k_work_cancel_delayable(&encrypt_deadline);
+	}
+}
+
+BT_CONN_CB_DEFINE(guard_cbs) = {
+	.connected = guard_connected,
+	.disconnected = guard_disconnected,
+	.security_changed = guard_security_changed,
+};
 
 static enum bt_security_err pairing_accept(struct bt_conn *conn,
 					   const struct bt_conn_pairing_feat *const feat)

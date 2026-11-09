@@ -11,5 +11,6 @@ void event_tx_record(const sp_event_t *event);
 void event_tx_replay(uint32_t from_seq);
 bool event_tx_busy(void);
 void event_tx_pump(void);
+uint32_t event_tx_newest_seq(void);
 
 #endif

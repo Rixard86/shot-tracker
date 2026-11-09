@@ -25,6 +25,7 @@ typedef struct {
 	const evlog_flash_t *flash;
 	uint32_t slots;
 	uint32_t head;
+	uint32_t newest_seq;
 } evlog_t;
 
 typedef struct {

@@ -69,6 +69,7 @@ static int find_head(evlog_t *log)
 		}
 	}
 	log->head = found ? (newest + 1u) % log->slots : 0u;
+	log->newest_seq = newest_seq;
 	return 0;
 }
 
@@ -93,6 +94,7 @@ int evlog_init(evlog_t *log, const evlog_flash_t *flash)
 	log->flash = flash;
 	log->slots = flash->size / (uint32_t)sizeof(evlog_record_t);
 	log->head = 0;
+	log->newest_seq = 0;
 	if (log->slots == 0 || flash->sector_size % sizeof(evlog_record_t) != 0 ||
 	    flash->size % flash->sector_size != 0) {
 		return ERR_LAYOUT;
@@ -109,6 +111,7 @@ int evlog_append(evlog_t *log, const sp_event_t *event)
 
 	rec.check = checksum(&rec);
 	log->head = (slot + 1u) % log->slots;
+	log->newest_seq = event->seq;
 	if (slot % per_sector(log) == 0) {
 		int err = log->flash->erase_sector(slot_offset(slot));
 		if (err) {

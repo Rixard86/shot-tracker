@@ -9,6 +9,9 @@
 #define GUARD_SAMPLES 10u  /* motion within this many samples of the trigger
                               is attributed to the shot itself (~20 ms)   */
 #define PEAK_WIN_MS 20u
+#define WAKE_THS_LSB_MG 31.25f
+#define WAKE_THS_MAX 63u
+#define SLOPE_DIVISOR 2.0f
 #define TAU_GRAVITY_S 0.25f /* gravity estimate time constant             */
 #define TAU_LF_S 0.03f     /* low-frequency motion time constant (~5 Hz)  */
 
@@ -154,19 +157,29 @@ int sd_process(sd_state_t *s, const int16_t xyz_mg[3], uint32_t t_ms, sd_event_t
 	return 0;
 }
 
+uint8_t sd_wake_ths_lsb(float wake_mg)
+{
+	float lsb = ceilf(wake_mg / WAKE_THS_LSB_MG);
+
+	if (lsb < 1.0f) {
+		return 1u;
+	}
+	return lsb > (float)WAKE_THS_MAX ? WAKE_THS_MAX : (uint8_t)lsb;
+}
+
 int sd_idle_sample(sd_state_t *s, const int16_t xyz_mg[3], uint32_t t_ms)
 {
 	(void)t_ms;
-	float x[3] = {(float)xyz_mg[0], (float)xyz_mg[1], (float)xyz_mg[2]};
+	float threshold = (float)sd_wake_ths_lsb(s->cfg.wake_mg) * WAKE_THS_LSB_MG;
 	int wake = 0;
 
-	if (s->have_idle_ref) {
-		float d = norm3(x[0] - s->idle_ref[0], x[1] - s->idle_ref[1],
-				x[2] - s->idle_ref[2]);
-		wake = d > s->cfg.wake_mg;
-	}
 	for (int i = 0; i < 3; i++) {
-		s->idle_ref[i] = x[i];
+		float x = (float)xyz_mg[i];
+
+		if (s->have_idle_ref && fabsf(x - s->idle_ref[i]) / SLOPE_DIVISOR > threshold) {
+			wake = 1;
+		}
+		s->idle_ref[i] = x;
 	}
 	s->have_idle_ref = !wake;
 	return wake;

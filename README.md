@@ -10,14 +10,14 @@ A Ø40 × 10.4 mm puck that bolts onto the free face of an Avalon riser weight (
 | Battery | LIR1254 Li-ion coin, 45–65 mAh, plain (no tabs) on spring contacts, protected by TI BQ29700 + DMN2004DWK; charged through a waterproof (IPX8) side-entry USB-C port, power only (21 mA, temperature-gated) |
 | Firmware | Zephyr 4.1, custom board `shotpuck/nrf52840`, MCUboot 28 KB + signed app 201 KB (256 KB slots) / 107 KB RAM (58 KB of it the capture ring); captures compressed into a 408 KB flash area (D31) |
 | Updates | Over the air: MCUboot with ECDSA-P256 signed images and automatic rollback, MCUmgr/SMP over BLE for paired phones, 10 s watchdog |
-| Security / sync | Pairing required (LE Secure Connections); new phones only within 60 s of attaching the charger. Last ~900 shots kept in flash for replay. |
+| Security / sync | Pairing required (LE Secure Connections); new phones only within 60 s of attaching the charger, which the advertising data signals so the app pairs by itself; links that do not encrypt within 30 s are dropped. Last ~900 shots kept in flash for replay. |
 
 ## Repository
 
 ```
 layout.json                 shared geometry: CAD and PCB both read it
 firmware/                   Zephyr app (src/, boards/shotpuck/, prj.conf, debug.conf)
-firmware/sim/               Monte Carlo validation of src/shot_detect.c, unit tests of capture.c, evlog.c, chg_led.c, recovery.c, the capture codec and store, and an end-to-end capture test (+ results.txt)
+firmware/sim/               Monte Carlo validation of src/shot_detect.c, unit tests of capture.c, evlog.c, chg_led.c, recovery.c, led_seq.c, wire.c, evq.c, the capture codec and store, and an end-to-end capture test (+ results.txt)
 firmware/VERSION            firmware version (signed into the OTA image, shown in DIS and STATUS)
 firmware/sysbuild.*         MCUboot + signing setup (refuses MCUboot's public dev key)
 firmware/shotpuck_full.hex  MCUboot + signed app, for the first flash via the SWD test pads
@@ -59,7 +59,7 @@ order/                      order packages for JLC (PCB + assembly, plate, cap),
 | D2 | **Flat 6061 plate (2.0 mm) + polycarbonate cap, bolted on through a steel sleeve** | Richard: the v0.2 stud could not be fitted to the bow (it needs a bolt from above), and a flat plate is cheaper (laser or waterjet, no turning). The sleeve carries the bolt's clamp load to the plate; on the prototype the PC cap top sits between the bolt head and the sleeve (D21) | Turned 7075 base with an integral stud (v0.2) |
 | D3 | **nRF52840 in high-voltage mode** (cell → VDDH, REG0 = 3.0 V) | No regulator, no battery divider (internal VDDH/5), fewer leaks | External LDO |
 | D4 | **MCP73831 + firmware temperature gate** (nRF die temperature, <1 °C / >44 °C) | MCP73831 programs down to 15 mA; the TS-pin chargers found start at 100 mA. Default is *charging allowed* if the MCU is dead, so a flat cell always recovers. | Charger with an NTC input and a thermistor at the cell |
-| D5 | **32 kHz from internal RC, REG0/REG1 in LDO mode** | The BMD-340 has no 32.768 kHz crystal; LDO is the tested default | Enable DC/DC on REG0/REG1 (the BMD-340 has the inductors; about half the radio current) |
+| D5 | **32 kHz from internal RC; REG1 in DC/DC mode in the app (0.3.1), REG0 and MCUboot in LDO mode** | The BMD-340 has no 32.768 kHz crystal. Its data sheet (UBX-19033353 §3.3) puts an LDO and a DC/DC converter with no external parts in both regulator stages, and DC/DC about halves the CPU and radio current. REG0 also feeds the IMU, so it stays LDO until its noise is checked; MCUboot stays LDO so an OTA image with DC/DC can roll back | All LDO (0.3.0); DC/DC on REG0 as well |
 | D6 | **Plain LIR1254 (no tabs) on contacts:** a + spring against the can side and a − strap over the top cap, soldered to two SMD pads left of the notch; the cap's foam pad clamps the cell and the strap | Richard's choice: no tab variant to source, no soldering on the cell, swappable | Tabbed LIR1254 soldered to pads; 601015 pouch (closed-ring board, ~9.9 mm) |
 | D7 | **Pairing required; new pairings only within 60 s of attaching the charger** (LE Secure Connections Just Works, up to 4 phones, FORGET_BONDS to reset) | Several pucks and shooters at one club: other apps must not read, reconfigure or reset your puck. The charger gesture proves physical possession. | Open access (v1), or a PIN shown by LED blinks |
 | D8 | **Detector thresholds are defaults, tunable over BLE**; every candidate is reported | Real release-shock data is unknown until you shoot | – |
@@ -110,7 +110,7 @@ The detector needs three things together: a high-frequency shock (6 g sample-to-
 
 ## Battery life (estimate, verify via JP1)
 
-The idle draw is roughly 14 µA (LSM6DSV32X accelerometer in low-power mode 1 at 15 Hz, about 7 µA by interpolating the datasheet's 4.0 µA at 1.875 Hz and 17 µA at 60 Hz; BQ29700 protection 4 µA; nRF System ON + RC). While active it is roughly 0.8–0.9 mA: the accelerometer and gyroscope together are about 0.65 mA, plus 480 Hz FIFO reads and the BLE link. At **2 h of training per day** that is ≈ 2.0 mAh/day, so roughly **3–4.5 weeks per charge** from a 45–65 mAh LIR1254 (a little less, as the 3.3 V cut-off leaves some capacity unused). A full charge at 21 mA takes about 2.5–3.5 h. The low-battery cut-off (3.3 V) puts the puck into System OFF until the charger is attached.
+The idle draw is roughly 14 µA (LSM6DSV32X accelerometer in low-power mode 1 at 15 Hz, about 7 µA by interpolating the datasheet's 4.0 µA at 1.875 Hz and 17 µA at 60 Hz; BQ29700 protection 4 µA; nRF System ON + RC). While active it is roughly 0.8–0.9 mA: the accelerometer and gyroscope together are about 0.65 mA, plus 480 Hz FIFO reads and the BLE link. At **2 h of training per day** that is ≈ 2.0 mAh/day, so roughly **3–4.5 weeks per charge** from a 45–65 mAh LIR1254 (a little less, as the 3.3 V cut-off leaves some capacity unused). A full charge at 21 mA takes about 2.5–3.5 h. The low-battery cut-off (3.3 V, three readings in a row since 0.3.1: about 30 s while active, 3 min while idle) puts the puck into System OFF until the charger is attached.
 
 ## Build & flash
 
@@ -145,7 +145,7 @@ python zephyr\scripts\build\mergehex.py -o shotpuck_full.hex build\sb\mcuboot\ze
 - The first boot programs UICR REGOUT0 = 3.0 V and resets once.
 - Generate a new signing key only for a new product line: `python C:\zp\bootloader\mcuboot\scripts\imgtool.py keygen -k ota-signing-key.pem -t ecdsa-p256`. Pucks flashed with one key never accept images signed with another.
 
-**Simulation + unit tests:** `set CC=%USERPROFILE%\tools\w64devkit\bin\gcc.exe` then `python firmware/sim/simulate.py --sessions 36 --stress --seed 2026` (needs numpy, scipy). Must print `CAPTURE TESTS: PASS`, `EVLOG TESTS: PASS`, `CHG LED TESTS: PASS`, `RECOVERY TESTS: PASS`, `CODEC TESTS: PASS`, `CAPSTORE TESTS: PASS`, `CAPWRITER TESTS: PASS` and `RESULT: PASS`.
+**Simulation + unit tests:** `set CC=%USERPROFILE%\tools\w64devkit\bin\gcc.exe` then `python firmware/sim/simulate.py --sessions 36 --stress --seed 2026` (needs numpy, scipy). Must print `CAPTURE TESTS: PASS`, `EVLOG TESTS: PASS`, `CHG LED TESTS: PASS`, `RECOVERY TESTS: PASS`, `CODEC TESTS: PASS`, `CAPSTORE TESTS: PASS`, `CAPWRITER TESTS: PASS`, `CAPWRITER FAULT TESTS: PASS`, `LED SEQ TESTS: PASS`, `WIRE TESTS: PASS`, `EVQ TESTS: PASS` and `RESULT: PASS`.
 
 **Hardware** (run with KiCad 10's Python, from `hardware/`):
 

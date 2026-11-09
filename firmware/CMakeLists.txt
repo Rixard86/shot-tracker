@@ -21,11 +21,16 @@ target_sources(app PRIVATE
   src/evlog.c
   src/factory.c
   src/event_tx.c
+  src/evq.c
   src/claim.c
+  src/diag.c
   src/identity.c
+  src/led.c
+  src/led_seq.c
   src/ota.c
   src/power.c
   src/recovery.c
   src/store.c
   src/ble.c
+  src/wire.c
 )

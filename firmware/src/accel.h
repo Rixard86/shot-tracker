@@ -1,6 +1,7 @@
 #ifndef ACCEL_H
 #define ACCEL_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "protocol.h"
@@ -20,6 +21,7 @@ int accel_set_idle(uint16_t wake_mg);
 int accel_set_active(void);
 int accel_off(void);
 accel_mode_t accel_mode(void);
+bool accel_idle_ok(void);
 void accel_irq_rearm(void);
 int accel_clear_wake(void);
 int accel_read_fifo(accel_fifo_t *fifo);

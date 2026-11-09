@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/bluetooth/byteorder.h>
 #include <zephyr/bluetooth/conn.h>
 #include <zephyr/bluetooth/gatt.h>
 #include <zephyr/bluetooth/services/bas.h>
@@ -14,12 +15,17 @@
 #include <zephyr/sys/atomic.h>
 
 #include "identity.h"
+#include "wire.h"
 
 LOG_MODULE_REGISTER(ble, LOG_LEVEL_INF);
 
 #define ATT_NOTIFY_OVERHEAD 3u
 #define NOTIFY_MAX_IN_FLIGHT 2
 #define ENCRYPTED_CCC (BT_GATT_PERM_READ | BT_GATT_PERM_WRITE_ENCRYPT)
+#define FAST_INTERVAL_MIN 12
+#define FAST_INTERVAL_MAX 24
+#define FAST_LATENCY 0
+#define BULK_LINGER_MS 5000u
 
 static struct bt_uuid_128 uuid_svc = BT_UUID_INIT_128(SP_UUID_SERVICE);
 static struct bt_uuid_128 uuid_count = BT_UUID_INIT_128(SP_UUID_COUNT);
@@ -28,10 +34,12 @@ static struct bt_uuid_128 uuid_ctrl = BT_UUID_INIT_128(SP_UUID_CONTROL);
 static struct bt_uuid_128 uuid_cfg = BT_UUID_INIT_128(SP_UUID_CONFIG);
 static struct bt_uuid_128 uuid_status = BT_UUID_INIT_128(SP_UUID_STATUS);
 static struct bt_uuid_128 uuid_capture = BT_UUID_INIT_128(SP_UUID_CAPTURE);
+static struct bt_uuid_128 uuid_diag = BT_UUID_INIT_128(SP_UUID_DIAG);
 
 static sp_count_t v_count;
 static sp_status_t v_status;
 static sp_config_t v_cfg;
+static sp_diag_t v_diag;
 
 static ble_ctrl_cb_t on_ctrl;
 static ble_cfg_cb_t on_cfg;
@@ -43,13 +51,23 @@ static atomic_t link_secured;
 static struct bt_conn *cur_conn;
 static bool advertising;
 static bool notify_count, notify_event, notify_status, notify_capture;
+static bool fast_link;
+static uint32_t bulk_seen_ms;
+
+static const struct bt_le_conn_param fast_param =
+	BT_LE_CONN_PARAM_INIT(FAST_INTERVAL_MIN, FAST_INTERVAL_MAX, FAST_LATENCY,
+			      CONFIG_BT_PERIPHERAL_PREF_TIMEOUT);
+static const struct bt_le_conn_param slow_param =
+	BT_LE_CONN_PARAM_INIT(CONFIG_BT_PERIPHERAL_PREF_MIN_INT, CONFIG_BT_PERIPHERAL_PREF_MAX_INT,
+			      CONFIG_BT_PERIPHERAL_PREF_LATENCY, CONFIG_BT_PERIPHERAL_PREF_TIMEOUT);
 
 static ssize_t rd_blob(struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf,
 		       uint16_t len, uint16_t offset)
 {
 	const void *v = attr->user_data;
 	size_t sz = (v == &v_count) ? sizeof(v_count) :
-		    (v == &v_status) ? sizeof(v_status) : sizeof(v_cfg);
+		    (v == &v_status) ? sizeof(v_status) :
+		    (v == &v_diag) ? sizeof(v_diag) : sizeof(v_cfg);
 	return bt_gatt_attr_read(conn, attr, buf, len, offset, v, sz);
 }
 
@@ -62,8 +80,8 @@ static ssize_t wr_ctrl(struct bt_conn *conn, const struct bt_gatt_attr *attr, co
 	if (offset != 0 || len < 1 || len > 16) {
 		return BT_GATT_ERR(BT_ATT_ERR_INVALID_ATTRIBUTE_LEN);
 	}
-	if (on_ctrl) {
-		on_ctrl(buf, len);
+	if (on_ctrl && on_ctrl(buf, len) != 0) {
+		return BT_GATT_ERR(BT_ATT_ERR_INSUFFICIENT_RESOURCES);
 	}
 	return len;
 }
@@ -75,17 +93,13 @@ static ssize_t wr_cfg(struct bt_conn *conn, const struct bt_gatt_attr *attr, con
 	ARG_UNUSED(attr);
 	ARG_UNUSED(flags);
 	sp_config_t c = v_cfg;
-	bool current = len == sizeof(c);
+	wire_bytes_t in = {.data = buf, .len = len};
+	wire_cfg_result_t parsed = offset ? WIRE_CFG_BAD_LENGTH : wire_config_parse(&c, &in);
 
-	if (offset != 0 || (!current && len != SP_CONFIG_V2_BYTES)) {
+	if (parsed == WIRE_CFG_BAD_LENGTH) {
 		return BT_GATT_ERR(BT_ATT_ERR_INVALID_ATTRIBUTE_LEN);
 	}
-	memcpy(&c, buf, len);
-	if (c.version != (current ? PROTO_VERSION : PROTO_VERSION_V2)) {
-		return BT_GATT_ERR(BT_ATT_ERR_VALUE_NOT_ALLOWED);
-	}
-	c.version = PROTO_VERSION;
-	if (!on_cfg || on_cfg(&c) != 0) {
+	if (parsed != WIRE_CFG_OK || !on_cfg || on_cfg(&c) != 0) {
 		return BT_GATT_ERR(BT_ATT_ERR_VALUE_NOT_ALLOWED);
 	}
 	v_cfg = c;
@@ -137,6 +151,8 @@ BT_GATT_SERVICE_DEFINE(sp_svc,
 	BT_GATT_CHARACTERISTIC(&uuid_capture.uuid, BT_GATT_CHRC_NOTIFY, BT_GATT_PERM_NONE,
 			       NULL, NULL, NULL),
 	BT_GATT_CCC(ccc_capture, ENCRYPTED_CCC),
+	BT_GATT_CHARACTERISTIC(&uuid_diag.uuid, BT_GATT_CHRC_READ, BT_GATT_PERM_READ_ENCRYPT,
+			       rd_blob, NULL, &v_diag),
 );
 
 #define ATTR_COUNT (&sp_svc.attrs[1])
@@ -144,10 +160,16 @@ BT_GATT_SERVICE_DEFINE(sp_svc,
 #define ATTR_STATUS (&sp_svc.attrs[11])
 #define ATTR_CAPTURE (&sp_svc.attrs[14])
 
-static const struct bt_data ad[] = {
-	BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
-	BT_DATA_BYTES(BT_DATA_UUID128_ALL, SP_UUID_SERVICE),
+enum { AD_FLAGS, AD_SERVICE, AD_PAIRING, AD_FIELDS };
+
+static const struct bt_data ad[AD_FIELDS] = {
+	[AD_FLAGS] = BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
+	[AD_SERVICE] = BT_DATA_BYTES(BT_DATA_UUID128_ALL, SP_UUID_SERVICE),
+	[AD_PAIRING] = BT_DATA_BYTES(BT_DATA_MANUFACTURER_DATA,
+				     BT_BYTES_LIST_LE16(SP_ADV_COMPANY_ID), SP_ADV_PAIRING_OPEN),
 };
+
+static bool pairing_open;
 
 /* 500-525 ms advertising interval: ~10 uA average while advertising */
 static const struct bt_le_adv_param adv_param =
@@ -184,6 +206,7 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 		cur_conn = NULL;
 	}
 	notify_count = notify_event = notify_status = notify_capture = false;
+	fast_link = false;
 	if (on_conn) {
 		on_conn(false); /* main decides whether to re-advertise */
 	}
@@ -231,7 +254,8 @@ int ble_adv_start(void)
 	struct bt_data sd[] = {
 		BT_DATA(BT_DATA_NAME_COMPLETE, name, strlen(name)),
 	};
-	int err = bt_le_adv_start(&adv_param, ad, ARRAY_SIZE(ad), sd, ARRAY_SIZE(sd));
+	size_t ad_len = pairing_open ? AD_FIELDS : AD_PAIRING;
+	int err = bt_le_adv_start(&adv_param, ad, ad_len, sd, ARRAY_SIZE(sd));
 	if (!err || err == -EALREADY) {
 		advertising = true;
 		return 0;
@@ -245,6 +269,35 @@ void ble_adv_stop(void)
 	if (advertising) {
 		bt_le_adv_stop();
 		advertising = false;
+	}
+}
+
+void ble_adv_set_pairing(bool open)
+{
+	if (open == pairing_open) {
+		return;
+	}
+	pairing_open = open;
+	if (advertising) {
+		ble_adv_stop();
+		ble_adv_start();
+	}
+}
+
+void ble_set_bulk(bool busy)
+{
+	uint32_t now = k_uptime_get_32();
+
+	if (busy) {
+		bulk_seen_ms = now;
+	}
+	bool want = busy || (fast_link && now - bulk_seen_ms < BULK_LINGER_MS);
+
+	if (!cur_conn || want == fast_link) {
+		return;
+	}
+	if (bt_conn_le_param_update(cur_conn, want ? &fast_param : &slow_param) == 0) {
+		fast_link = want;
 	}
 }
 
@@ -279,6 +332,11 @@ void ble_update_status(const sp_status_t *s)
 void ble_update_config(const sp_config_t *c)
 {
 	v_cfg = *c;
+}
+
+void ble_update_diag(const sp_diag_t *d)
+{
+	v_diag = *d;
 }
 
 void ble_set_tx_done_cb(ble_tx_done_cb_t cb)

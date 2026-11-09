@@ -2,7 +2,6 @@
 
 #include "capstore_priv.h"
 
-#define MIN_SECTORS 2u
 #define ERASED_CHECK_BYTES 64u
 #define STEP_CONTINUE 1
 #define STEP_END 0
@@ -30,7 +29,7 @@ static bool layout_ok(const capstore_flash_t *flash)
 {
 	return flash->sector_size > CAPSTORE_SECTOR_HEADER_BYTES + CAPSTORE_HEADER_BYTES &&
 	       flash->sector_size % CAPSTORE_WORD_BYTES == 0 && flash->size % flash->sector_size == 0 &&
-	       flash->size / flash->sector_size >= MIN_SECTORS;
+	       flash->size / flash->sector_size >= CAPSTORE_MIN_SECTORS;
 }
 
 static int read_sector(const capstore_t *store, sector_info_t *info)
@@ -93,10 +92,38 @@ static int resync(const capstore_t *store, walk_t *walk)
 	return STEP_END;
 }
 
-static bool committed(const capstore_t *store, const capstore_header_t *h)
+static int judge(const capstore_t *store, const walk_t *walk)
 {
-	return h->payload_len != CAPSTORE_ERASED_WORD && h->check != CAPSTORE_ERASED_WORD &&
-	       h->payload_len < store->total / MIN_SECTORS;
+	capstore_at_t at = {.pos = walk->pos};
+	int err = capstore_read_at(store, &at);
+
+	if (err) {
+		return err;
+	}
+	if (walk->have_seq && at.header.seq <= walk->max_seq) {
+		return CAPSTORE_RECORD_BAD;
+	}
+	return capstore_classify(store, &at);
+}
+
+static int rescan(const capstore_t *store, walk_t *walk)
+{
+	uint32_t base = walk->pos - walk->pos % store->usable;
+	walk_t probe = *walk;
+
+	for (uint32_t off = walk->pos % store->usable + CAPSTORE_WORD_BYTES; off + CAPSTORE_HEADER_BYTES <= store->usable;
+	     off += CAPSTORE_WORD_BYTES) {
+		probe.pos = base + off;
+		int kind = judge(store, &probe);
+		if (kind < 0) {
+			return kind;
+		}
+		if (kind != CAPSTORE_RECORD_BAD) {
+			walk->pos = probe.pos;
+			return STEP_CONTINUE;
+		}
+	}
+	return resync(store, walk);
 }
 
 static int walk_step(capstore_t *store, walk_t *walk)
@@ -112,20 +139,15 @@ static int walk_step(capstore_t *store, walk_t *walk)
 		walk->frontier = walk->pos;
 		return STEP_END;
 	}
-	if (h->magic != CAPSTORE_RECORD_MAGIC || (walk->have_seq && h->seq <= walk->max_seq) || !committed(store, h)) {
-		return resync(store, walk);
+	int kind = judge(store, walk);
+	if (kind < 0) {
+		return kind;
+	}
+	if (kind == CAPSTORE_RECORD_BAD) {
+		return rescan(store, walk);
 	}
 	capstore_entry_t e = {h->seq, walk->pos, h->payload_len, h->n_samples, h->trigger_index};
-	capstore_crc_job_t job = {.entry = &e};
-	err = capstore_payload_crc(store, &job);
-	if (err) {
-		return err;
-	}
-	uint32_t expected = capstore_check(h, job.crc);
-	if (h->check != expected && h->check != ~expected) {
-		return resync(store, walk);
-	}
-	if (h->check == expected) {
+	if (kind == CAPSTORE_RECORD_KEPT) {
 		capstore_index_push(store, &e);
 	}
 	walk->max_seq = h->seq;

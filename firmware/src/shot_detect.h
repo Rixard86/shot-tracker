@@ -99,6 +99,7 @@ int sd_process(sd_state_t *s, const int16_t xyz_mg[3], uint32_t t_ms, sd_event_t
 /* Mode manager. In IDLE, feed slow samples here; returns 1 to request
  * switch to ACTIVE. In ACTIVE, returns 1 to request switch to IDLE. */
 int sd_idle_sample(sd_state_t *s, const int16_t xyz_mg[3], uint32_t t_ms);
+uint8_t sd_wake_ths_lsb(float wake_mg);
 int sd_active_should_sleep(const sd_state_t *s, uint32_t t_ms);
 
 #ifdef __cplusplus

@@ -21,6 +21,13 @@
 #define SP_UUID_CONFIG  SP_UUID_BASE(0x05) /* read, write: sp_config_t         */
 #define SP_UUID_STATUS  SP_UUID_BASE(0x06) /* read, notify: sp_status_t        */
 #define SP_UUID_CAPTURE SP_UUID_BASE(0x07)
+#define SP_UUID_DIAG    SP_UUID_BASE(0x08)
+
+#define SP_ADV_COMPANY_ID 0xFFFFu
+
+enum {
+	SP_ADV_PAIRING_OPEN = 1u << 0,
+};
 
 typedef struct __attribute__((packed)) {
 	uint32_t total;     /* lifetime accepted shots (persisted)           */
@@ -39,7 +46,7 @@ typedef struct __attribute__((packed)) {
 	uint8_t accepted;
 	uint8_t reason;         /* 0 ok, 1 not still before, 2 no follow-through */
 } sp_event_t;              /* 24 bytes: needs ATT MTU >= 27. The device     */
-                           /* requests MTU 65 on connect.                   */
+                           /* requests MTU 247 on connect.                  */
 
 enum {
 	SP_CTRL_SET_TIME = 0x01,    /* + int64 unix_ms                          */
@@ -113,5 +120,26 @@ typedef struct __attribute__((packed)) {
 	uint8_t flags;
 	uint8_t fw_major, fw_minor;
 } sp_status_t;
+
+enum {
+	SP_RESET_POWER_ON = 0,
+	SP_RESET_PIN = 1,
+	SP_RESET_SOFTWARE = 2,
+	SP_RESET_WATCHDOG = 3,
+	SP_RESET_CRASH = 4,
+	SP_RESET_LOCKUP = 5,
+	SP_RESET_WAKE = 6,
+	SP_RESET_OTHER = 7,
+};
+
+#define SP_CRASH_NONE 0xFFu
+
+typedef struct __attribute__((packed)) {
+	uint8_t reset_cause;
+	uint8_t crash_reason;
+	uint16_t crash_count;
+	uint16_t main_stack_free;
+	uint16_t workq_stack_free;
+} sp_diag_t;
 
 #endif /* PROTOCOL_H */

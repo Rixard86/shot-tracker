@@ -12,7 +12,6 @@
  */
 #include <app_version.h>
 #include <string.h>
-#include <zephyr/drivers/gpio.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/atomic.h>
@@ -26,13 +25,17 @@
 #include "capwriter.h"
 #include "chg_led.h"
 #include "claim.h"
+#include "diag.h"
 #include "event_tx.h"
 #include "factory.h"
+#include "led.h"
 #include "ota.h"
 #include "power.h"
 #include "protocol.h"
+#include "recovery.h"
 #include "shot_detect.h"
 #include "store.h"
+#include "wire.h"
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 
@@ -52,11 +55,9 @@ LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 #define CHARGER_POLL_MS 500
 #define PAD_POLL_MS 250
 #define CLAIM_BLINK_PERIOD_MS 1000
-#define CLAIM_BLINK_MS 30
-#define PAIRED_BLINKS 2
-#define PAIRED_BLINK_MS 60
-
-static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
+#define SENSOR_RETRY_MS 5000
+#define SENSOR_STALL_MS 5000
+#define NO_SENSOR_POLL_MS 1000
 
 static K_SEM_DEFINE(wake_sem, 0, 1);
 static atomic_t accel_pending;
@@ -67,6 +68,7 @@ struct ctrl_msg {
 	uint8_t data[16];
 };
 K_MSGQ_DEFINE(ctrl_q, sizeof(struct ctrl_msg), 4, 4);
+K_MSGQ_DEFINE(cfg_q, sizeof(sp_config_t), 1, 4);
 
 static store_t st;
 static cap_t cap;
@@ -74,66 +76,20 @@ static capstore_t capstore;
 static capw_t capw;
 static bool captures_ok;
 static sd_state_t det;
-static sp_config_t pending_cfg;
-static atomic_t cfg_pending;
 
-static int64_t unix_offset_ms;
-static bool time_set;
+static wire_clock_t wall_clock;
 
 static uint32_t active_start_ms;
 static uint32_t sample_idx;
 static uint32_t idle_since_ms;
+static uint32_t last_batch_ms;
 
 /* ---------------------------------------------------------------- utils */
 
-static void led_pulse(int ms)
+static void resume_seq(void)
 {
-	gpio_pin_set_dt(&led, 1);
-	k_msleep(ms);
-	gpio_pin_set_dt(&led, 0);
-}
-
-static void cfg_to_wire(const store_t *s, sp_config_t *w)
-{
-	const sd_config_t *c = &s->cfg;
-
-	w->version = PROTO_VERSION;
-	w->capture_mode = s->capture_mode;
-	w->trig_hf_mg = (uint16_t)c->trig_hf_mg;
-	w->move_mg = (uint16_t)c->move_mg;
-	w->pre_still_min_ms = c->pre_still_min_ms;
-	w->post_start_ms = c->post_start_ms;
-	w->post_end_ms = c->post_end_ms;
-	w->post_lf_min_mg = (uint16_t)c->post_lf_min_mg;
-	w->refractory_ms = c->refractory_ms;
-	w->wake_mg = (uint16_t)c->wake_mg;
-	w->idle_timeout_s = (uint16_t)(c->idle_timeout_ms / 1000);
-}
-
-static void wire_to_cfg(const sp_config_t *w, sd_config_t *c)
-{
-	c->trig_hf_mg = w->trig_hf_mg;
-	c->move_mg = w->move_mg;
-	c->pre_still_min_ms = w->pre_still_min_ms;
-	c->post_start_ms = w->post_start_ms;
-	c->post_end_ms = w->post_end_ms;
-	c->post_lf_min_mg = w->post_lf_min_mg;
-	c->refractory_ms = w->refractory_ms;
-	c->wake_mg = w->wake_mg;
-	c->idle_timeout_ms = (uint32_t)w->idle_timeout_s * 1000u;
-}
-
-static bool cfg_valid(const sp_config_t *w)
-{
-	return w->trig_hf_mg >= 1000 && w->trig_hf_mg <= 30000 &&
-	       w->move_mg >= 50 && w->move_mg <= 2000 &&
-	       w->pre_still_min_ms <= 10000 &&
-	       w->post_start_ms < w->post_end_ms && w->post_end_ms <= 1500 &&
-	       w->post_lf_min_mg <= 5000 &&
-	       w->refractory_ms >= 200 && w->refractory_ms <= 10000 &&
-	       w->wake_mg >= 16 && w->wake_mg <= 2000 &&
-	       w->idle_timeout_s >= 5 && w->idle_timeout_s <= 3600 &&
-	       w->capture_mode <= SP_CAPTURE_EXTENDED;
+	st.seq = seq_resume(st.seq, event_tx_newest_seq());
+	store_save_counts(&st);
 }
 
 static void publish_count(void)
@@ -152,11 +108,12 @@ static void publish_status(void)
 		.flags = (p->vbus ? SP_ST_VBUS : 0) | (p->charging ? SP_ST_CHARGING : 0) |
 			 (p->chg_inhibit ? SP_ST_CHG_INHIBIT : 0) |
 			 (det.mode == SD_MODE_ACTIVE ? SP_ST_ACTIVE : 0) |
-			 (time_set ? SP_ST_TIME_SET : 0),
+			 (wall_clock.set ? SP_ST_TIME_SET : 0),
 		.fw_major = FW_MAJOR,
 		.fw_minor = FW_MINOR,
 	};
 	ble_update_status(&s);
+	diag_publish(&st);
 }
 
 /* ---------------------------------------------------------- callbacks */
@@ -167,24 +124,25 @@ static void accel_isr(void)
 	k_sem_give(&wake_sem);
 }
 
-static void on_ctrl(const uint8_t *data, uint16_t len)
+static int on_ctrl(const uint8_t *data, uint16_t len)
 {
 	struct ctrl_msg m = {.len = (uint8_t)MIN(len, sizeof(m.data))};
 	memcpy(m.data, data, m.len);
-	if (k_msgq_put(&ctrl_q, &m, K_NO_WAIT) == 0) {
+	int err = k_msgq_put(&ctrl_q, &m, K_NO_WAIT);
+
+	if (err == 0) {
 		k_sem_give(&wake_sem);
 	}
+	return err;
 }
 
 static int on_cfg(const sp_config_t *c)
 {
-	if (!cfg_valid(c)) {
-		return -EINVAL;
-	}
-	pending_cfg = *c;
-	atomic_set(&cfg_pending, 1);
+	k_msgq_purge(&cfg_q);
+	int err = k_msgq_put(&cfg_q, c, K_NO_WAIT);
+
 	k_sem_give(&wake_sem);
-	return 0;
+	return err;
 }
 
 static void on_tx_done(void)
@@ -205,6 +163,7 @@ static void go_active(void)
 {
 	accel_set_active();
 	active_start_ms = k_uptime_get_32();
+	last_batch_ms = active_start_ms;
 	sample_idx = 0;
 	cap_reset(&cap);
 	sd_start_active(&det, active_start_ms);
@@ -237,12 +196,12 @@ static void request_capture(const sd_event_t *e, uint32_t seq)
 	}
 }
 
-static void handle_detection(const sd_event_t *e, uint32_t uptime_ms)
+static void handle_detection(const sd_event_t *e, int64_t uptime_ms)
 {
 	sp_event_t w = {
 		.seq = ++st.seq,
-		.t_unix_ms = time_set ? unix_offset_ms + uptime_ms : 0,
-		.t_uptime_ms = uptime_ms,
+		.t_unix_ms = wire_clock_unix_ms(&wall_clock, uptime_ms),
+		.t_uptime_ms = (uint32_t)uptime_ms,
 		.peak_hf_mg = e->peak_hf_mg,
 		.pre_still_ms = e->pre_still_ms,
 		.post_lf_mg = e->post_lf_mg,
@@ -255,7 +214,7 @@ static void handle_detection(const sd_event_t *e, uint32_t uptime_ms)
 		store_save_counts(&st);
 		publish_count();
 		request_capture(e, w.seq);
-		led_pulse(20);
+		led_play(LED_SHOT);
 		LOG_INF("SHOT #%u pk=%u still=%u lf=%u", st.total, e->peak_hf_mg,
 			e->pre_still_ms, e->post_lf_mg);
 	} else {
@@ -280,7 +239,7 @@ static void restart_stream(uint32_t now)
 
 static void process_batch(const accel_fifo_t *fifo, uint32_t n)
 {
-	uint32_t now = k_uptime_get_32();
+	int64_t now = k_uptime_get();
 	uint32_t t_last = sample_ms(sample_idx + n - 1u);
 
 	for (uint32_t i = 0; i < n; i++) {
@@ -320,6 +279,7 @@ static void handle_accel(void)
 			restart_stream(k_uptime_get_32());
 		}
 		process_batch(&fifo, (uint32_t)n);
+		last_batch_ms = k_uptime_get_32();
 		if (n < FIFO_WATERMARK_SAMPLES) {
 			break;
 		}
@@ -339,9 +299,11 @@ static void handle_ctrl(void)
 		switch (m.data[0]) {
 		case SP_CTRL_SET_TIME:
 			if (m.len >= 9) {
-				int64_t unix_ms = (int64_t)sys_get_le64(&m.data[1]);
-				unix_offset_ms = unix_ms - k_uptime_get();
-				time_set = true;
+				wire_time_t now = {
+					.unix_ms = (int64_t)sys_get_le64(&m.data[1]),
+					.uptime_ms = k_uptime_get(),
+				};
+				wire_clock_set(&wall_clock, &now);
 				publish_status();
 			}
 			break;
@@ -360,7 +322,7 @@ static void handle_ctrl(void)
 			sd_default_config(&st.cfg);
 			det.cfg = st.cfg;
 			store_save_cfg(&st);
-			cfg_to_wire(&st, &w);
+			wire_config_out(&st, &w);
 			ble_update_config(&w);
 			break;
 		}
@@ -373,15 +335,49 @@ static void handle_ctrl(void)
 			claim_forget_all();
 			break;
 		case SP_CTRL_LED_BLINK:
-			for (int i = 0; i < 5; i++) {
-				led_pulse(80);
-				k_msleep(120);
-			}
+			led_play(LED_FIND);
 			break;
 		default:
 			break;
 		}
 	}
+}
+
+static bool sensor_stuck(void)
+{
+	if (det.mode == SD_MODE_ACTIVE) {
+		return k_uptime_get_32() - last_batch_ms >= SENSOR_STALL_MS;
+	}
+	return !accel_idle_ok();
+}
+
+static void check_sensor(void)
+{
+	if (!sensor_stuck()) {
+		return;
+	}
+	LOG_WRN("IMU not responding: re-initialising");
+	if (accel_init(accel_isr) != 0) {
+		return;
+	}
+	if (det.mode == SD_MODE_ACTIVE) {
+		go_active();
+	} else {
+		accel_set_idle((uint16_t)st.cfg.wake_mg);
+	}
+}
+
+static void apply_config(void)
+{
+	sp_config_t c;
+
+	if (k_msgq_get(&cfg_q, &c, K_NO_WAIT) != 0) {
+		return;
+	}
+	wire_config_in(&c, &st);
+	det.cfg = st.cfg;
+	store_save_cfg(&st);
+	LOG_INF("config updated");
 }
 
 static void housekeeping(void)
@@ -393,7 +389,40 @@ static void housekeeping(void)
 		ble_adv_stop();
 		power_off_until_charger();
 	}
+	check_sensor();
 	publish_status();
+}
+
+static void check_boot_battery(void)
+{
+	for (uint32_t i = 0; i < RECOVERY_LOW_BATTERY_READINGS; i++) {
+		power_update();
+	}
+	if (power_should_cutoff()) {
+		accel_off();
+		power_off_until_charger();
+	}
+}
+
+static void wait_without_sensor(void)
+{
+	for (uint32_t waited = 0; waited < SENSOR_RETRY_MS; waited += NO_SENSOR_POLL_MS) {
+		if (ota_image_confirmed()) {
+			ota_feed();
+		}
+		if (!ble_is_connected()) {
+			ble_adv_start();
+		}
+		led_play(LED_NO_SENSOR);
+		k_msleep(NO_SENSOR_POLL_MS);
+	}
+}
+
+static void wait_for_sensor(void)
+{
+	while (accel_init(accel_isr) != 0) {
+		wait_without_sensor();
+	}
 }
 
 static void claim_feedback(void)
@@ -402,28 +431,21 @@ static void claim_feedback(void)
 	uint32_t now = k_uptime_get_32();
 
 	if (claim_take_paired()) {
-		for (int i = 0; i < PAIRED_BLINKS; i++) {
-			led_pulse(PAIRED_BLINK_MS);
-			k_msleep(PAIRED_BLINK_MS);
-		}
+		led_play(LED_PAIRED);
 	}
 	if (claim_is_open() && now - last_blink_ms >= CLAIM_BLINK_PERIOD_MS) {
 		last_blink_ms = now;
-		led_pulse(CLAIM_BLINK_MS);
+		led_play(LED_CLAIM);
 	}
 }
 
 static void charge_feedback(void)
 {
 	static uint32_t last_tick_ms;
-	static bool steady;
 	uint32_t now = k_uptime_get_32();
 
 	if (!power_vbus_present() || claim_is_open()) {
-		if (steady) {
-			steady = false;
-			gpio_pin_set_dt(&led, 0);
-		}
+		led_steady((led_steady_t){LED_STEADY_CHARGE_FULL, false});
 		return;
 	}
 	if (now - last_tick_ms < CHG_LED_TICK_MS) {
@@ -431,12 +453,8 @@ static void charge_feedback(void)
 	}
 	last_tick_ms = now;
 	chg_led_mode_t mode = chg_led_mode(power_update());
-	steady = mode == CHG_LED_FULL;
-	gpio_pin_set_dt(&led, steady ? 1 : 0);
-	for (uint8_t i = 0; i < chg_led_pulses(mode); i++) {
-		led_pulse(CHG_LED_PULSE_MS);
-		k_msleep(CHG_LED_GAP_MS);
-	}
+	led_steady((led_steady_t){LED_STEADY_CHARGE_FULL, mode == CHG_LED_FULL});
+	led_play_pulses(chg_led_pulses(mode));
 }
 
 static uint32_t poll_period(bool active)
@@ -463,27 +481,32 @@ int main(void)
 	sp_config_t w;
 
 	power_regout0_3v0(); /* may reset once on first boot */
+	diag_boot();
 	factory_boot_guard();
 	if (ota_init()) {
 		LOG_ERR("watchdog unavailable");
 	}
 
-	gpio_pin_configure_dt(&led, GPIO_OUTPUT_INACTIVE);
+	led_init();
 	if (factory_pads_init()) {
 		LOG_ERR("reset pads unavailable");
 	}
 	if (power_init() == 0) {
-		power_update();
-		if (power_should_cutoff()) {
-			power_off_until_charger();
-		}
+		check_boot_battery();
 	}
 
 	sd_default_config(&st.cfg);
 	store_init(&st);
+	diag_count_crash(&st);
+	if (!wire_config_normalize(&st)) {
+		LOG_WRN("stored config invalid: using defaults");
+		sd_default_config(&st.cfg);
+		st.capture_mode = SP_CAPTURE_STANDARD;
+	}
 	if (event_tx_init()) {
 		LOG_ERR("shot log unavailable");
 	}
+	resume_seq();
 	st.cfg.fs_hz = (float)CAP_ODR_HZ;
 	sd_init(&det, &st.cfg);
 	cap_init(&cap);
@@ -495,7 +518,7 @@ int main(void)
 	cap_tx_init(&capstore, &capw);
 	ble_set_tx_done_cb(on_tx_done);
 
-	cfg_to_wire(&st, &w);
+	wire_config_out(&st, &w);
 	ble_update_config(&w);
 	if (ble_init(on_ctrl, on_cfg, on_conn) || claim_init()) {
 		LOG_ERR("BLE init failed");
@@ -503,18 +526,8 @@ int main(void)
 	publish_count();
 	publish_status();
 
-	if (accel_init(accel_isr)) {
-		/* no sensor: blink SOS-ish forever, keep BLE up for diagnostics */
-		ble_adv_start();
-		for (;;) {
-			if (ota_image_confirmed()) {
-				ota_feed();
-			}
-			led_pulse(50);
-			k_msleep(1000);
-		}
-	}
-	led_pulse(200);
+	wait_for_sensor();
+	led_play(LED_BOOT);
 	go_active(); /* start awake so a phone can connect right after boot */
 
 	uint32_t last_hk = k_uptime_get_32();
@@ -532,6 +545,7 @@ int main(void)
 		}
 		handle_ctrl();
 		claim_poll(power_vbus_present());
+		ble_adv_set_pairing(claim_is_open());
 		claim_feedback();
 		factory_poll();
 		if (!factory_pads_held()) {
@@ -546,13 +560,8 @@ int main(void)
 		if (cap_tx_busy()) {
 			cap_tx_pump();
 		}
-		if (atomic_cas(&cfg_pending, 1, 0)) {
-			wire_to_cfg(&pending_cfg, &st.cfg);
-			st.capture_mode = pending_cfg.capture_mode;
-			det.cfg = st.cfg;
-			store_save_cfg(&st);
-			LOG_INF("config updated");
-		}
+		ble_set_bulk(event_tx_busy() || cap_tx_busy());
+		apply_config();
 
 		uint32_t now = k_uptime_get_32();
 		bool in_linger = det.mode == SD_MODE_ACTIVE || (now - idle_since_ms) < ADV_LINGER_MS ||

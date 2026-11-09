@@ -12,6 +12,9 @@
 #define CAPSTORE_CRC_INIT 0xFFFFFFFFu
 #define CAPSTORE_OPEN_BYTES 12u
 #define CAPSTORE_COMMIT_BYTES 8u
+#define CAPSTORE_MIN_SECTORS 2u
+
+enum { CAPSTORE_RECORD_BAD, CAPSTORE_RECORD_KEPT, CAPSTORE_RECORD_VOID };
 
 typedef struct {
 	uint32_t magic;
@@ -44,6 +47,7 @@ uint32_t capstore_after(const capstore_t *store, const capstore_entry_t *entry);
 int capstore_read_usable(const capstore_t *store, const capstore_span_t *span);
 int capstore_read_at(const capstore_t *store, capstore_at_t *at);
 int capstore_payload_crc(const capstore_t *store, capstore_crc_job_t *job);
+int capstore_classify(const capstore_t *store, const capstore_at_t *at);
 void capstore_index_push(capstore_t *store, const capstore_entry_t *entry);
 
 #endif

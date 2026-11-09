@@ -16,6 +16,7 @@
  */
 #include "power.h"
 
+#include <stdlib.h>
 #include <hal/nrf_power.h>
 #include <zephyr/drivers/adc.h>
 #include <zephyr/dt-bindings/adc/nrf-saadc-v3.h> /* NRF_SAADC_VDDHDIV5 */
@@ -25,12 +26,15 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/poweroff.h>
 
+#include "recovery.h"
+
 LOG_MODULE_REGISTER(power, LOG_LEVEL_INF);
 
 #define CHG_MIN_C 1    /* Li-ion: no charging at or below ~0 C  */
 #define CHG_MAX_C 44   /* ... or above 45 C                      */
 #define CHG_HYST_C 3
 #define CUTOFF_MV 3300 /* protect cell (CP1654 has no internal PCM) */
+#define CALIBRATE_EVERY_C 10
 
 static const struct device *const adc = DEVICE_DT_GET(DT_NODELABEL(adc));
 static const struct device *const temp_dev = DEVICE_DT_GET(DT_NODELABEL(temp));
@@ -41,6 +45,10 @@ static const struct gpio_dt_spec chg_inhibit =
 
 static power_state_t st;
 static int16_t adc_buf;
+static bool calibrated;
+static bool temp_known;
+static int8_t calibrated_at_c;
+static uint32_t low_readings;
 
 static const struct adc_channel_cfg vddh_ch = {
 	.gain = ADC_GAIN_1_2,
@@ -102,6 +110,11 @@ int power_init(void)
 	return adc_channel_setup(adc, &vddh_ch);
 }
 
+static bool needs_calibration(void)
+{
+	return !calibrated || abs(st.temp_c - calibrated_at_c) >= CALIBRATE_EVERY_C;
+}
+
 static int read_vbat_mv(uint16_t *mv)
 {
 	struct adc_sequence seq = {
@@ -110,10 +123,15 @@ static int read_vbat_mv(uint16_t *mv)
 		.buffer_size = sizeof(adc_buf),
 		.resolution = 12,
 		.oversampling = 4,
+		.calibrate = needs_calibration(),
 	};
 	int err = adc_read(adc, &seq);
 	if (err) {
 		return err;
+	}
+	if (seq.calibrate) {
+		calibrated = true;
+		calibrated_at_c = st.temp_c;
 	}
 	int32_t v = adc_buf < 0 ? 0 : adc_buf;
 	*mv = (uint16_t)(v * 1200 * 5 / 4096);
@@ -136,12 +154,14 @@ const power_state_t *power_update(void)
 	uint16_t mv;
 	int8_t tc;
 
+	if (read_temp_c(&tc) == 0) {
+		st.temp_c = tc;
+		temp_known = true;
+	}
 	if (read_vbat_mv(&mv) == 0) {
 		st.battery_mv = mv;
 		st.battery_pct = mv_to_pct(mv);
-	}
-	if (read_temp_c(&tc) == 0) {
-		st.temp_c = tc;
+		low_readings = low_battery_count_next(low_readings, mv > 0 && mv < CUTOFF_MV);
 	}
 	st.vbus = nrf_power_usbregstatus_vbusdet_get(NRF_POWER);
 	if (st.vbus) {
@@ -154,7 +174,9 @@ const power_state_t *power_update(void)
 	}
 
 	/* temperature window with hysteresis */
-	if (!st.chg_inhibit) {
+	if (!temp_known) {
+		st.chg_inhibit = false;
+	} else if (!st.chg_inhibit) {
 		if (st.temp_c <= CHG_MIN_C - 1 || st.temp_c >= CHG_MAX_C + 1) {
 			st.chg_inhibit = true;
 		}
@@ -173,7 +195,7 @@ const power_state_t *power_state(void)
 
 bool power_should_cutoff(void)
 {
-	return !st.vbus && st.battery_mv > 0 && st.battery_mv < CUTOFF_MV;
+	return !st.vbus && low_battery_confirmed(low_readings);
 }
 
 void power_off_until_charger(void)

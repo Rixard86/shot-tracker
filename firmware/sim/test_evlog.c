@@ -102,12 +102,15 @@ static void test_fresh_and_reboot(void)
 	memset(flash, ERASED, sizeof(flash));
 	boot(&log);
 	check(scan(&log, 0, &first) == 0, "fresh log is empty");
+	check(log.newest_seq == 0, "fresh log has no newest seq");
 	for (uint32_t seq = 1; seq <= FEW; seq++) {
 		append_seq(&log, seq);
 	}
+	check(log.newest_seq == FEW, "append tracks the newest seq");
 	boot(&log);
 	check(scan(&log, 0, &first) == FEW && first == 1, "events survive a reboot");
 	check(log.head == FEW, "head found after reboot");
+	check(log.newest_seq == FEW, "newest seq found after reboot");
 }
 
 static void test_wrap(void)
@@ -128,6 +131,8 @@ static void test_wrap(void)
 	uint32_t n = scan(&log, 0, &first);
 	check(n >= (sectors - 1u) * per && n <= sectors * per, "keeps at least all-but-one sector");
 	check(first + n - 1u == MANY, "newest event kept");
+	boot(&log);
+	check(log.newest_seq == MANY, "newest seq found after the log wrapped");
 	check(scan(&log, MANY - TAIL + 1u, &first) == TAIL, "from_seq filters");
 	printf("wrap: %u of %u events kept (%u per sector)\n", n, MANY, per);
 }

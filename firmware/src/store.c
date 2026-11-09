@@ -8,7 +8,6 @@
 
 LOG_MODULE_REGISTER(store, LOG_LEVEL_INF);
 
-#define SEQ_MARGIN 1024u /* events between seq saves < this */
 #define CFG_MAGIC 0x53504331u /* "SPC1" */
 
 struct cfg_blob {
@@ -25,6 +24,9 @@ static int set_cb(const char *key, size_t len, settings_read_cb read_cb, void *c
 	}
 	if (!strcmp(key, "seq") && len == sizeof(uint32_t)) {
 		return read_cb(cb_arg, &target->seq, len) < 0 ? -EIO : 0;
+	}
+	if (!strcmp(key, "crashes") && len == sizeof(target->crashes)) {
+		return read_cb(cb_arg, &target->crashes, len) < 0 ? -EIO : 0;
 	}
 	if (!strcmp(key, "capmode") && len == sizeof(target->capture_mode)) {
 		return read_cb(cb_arg, &target->capture_mode, len) < 0 ? -EIO : 0;
@@ -54,10 +56,15 @@ int store_init(store_t *s)
 		LOG_ERR("settings init %d", err);
 		return err;
 	}
-	err = settings_load_subtree("sp");
-	s->seq += SEQ_MARGIN;
-	store_save_counts(s);
-	return err;
+	return settings_load_subtree("sp");
+}
+
+int store_forget_except_seq(void)
+{
+	int err = settings_delete("sp/total");
+
+	err = err ? err : settings_delete("sp/cfg");
+	return err ? err : settings_delete("sp/capmode");
 }
 
 int store_save_counts(const store_t *s)
@@ -72,4 +79,9 @@ int store_save_cfg(const store_t *s)
 	int err = settings_save_one("sp/cfg", &b, sizeof(b));
 
 	return err ? err : settings_save_one("sp/capmode", &s->capture_mode, sizeof(s->capture_mode));
+}
+
+int store_save_crashes(const store_t *s)
+{
+	return settings_save_one("sp/crashes", &s->crashes, sizeof(s->crashes));
 }

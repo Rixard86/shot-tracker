@@ -106,6 +106,32 @@ int capstore_payload_crc(const capstore_t *store, capstore_crc_job_t *job)
 	return 0;
 }
 
+static bool committed(const capstore_t *store, const capstore_header_t *h)
+{
+	return h->payload_len != CAPSTORE_ERASED_WORD && h->check != CAPSTORE_ERASED_WORD &&
+	       h->payload_len < store->total / CAPSTORE_MIN_SECTORS;
+}
+
+int capstore_classify(const capstore_t *store, const capstore_at_t *at)
+{
+	const capstore_header_t *h = &at->header;
+	capstore_entry_t e = {h->seq, at->pos, h->payload_len, h->n_samples, h->trigger_index};
+	capstore_crc_job_t job = {.entry = &e};
+
+	if (h->magic != CAPSTORE_RECORD_MAGIC || !committed(store, h)) {
+		return CAPSTORE_RECORD_BAD;
+	}
+	int err = capstore_payload_crc(store, &job);
+	if (err) {
+		return err;
+	}
+	uint32_t expected = capstore_check(h, job.crc);
+	if (h->check == expected) {
+		return CAPSTORE_RECORD_KEPT;
+	}
+	return h->check == ~expected ? CAPSTORE_RECORD_VOID : CAPSTORE_RECORD_BAD;
+}
+
 void capstore_index_push(capstore_t *store, const capstore_entry_t *entry)
 {
 	if (store->count == CAPSTORE_MAX_RECORDS) {
