@@ -1,5 +1,8 @@
 # ShotPuck BLE protocol (v3)
 
+Firmware 0.3.3 (still v3):
+- Faster firmware updates: the puck answers the MCUmgr parameters command (4 buffers of 384 bytes), so an app can send several upload chunks at once in larger frames, and it uses the 15–30 ms connection interval while an upload runs (see *Firmware update*).
+
 Firmware 0.3.2 (still v3):
 - The pairing window closes as soon as the charger is removed (still at most 60 s), see *Pairing*.
 - Firmware uploads over Bluetooth work only while the charger is attached; otherwise the puck refuses each upload chunk with SMP rc 6 (see *Firmware update*).
@@ -214,6 +217,7 @@ The puck runs **MCUboot** and exposes the standard **MCUmgr SMP** service, so no
 - SMP service `8D53DC1D-1DB7-4CD3-868B-8A527460AA84`, characteristic `DA2E7828-FBCE-4E01-AE9E-261174997C48`. It requires the same encrypted (paired) link as everything else.
 - In the Flutter app, use Nordic's **`mcumgr_flutter`** plugin (wraps the iOS/Android nRF Connect Device Manager libraries) with the file `shotpuck_update.bin`. The nRF Connect Device Manager app works for manual updates.
 - **Charger required (0.3.2):** the puck accepts upload data only while the charger is attached. Each upload request is checked; without the charger the puck answers SMP `rc` 6 (`MGMT_ERR_EBADSTATE`) and writes nothing, and unplugging during an upload stops it at the next chunk (the incomplete image never boots). Check STATUS `SP_ST_VBUS` before starting and tell the user to plug the charger in. Image state changes (test, confirm) and reset are not gated.
+- **Upload speed (0.3.3):** the puck reports its MCUmgr buffers through the OS group's parameters command (`mcumgr params`: 4 buffers of 384 bytes, with SMP reassembly over BLE), and switches to the 15–30 ms connection interval while upload chunks arrive (back to 105–210 ms 5 s after the last). nRF Connect Device Manager reads the parameters by itself. With `mcumgr_flutter` set `pipelineDepth: 3` and `reassemblyBufferSize: 384` in `FirmwareUpgradeConfiguration` (the defaults, 1 and 0, send one MTU-sized chunk at a time).
 - Recommended mode **Test and confirm**: upload (roughly 20–40 s at MTU 247), mark as test, reset. MCUboot then swaps the images (the puck is unavailable for about 10–20 s), the new version boots and advertises, and the phone reconnects and confirms it.
 - The puck also confirms a new image by itself once a paired phone has connected over an encrypted link and the image has run 10 s. Reconnect and pair (encrypt) after the OTA reset; until then the image stays on trial. If the new image crashes or hangs before that (the watchdog resets a hang after 10 s), MCUboot **rolls back** to the previous version on the next boot.
 - Only images signed with the ShotPuck private key are accepted: MCUboot checks the ECDSA-P256 signature before it boots anything.

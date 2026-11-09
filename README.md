@@ -22,6 +22,7 @@ firmware/VERSION            firmware version (signed into the OTA image, shown i
 firmware/sysbuild.*         MCUboot + signing setup (refuses MCUboot's public dev key)
 firmware/shotpuck_full.hex  MCUboot + signed app, for the first flash via the SWD test pads
 firmware/shotpuck_update.bin  signed app image for OTA updates
+firmware/bucket/            the same image as shotpuck-<version>.bin plus manifest.json for archesk's firmware bucket
 hardware/design.py          the circuit (single source of truth)
 hardware/design_mini.py     ShotPuck mini circuit: 33 x 33 mm square board for a Picatinny-rail case, CR2450 on the back
 hardware/gen_sch.py         -> kicad/shotpuck.kicad_sch (`gen_sch.py design_mini` -> kicad/shotpuck-mini.kicad_sch)

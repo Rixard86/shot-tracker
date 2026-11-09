@@ -7,5 +7,6 @@ int ota_init(void);
 void ota_feed(void);
 bool ota_image_confirmed(void);
 void ota_confirm_when_healthy(bool link_secured);
+bool ota_upload_active(void);
 
 #endif

@@ -6,6 +6,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/mgmt/mcumgr/mgmt/callbacks.h>
 #include <zephyr/mgmt/mcumgr/mgmt/mgmt_defines.h>
+#include <zephyr/sys/atomic.h>
 
 #include "power.h"
 
@@ -14,11 +15,14 @@ LOG_MODULE_REGISTER(ota, LOG_LEVEL_INF);
 #define WDT_TIMEOUT_MS 10000u
 #define CONFIRM_AFTER_MS 10000u
 #define NO_CHANNEL (-1)
+#define UPLOAD_ACTIVE_MS 2000u
 
 static const struct device *const wdt = DEVICE_DT_GET(DT_ALIAS(watchdog0));
 static int channel = NO_CHANNEL;
 static bool confirmed;
 static uint32_t started_ms;
+static atomic_t upload_seen;
+static atomic_t last_chunk_ms;
 
 static enum mgmt_cb_return upload_gate(uint32_t event, enum mgmt_cb_return prev_status,
 				       int32_t *rc, uint16_t *group, bool *abort_more,
@@ -31,6 +35,8 @@ static enum mgmt_cb_return upload_gate(uint32_t event, enum mgmt_cb_return prev_
 	ARG_UNUSED(data);
 	ARG_UNUSED(data_size);
 	if (power_vbus_present()) {
+		atomic_set(&last_chunk_ms, (atomic_val_t)k_uptime_get_32());
+		atomic_set(&upload_seen, 1);
 		return MGMT_CB_OK;
 	}
 	*rc = MGMT_ERR_EBADSTATE;
@@ -82,3 +88,11 @@ void ota_confirm_when_healthy(bool link_secured)
 	confirmed = boot_write_img_confirmed() == 0;
 	LOG_INF("image %s", confirmed ? "confirmed" : "confirm failed");
 }
+
+bool ota_upload_active(void)
+{
+	uint32_t since = k_uptime_get_32() - (uint32_t)atomic_get(&last_chunk_ms);
+
+	return atomic_get(&upload_seen) && since < UPLOAD_ACTIVE_MS;
+}
+
