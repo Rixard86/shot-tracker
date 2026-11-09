@@ -1,58 +1,68 @@
 #ifndef CAPTURE_H
 #define CAPTURE_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
 #include "protocol.h"
 
 #define CAP_ODR_HZ 480u
-#define CAP_PRE_SAMPLES 480u
-#define CAP_POST_SAMPLES 240u
-#define CAP_WINDOW_SAMPLES (CAP_PRE_SAMPLES + CAP_POST_SAMPLES)
-#define CAP_RING_SAMPLES 1329u
-#define CAP_SLOTS 4u
+#define CAP_RING_SAMPLES 4800u
+#define CAP_STANDARD_PRE 480u
+#define CAP_STANDARD_POST 240u
+#define CAP_EXTENDED_PRE 2880u
+#define CAP_EXTENDED_POST 960u
 #define CAP_ACC_UG_PER_LSB 976u
 #define CAP_GYRO_MDPS_PER_LSB 70u
-#define CAP_NO_SLOT (-1)
-
-typedef enum { CAP_SLOT_FREE, CAP_SLOT_FILLING, CAP_SLOT_READY } cap_slot_state_t;
-
-typedef struct {
-	cap_slot_state_t state;
-	uint32_t seq;
-	uint32_t trigger_index;
-	sp_cap_sample_t samples[CAP_WINDOW_SAMPLES];
-} cap_slot_t;
 
 typedef struct {
 	sp_cap_sample_t ring[CAP_RING_SAMPLES];
 	uint32_t count;
-	cap_slot_t slots[CAP_SLOTS];
-	uint32_t next_slot;
+	uint32_t epoch;
 } cap_t;
 
 typedef struct {
-	uint32_t seq;
-	uint32_t trigger_index;
+	uint32_t trigger;
+	uint32_t pre;
+	uint32_t post;
 } cap_request_t;
 
 typedef struct {
-	int slot;
+	uint32_t first;
+	uint32_t trigger;
+	uint32_t end;
+} cap_window_t;
+
+typedef struct {
+	uint32_t seq;
+	uint16_t n_samples;
+	uint16_t trigger_index;
+} cap_header_info_t;
+
+typedef struct {
 	uint32_t seq;
 	uint16_t first;
+	const sp_cap_sample_t *samples;
+	uint32_t count;
+} cap_data_info_t;
+
+typedef struct {
 	uint8_t *buf;
 	size_t capacity;
-} cap_packet_t;
+} cap_buf_t;
 
 void cap_init(cap_t *cap);
 void cap_reset(cap_t *cap);
-int cap_push(cap_t *cap, const sp_cap_sample_t *sample);
-int cap_request(cap_t *cap, const cap_request_t *req);
-int cap_find(const cap_t *cap, uint32_t seq);
+void cap_push(cap_t *cap, const sp_cap_sample_t *sample);
+bool cap_holds(const cap_t *cap, uint32_t index);
+const sp_cap_sample_t *cap_sample(const cap_t *cap, uint32_t index);
+cap_window_t cap_window(const cap_t *cap, const cap_request_t *req);
+cap_request_t cap_mode_request(uint8_t mode, uint32_t trigger);
 uint32_t cap_index_to_ms(uint32_t index);
 uint32_t cap_ms_to_index(uint32_t ms);
-size_t cap_pack_header(const cap_t *cap, const cap_packet_t *pkt);
-size_t cap_pack_data(const cap_t *cap, cap_packet_t *pkt);
+uint32_t cap_data_fit(size_t capacity);
+size_t cap_pack_header(const cap_header_info_t *info, const cap_buf_t *out);
+size_t cap_pack_data(const cap_data_info_t *data, const cap_buf_t *out);
 
 #endif

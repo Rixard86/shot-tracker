@@ -101,11 +101,15 @@
 		};
 		slot0_partition: partition@c000 {
 			label = "image-0";
-			reg = <0x0000C000 0x00073000>;
+			reg = <0x0000C000 0x00040000>;
 		};
-		slot1_partition: partition@7f000 {
+		slot1_partition: partition@4c000 {
 			label = "image-1";
-			reg = <0x0007F000 0x00073000>;
+			reg = <0x0004C000 0x00040000>;
+		};
+		capture_partition: partition@8c000 {
+			label = "captures";
+			reg = <0x0008C000 0x00066000>;
 		};
 		eventlog_partition: partition@f2000 {
 			label = "eventlog";

@@ -20,8 +20,10 @@
 
 #include "accel.h"
 #include "ble.h"
+#include "capflash.h"
 #include "capture.h"
 #include "capture_tx.h"
+#include "capwriter.h"
 #include "chg_led.h"
 #include "claim.h"
 #include "event_tx.h"
@@ -68,6 +70,9 @@ K_MSGQ_DEFINE(ctrl_q, sizeof(struct ctrl_msg), 4, 4);
 
 static store_t st;
 static cap_t cap;
+static capstore_t capstore;
+static capw_t capw;
+static bool captures_ok;
 static sd_state_t det;
 static sp_config_t pending_cfg;
 static atomic_t cfg_pending;
@@ -88,9 +93,12 @@ static void led_pulse(int ms)
 	gpio_pin_set_dt(&led, 0);
 }
 
-static void cfg_to_wire(const sd_config_t *c, sp_config_t *w)
+static void cfg_to_wire(const store_t *s, sp_config_t *w)
 {
+	const sd_config_t *c = &s->cfg;
+
 	w->version = PROTO_VERSION;
+	w->capture_mode = s->capture_mode;
 	w->trig_hf_mg = (uint16_t)c->trig_hf_mg;
 	w->move_mg = (uint16_t)c->move_mg;
 	w->pre_still_min_ms = c->pre_still_min_ms;
@@ -124,7 +132,8 @@ static bool cfg_valid(const sp_config_t *w)
 	       w->post_lf_min_mg <= 5000 &&
 	       w->refractory_ms >= 200 && w->refractory_ms <= 10000 &&
 	       w->wake_mg >= 16 && w->wake_mg <= 2000 &&
-	       w->idle_timeout_s >= 5 && w->idle_timeout_s <= 3600;
+	       w->idle_timeout_s >= 5 && w->idle_timeout_s <= 3600 &&
+	       w->capture_mode <= SP_CAPTURE_EXTENDED;
 }
 
 static void publish_count(void)
@@ -216,10 +225,15 @@ static void go_idle(void)
 
 static void request_capture(const sd_event_t *e, uint32_t seq)
 {
-	cap_request_t req = {.seq = seq, .trigger_index = cap_ms_to_index(e->t_ms - active_start_ms)};
+	capw_request_t req = {
+		.seq = seq,
+		.trigger = cap_ms_to_index(e->t_ms - active_start_ms),
+		.epoch = cap.epoch,
+		.mode = st.capture_mode,
+	};
 
-	if (cap_request(&cap, &req) == CAP_NO_SLOT) {
-		LOG_WRN("no capture for seq %u", seq);
+	if (captures_ok) {
+		capw_request(&capw, &req);
 	}
 }
 
@@ -272,11 +286,8 @@ static void process_batch(const accel_fifo_t *fifo, uint32_t n)
 	for (uint32_t i = 0; i < n; i++) {
 		int16_t mg[3];
 		sd_event_t e;
-		int slot = cap_push(&cap, &fifo->samples[i]);
 
-		if (slot != CAP_NO_SLOT) {
-			cap_tx_queue(cap.slots[slot].seq);
-		}
+		cap_push(&cap, &fifo->samples[i]);
 		accel_to_mg(&fifo->samples[i], mg);
 		if (sd_process(&det, mg, sample_ms(sample_idx++), &e)) {
 			handle_detection(&e, now - (t_last - e.t_ms));
@@ -349,7 +360,7 @@ static void handle_ctrl(void)
 			sd_default_config(&st.cfg);
 			det.cfg = st.cfg;
 			store_save_cfg(&st);
-			cfg_to_wire(&st.cfg, &w);
+			cfg_to_wire(&st, &w);
 			ble_update_config(&w);
 			break;
 		}
@@ -430,7 +441,7 @@ static void charge_feedback(void)
 
 static uint32_t poll_period(bool active)
 {
-	if (event_tx_busy() || cap_tx_busy()) {
+	if (event_tx_busy() || cap_tx_busy() || capw_busy(&capw)) {
 		return TX_POLL_MS;
 	}
 	if (factory_pads_held()) {
@@ -476,10 +487,15 @@ int main(void)
 	st.cfg.fs_hz = (float)CAP_ODR_HZ;
 	sd_init(&det, &st.cfg);
 	cap_init(&cap);
-	cap_tx_init(&cap);
+	captures_ok = capflash_init(&capstore) == 0;
+	if (!captures_ok) {
+		LOG_ERR("capture store unavailable");
+	}
+	capw_init(&capw, &(capw_deps_t){&cap, &capstore});
+	cap_tx_init(&capstore, &capw);
 	ble_set_tx_done_cb(on_tx_done);
 
-	cfg_to_wire(&st.cfg, &w);
+	cfg_to_wire(&st, &w);
 	ble_update_config(&w);
 	if (ble_init(on_ctrl, on_cfg, on_conn) || claim_init()) {
 		LOG_ERR("BLE init failed");
@@ -524,11 +540,15 @@ int main(void)
 		if (event_tx_busy()) {
 			event_tx_pump();
 		}
+		if (capw_busy(&capw) && capw_pump(&capw) == CAPW_COMMITTED) {
+			cap_tx_queue(capw.committed_seq);
+		}
 		if (cap_tx_busy()) {
 			cap_tx_pump();
 		}
 		if (atomic_cas(&cfg_pending, 1, 0)) {
 			wire_to_cfg(&pending_cfg, &st.cfg);
+			st.capture_mode = pending_cfg.capture_mode;
 			det.cfg = st.cfg;
 			store_save_cfg(&st);
 			LOG_INF("config updated");

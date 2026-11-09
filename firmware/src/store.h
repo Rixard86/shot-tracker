@@ -9,6 +9,7 @@ typedef struct {
 	uint32_t total;   /* lifetime accepted shots */
 	uint32_t seq;     /* last event sequence number */
 	sd_config_t cfg;  /* detector thresholds */
+	uint8_t capture_mode;
 } store_t;
 
 /* Loads persisted values into *s (keeps caller defaults if absent).

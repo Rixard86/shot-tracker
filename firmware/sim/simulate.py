@@ -390,15 +390,18 @@ def margins(res):
         print(f"    {nm:13s} shots {np.round(ps).astype(int)}   non-shots {np.round(pn).astype(int)}")
 
 
-UNIT_TESTS = [("test_capture.c", "capture.c"), ("test_evlog.c", "evlog.c"), ("test_chg_led.c", "chg_led.c"),
-              ("test_recovery.c", "recovery.c")]
+CAPSTORE = ["capstore.c", "capstore_layout.c", "capstore_scan.c"]
+CODEC = ["capcodec.c", "capdec.c"]
+UNIT_TESTS = [("test_capture.c", ["capture.c"]), ("test_evlog.c", ["evlog.c"]), ("test_chg_led.c", ["chg_led.c"]),
+              ("test_recovery.c", ["recovery.c"]), ("test_capcodec.c", CODEC), ("test_capstore.c", CAPSTORE),
+              ("test_capwriter.c", ["capwriter.c", "capture.c"] + CODEC + CAPSTORE)]
 
 
 def unit_test_passes(pair):
-    test, module = pair
+    test, modules = pair
     exe = os.path.join(tempfile.mkdtemp(), test.replace(".c", ".exe"))
-    srcs = [os.path.join(HERE, test), os.path.join(SRC, module)]
-    subprocess.check_call([CC] + CFLAGS + ["-o", exe] + srcs)
+    srcs = [os.path.join(HERE, test)] + [os.path.join(SRC, m) for m in modules]
+    subprocess.check_call([CC] + CFLAGS + ["-o", exe] + srcs + ["-lm"])
     return subprocess.run([exe]).returncode == 0
 
 

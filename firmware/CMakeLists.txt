@@ -10,6 +10,13 @@ target_sources(app PRIVATE
   src/accel.c
   src/capture.c
   src/capture_tx.c
+  src/capcodec.c
+  src/capdec.c
+  src/capflash.c
+  src/capstore.c
+  src/capstore_layout.c
+  src/capstore_scan.c
+  src/capwriter.c
   src/chg_led.c
   src/evlog.c
   src/factory.c

@@ -83,12 +83,12 @@ Reorder round (2026-10-26): JLC cancelled the rev 0A PCB + PCBA order. The requo
 2. **`hardware/design.py` is the only source of the circuit.**
    - `.kicad_sch` and `.kicad_pcb` are **generated**; never hand-edit them in the repo.
    - Flow: edit `design.py` → `gen_sch.py` → `check_netlist.py` → ERC → `gen_pcb.py` → `gen_bom.py` → re-export fab files (README "Build & flash").
-3. **`firmware/src/shot_detect.c`, `capture.c` and `evlog.c` are portable and shared by the firmware and the host tests.**
-   - Any change must be re-run through `firmware/sim/simulate.py --stress`, which must print `CAPTURE TESTS: PASS`, `EVLOG TESTS: PASS` and `RESULT: PASS` before shipping.
+3. **`firmware/src/shot_detect.c`, `capture.c`, `evlog.c`, `capcodec.c`/`capdec.c`, `capstore*.c` and `capwriter.c` are portable and shared by the firmware and the host tests.**
+   - Any change must be re-run through `firmware/sim/simulate.py --stress`, which must print every `... TESTS: PASS` line (CAPTURE, EVLOG, CHG LED, RECOVERY, CODEC, CAPSTORE, CAPWRITER) and `RESULT: PASS` before shipping.
    - Keep new logic that can be portable in this form (no Zephyr includes, flash/BLE behind small interfaces) so it can be host-tested.
 4. **Wire protocol lives in `firmware/src/protocol.h`** and is documented in `docs/PROTOCOL.md`.
    - Keep the two in sync (packet layouts are also pinned by `test_capture.c`).
-   - Bump `PROTO_VERSION` on any layout change, because the Flutter app parses these bytes. It is **2** now.
+   - Bump `PROTO_VERSION` on any layout change, because the Flutter app parses these bytes. It is **3** now (firmware 0.3.0: CONFIG `capture_mode`; 19-byte v2 CONFIG writes still accepted).
 5. `puck.py` and `gen_pcb.py` share only `layout.json` now (the trim pin and its `trim.json` are gone).
 6. **Placement before routing:** after any placement or circuit change, run `gen_pcb.py --no-route` (placement DRC), then `global_route.py` (overflow + hotspots; the split-tube board that routed cleanly scored 8.3, boards that failed scored 8.5–9.2, and parts sitting in a hotspot band showed up there), then `gen_pcb.py --quick` (one Freerouting attempt, ~5 min). Only a placement that passes the trial gets the full run.
 7. `gen_pcb.py` must end with **0 DRC violations and 0 unconnected pads**. Freerouting is not deterministic; the script already retries up to 4 times, so re-run it if it still fails.
@@ -102,8 +102,12 @@ firmware/
   src/main.c                 event loop, IDLE/ACTIVE modes, BLE glue, event ring (128, RAM only)
   src/shot_detect.[ch]       portable detector (trigger + pre-stillness + post-release LF motion), accel only
   src/accel.[ch]             raw LSM6DSV32X I2C driver (IDLE 15 Hz LP wake-up / ACTIVE 480 Hz accel+gyro FIFO)
-  src/capture.[ch]           portable capture ring (2.8 s), 4 shot windows (−1.0 s..+0.5 s), BLE packet packing
-  src/capture_tx.[ch]        queues captures and pumps CAPTURE notifications without blocking
+  src/capture.[ch]           portable sample ring (10 s), capture windows (standard −1.0..+0.5 s, extended −6..+2 s), BLE packet packing
+  src/capcodec.c, capdec.c   portable lossless capture codec (32-sample blocks, per axis delta/slope prediction + Rice, raw fallback)
+  src/capstore*.[ch]         portable flash ring of variable-length compressed captures (sector first-record pointers, CRC commit, torn-write safe, RAM index)
+  src/capwriter.[ch]         portable: compresses each requested window from the ring into capstore, 4 blocks per main-loop pass
+  src/capflash.[ch]          capstore on the `capture_partition` (Zephyr flash_area)
+  src/capture_tx.[ch]        queues captures and pumps CAPTURE notifications from flash (decoded on the fly) without blocking
   src/evlog.[ch]             portable flash ring log of accepted shots (32 B records, CRC, torn-write safe)
   src/event_tx.[ch]          shot log on the eventlog partition, RAM ring of rejects, live queue, paced batched EVENT/REPLAY
   src/claim.[ch]             pairing window (60 s after VBUS appears), pairing-accept callback, FORGET_BONDS
@@ -127,6 +131,9 @@ firmware/
   sim/test_evlog.c           host unit tests for evlog.c (fake NOR flash)
   sim/test_chg_led.c         host unit tests for chg_led.c
   sim/test_recovery.c        host unit tests for recovery.c
+  sim/test_capcodec.c        host unit tests for the codec (round trips, raw fallback, truncated input)
+  sim/test_capstore.c        host unit tests for capstore (fake NOR flash: wrap, reboots, abort, 400 random power cuts)
+  sim/test_capwriter.c       end-to-end ring → writer → codec → store → decoder, both modes; prints a synthetic capacity estimate
   sim/results.txt            last run (seed 2026, 36 sessions)
 hardware/
   design.py                  parts/pins/nets table (the schematic)
@@ -152,7 +159,7 @@ mechanical/plate_drawing.py  plate manufacturing drawing (hole table, M2 thread 
                              5052 sheet-metal prototype variant → out/plate_drawing_5052.pdf + out/plate_5052.step
 mechanical/plate_fdm.py      3D-printable (FDM) prototype plate: locating lip instead of the O-ring, cell pocket, tube lip → out/plate_fdm.stl
 mechanical/blender/          render_assembly.py (entry) + parts/cellconn/shapes/stack/looks/motion: exploded-view animation → out/shotpuck_assembly.mp4
-docs/PROTOCOL.md             BLE protocol v2 + recommended app sync
+docs/PROTOCOL.md             BLE protocol v3 + recommended app sync
 docs/VALIDATION.md           proven vs on-device checklist
 ```
 
@@ -162,7 +169,9 @@ docs/VALIDATION.md           proven vs on-device checklist
 |---|---|
 | Firmware (Zephyr v4.1.0, SDK 0.17.0, Windows, sysbuild; 0.2.2, LSM6DSV32X, 2026-10-01) | 0 compiler warnings; app 200,912 B of a 452 KB slot, RAM 96,832 B of 256 KB; log+assert variant 268,352 B / 102,092 B; MCUboot 27,980 B of 48 KB (one harmless upstream Kconfig warning about MBEDTLS_CFG_FILE, MCUboot uses TinyCrypt) |
 | OTA signing | Image validates with the private key (`imgtool verify`), fails with MCUboot's dev key; MCUboot embeds the matching public key (91 bytes compared); build refuses to run without the private key |
-| Capture unit tests | PASS (also mutation-checked: an off-by-one window start is caught) |
+| Firmware 0.3.0 (2026-11-08, compressed captures in flash + extended mode) | app 205,428 B of the 248 KB usable in a 256 KB slot, RAM 109,248 B of 256 KB; MCUboot 27,980 B; signed image `imgtool verify` OK (0.3.0+0); RTT logging variant (`debug.conf`) 236,692 B, which fits only without `CONFIG_ASSERT` (with it, 18.9 KB over), so asserts were dropped from `debug.conf`. Not yet run on hardware |
+| Capture unit tests | PASS: windows for both modes, short capture after a wake, overwritten trigger, packet packing |
+| Capture codec + store tests | PASS: exact round trips, never larger than raw; store survives wrap, reboots, aborts and 400 random power cuts without programming written flash (mutation-checked: a missed torn-sector skip and a valid-looking abort are both caught); end-to-end decode matches every sample. Synthetic signal: 158 standard / 38 extended captures fit (3.3× / 4.3×); real bow data still to measure |
 | Shot log unit tests | PASS: 952 of 3000 kept after wrap; torn write/erase recovery; never writes unerased flash (mutation-checked) |
 | Sim nominal (480 Hz, 36 sessions, 494 shots) | recall 99.60 %, precision 100 % |
 | Sim hard cases (448 shots) | recall 99.11 %, precision 99.78 % (1 FP, grab) |
@@ -222,7 +231,7 @@ Detector defaults (tunable over BLE CONFIG) are unchanged except the sample rate
   - Init: software reset, BDU + IF_INC, **I²C anti-spike filter always on** (IF_CFG.ASF_CTRL = 1: the part has no separate I3C disable, and IF_CFG survives the software reset), accelerometer ±32 g (CTRL8 = 0x07; bit 2 must stay 1) and gyroscope ±2000 dps (CTRL6 = 0x04), set once. INT1 is a push-pull output driven low by default and is not a boot strap; still never add a pull-up to ACC_INT1.
   - IDLE: gyro off, accel low-power mode 1 (2-sample mean) at 15 Hz, slope wake-up (31.25 mg/LSB set in INACTIVITY_DUR, independent of the full scale, so IDLE stays at ±32 g; latched, cleared by reading WAKE_UP_SRC) → INT1. Basic interrupts are enabled in FUNCTIONS_ENABLE.
   - ACTIVE: accel 480 Hz ±32 g (0.976 mg/LSB), gyro 480 Hz ±2000 dps (70 mdps/LSB), both high-performance, FIFO continuous, both batched at 480 Hz, watermark 52 words → INT1. The FIFO holds 1.5 KB uncompressed (~0.23 s at this rate, half the LSM6DSO32's), so the main thread must not block for more than ~0.17 s after the watermark interrupt. The driver reads it word by word (7 bytes each) and pairs each accel word with the latest gyro word.
-- **Capture:** ring of 1329 samples (2.8 s); for each **accepted** shot a window from trigger − 480 to trigger + 240 samples is copied into one of 4 slots; the window completes when the ring has its last sample. Detector time ↔ sample index uses `cap_index_to_ms` / `cap_ms_to_index` (exact inverses, tested).
+- **Capture:** ring of 4800 samples (10 s, 57.6 KB). For each **accepted** shot `capwriter` compresses the window (CONFIG `capture_mode`: standard trigger − 480 .. + 240, extended − 2880 .. + 960; starts at the wake if that was later) into `capstore` while the post-trigger part arrives, 4 blocks per main-loop pass; the ring leaves ~2 s of margin before the extended window's start is overwritten. A ring reset (wake, FIFO overrun) aborts a capture in progress. Records commit with a CRC; the newest push out the oldest; a RAM index (max 256) finds them by seq. Detector time ↔ sample index uses `cap_index_to_ms` / `cap_ms_to_index` (exact inverses, tested).
 - **Clocks and regulators:** 32 kHz from RC (the BMD-340 has no 32.768 kHz crystal); REG0/REG1 in LDO mode. The module does carry the DC/DC inductors, so DC/DC could be enabled later to save active current.
 - **Board orientation** (layout coordinates, +y up, board centre = bolt axis):
   - Module U1 (BMD-340, 15.0 × 10.2 mm) at (7.78, 7.78), rotated 135°: centre at r = 11.0, long axis tangential, slid 45° clockwise around the tube from the top so the left side is free for the USB-C port. Tube and rim clearances are as they were at the top: both outer corners 0.24 mm inside the rim (the outline tolerance is ±0.2 mm), the body 0.9 mm above the tube. The antenna end points 45° below +x. `board_shape.rf_keepout()` makes the antenna zone plus everything right of the sleeve hole copper-free, except the module's own footprint (+0.5 mm). `PRE_VIAS` offsets for U1 rotate with it (`turned()` in `gen_pcb.py`).
@@ -248,7 +257,7 @@ Detector defaults (tunable over BLE CONFIG) are unchanged except the sample rate
 - **Ground strategy:** every GND SMD pad gets a stub + via before routing (`gnd_fanout`, which keeps clear of every via already on the board, including the SWD escape vias). The DSN handed to Freerouting has the GND planes and GND pins stripped (`signals_only`), so it routes signals only; with the planes in, it stalls. `stitch()` adds grid GND vias only after all routing (stitch vias placed before the second pass filled the PCM pocket and blocked it), dangling track ends are deleted (`remove_dangling`), pours fill with island removal (connectivity is rebuilt before every fill; a stale one kept dead islands and got a useless bridge via), then `islands.bridge_islands()` adds a via for any GND fragment group not tied to the main plane, never inside a via keep-out. U2's GND pads use a solid zone connection (a thermal on pad 6 was starved). Pre-routed links (`PRE_ROUTED`): Q2's common drain PCM_D and Q1.4–Q1.1.
 - **Identity:** `identity_apply()` (after `bt_enable` and `settings_load_subtree("bt")`) reads the 8-byte FICR device ID, sets the name `ShotPuck-` + last 4 hex digits, and sets the DIS serial via `settings_runtime_set("bt/dis/serial")` (needs `CONFIG_SETTINGS_RUNTIME`).
 - **Pairing (claim):** LE Secure Connections Just Works, bonds stored by `CONFIG_BT_SETTINGS`, max 4 (oldest overwritten). `pairing_accept` rejects new pairings unless the window is open; the window opens for 60 s on a VBUS rising edge (polled via `power_vbus_present()` in the main loop, which wakes at least every 2 s; boot with the charger attached counts). LED blinks 1/s while open, twice on a new bond. Every ShotPuck characteristic value and CCC needs encryption; DIS and BAS are open. Zephyr restores a bonded phone's subscriptions only after the link is encrypted.
-- **Flash layout (1 MB):** `boot_partition` 0x00000 48 KB (MCUboot); `slot0` 0x0C000 460 KB (running app); `slot1` 0x7F000 460 KB (OTA download); `eventlog` 0xF2000 32 KB; `storage` 0xFA000 24 KB (NVS: counts, config, bonds). Shots, settings and bonds survive OTA.
+- **Flash layout (1 MB):** `boot_partition` 0x00000 48 KB (MCUboot); `slot0` 0x0C000 256 KB (running app); `slot1` 0x4C000 256 KB (OTA download); `capture_partition` 0x8C000 408 KB (compressed captures); `eventlog` 0xF2000 32 KB; `storage` 0xFA000 24 KB (NVS: counts, config, capture mode, bonds). Shots, captures, settings and bonds survive OTA. Until 0.2.2 the slots were 460 KB with no capture area: 0.3.0 must be flashed by cable onto 0.2.x boards (never OTA), because the bootloader holds the layout.
 - **OTA:** sysbuild builds MCUboot + app and signs the app with ECDSA-P256 (key `C:\Users\rixar\.shotpuck\ota-signing-key.pem`, never in the repo; pass it quoted as `-DSB_CONFIG_BOOT_SIGNATURE_KEY_FILE=\"...\"`, otherwise Kconfig silently falls back to the public dev key and `sysbuild.cmake` stops the build). MCUmgr SMP over BLE (img + os groups) with `PERM_RW_ENCRYPT`, progressive erase. MCUboot swap-using-move; a new image runs as a trial, `ota.c` confirms it after 10 s of main loop, the phone may confirm earlier. The watchdog (10 s, fed every main-loop pass; paused only under a debugger) turns a hang into a reset, and MCUboot then reverts an unconfirmed image. MCUboot feeds the watchdog during the swap. In the no-IMU SOS loop the watchdog is fed only if the image is confirmed, so a broken update rolls back while a confirmed image with a dead sensor stays up for diagnostics.
 - **Event transmission:** `event_tx` sends live events first, then a REPLAY (flash shots, then RAM rejects), up to 10 events per EVENT notification. EVENT and CAPTURE share a limit of 2 notifications in flight; the completion callback wakes the main loop. Nothing in the main loop waits on BLE buffers any more (the v0.1 replay loop slept up to 1 s per event).
 - **BLE:**
@@ -329,6 +338,12 @@ Build commands are in README "Build & flash". Keep toolchains and build director
    - The screw heads sit in the gap between board and plate: they must clear the plate, the Kapton and the bottom pads (J2, JP1, JP2 from item 1).
    - The seal squeeze and the band's stop on the plate now come only from the bolt load through the cap top, and off the bow the plate and the tube are held by nothing, against D21 (the tube must not get lost).
 4. **"Båg-pucken" on the bottom silkscreen (B.SilkS), horizontal**, as in the top-side text block ("Båg-pucken / rev. 0B / Richard H. / VBK", F.SilkS, 0°), which stays. Keep it clear of J2, JP1, JP2 (item 1) and the screw heads (item 3). Silkscreen is a hand edit.
+5. **USB-C power path (load sharing), so the board runs on USB-C without a cell** (Richard, 2026-11-08). On rev 0B the MCP73831 is the only path from VIN to U1 VCCH. With no cell it stays in preconditioning (about 10 % of 21 mA ≈ 2 mA below ≈ 2.8 V). The blank chip ran on that (VDD 1.8 V, the first flash worked), but the firmware's boot draws more (MCUboot's signature check): on board 1 VBAT and VDD sat at about 1.6 V, the LED stayed dark and SWD gave "Failed to power up DAP"; a charged cell fixed it. So today flashing works on USB-C alone, but running needs a cell (flash guide step 8).
+   - Circuit: load sharing as in Microchip AN1149: a P-FET between the cell side of VBAT and the load (U1 VCCH), gate on VIN with a pull-down, plus a Schottky from VIN to the load. With USB-C the load runs from VIN through the Schottky (about 4.6–4.8 V, inside VDDH's 2.5–5.5 V) and the charger only charges the cell; without it the FET turns on and the load runs from the cell. Alternative: a charger with a built-in power path (e.g. Nordic nPM1100, TI BQ25180), a bigger change.
+   - Charge termination gets clean: today the board's own current flows through the charger with the cell's and can hold it above the termination current (7.5 % ≈ 1.6 mA), which the charger LED logic works around (§6, `chg_led.c`).
+   - Firmware: `NRF_SAADC_VDDHDIV5` then reads the USB-side rail while plugged in, not the cell, so the battery % and the "full" condition (cell ≥ 4.10 V) need another source while VBUS is present (charger STAT, or a cell divider into a spare SAADC pin). The 3.3 V cut-off already applies only without VBUS.
+   - Parts: a SOT-23 P-FET, a SOD-323 Schottky and the gate resistor on the crowded left half near U3/C2. Pick a low-leakage Schottky: on the cell its reverse leakage into VIN drains the cell in System OFF. The cell protection (BQ29700 + Q2 in the negative lead) is unchanged.
+   - A firmware-only workaround (MCUboot waits at low current until VBAT passes ~3 V, so the charger leaves preconditioning) was considered and not pursued: the MCP73831's behaviour without a cell is unspecified, and MCUboot can only be updated by cable.
 
 ## 9. Known limitations / risks
 
@@ -342,7 +357,8 @@ Build commands are in README "Build & flash". Keep toolchains and build director
 - **Sustained overvoltage:** D3 and R9/C9 handle ESD and hot-plug spikes, not a 9–12 V adapter; that would need an overvoltage switch on VIN.
 - **Stock (JLCPCB assembly, 2026-10-01, USB-C board):** all 21 BOM lines are in stock for 20 boards (5 panels); the rev 0A order assembles 4. There are 10 extended parts; parts cost about $15 per board, most of it U1 ($8.53) and U2 ($3.74). Thinnest: DMN63D8LDW (244), BQ29700 (257), BMD-340 (322); U2 LSM6DSV32XTR C22461202 has 5,864. Earlier swaps: U1 MDBT50Q-1MV2 (0 in stock) → BMD-340-A-R C5456944; D4 → C22470306, a second listing of the same XL-1005SYGC; U2 LSM6DSO32TR (dropped to 39) → LSM6DSO32XTR (177) → LSM6DSV32XTR (lower noise, more stock). LCSC's own shop stock differs and is not what PCBA uses. JLCPCB's search API (`selectSmtComponentList`, POST, JSON body `{"keyword": "<LCSC>"}`) returns live `stockCount`; EasyEDA's `https://easyeda.com/api/products/<LCSC>/components?version=6.4.19.5` returns the footprint JLC places.
 - **BMD-340 type:** JLCPCB support confirmed (2026-10-12) that C5456944 is BMD-340-A-R-10; -00 (nRF52840 rev 1) has an unusable high-voltage mode (README D14).
-- **Captures and rejected candidates are RAM-only** (4 captures, 128 rejects). Accepted shots persist (~900 in flash).
+- **Rejected candidates are RAM-only** (128). Accepted shots persist (~900 in flash), captures too (as many as fit in 408 KB; the count depends on real compression, unmeasured).
+- **Capture writes erase flash in the main thread** (0.3.0): a 4 KB sector every few KB of compressed data, 85 ms each (longer with a phone connected, when the flash driver fits the erase between radio events). The main loop must read the IMU FIFO within ~0.17 s of the watermark; a longer stall gives a FIFO overrun, which restarts the detector and drops the capture in progress. Unverified on hardware (VALIDATION §2). Fallbacks if it shows up: pre-erase the next sector between shots, or move the writer to a low-priority thread.
 - **Pairing window:** anyone within range during the 60 s after the charger is attached can pair. Acceptable because attaching the charger needs the puck in hand.
 - **LED_BLINK (find-my-puck) blocks the main loop for ~1 s**, longer than the IMU FIFO (~0.23 s). Using it while shooting can drop a shot (FIFO overrun restarts the detector). Not fixed; it is meant for a puck lying around.
 - **OTA is verified off-device only** (build, signatures, key guard). Upgrade, rollback-on-reset and rollback-on-hang must be tested on hardware (VALIDATION §2b). During the MCUboot swap (about 10–20 s) the puck is unavailable.

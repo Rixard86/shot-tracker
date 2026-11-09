@@ -1,6 +1,5 @@
 #include "capture.h"
 
-#include <stdbool.h>
 #include <string.h>
 
 #define MS_PER_S 1000u
@@ -13,71 +12,48 @@ void cap_init(cap_t *cap)
 void cap_reset(cap_t *cap)
 {
 	cap->count = 0;
-	for (uint32_t i = 0; i < CAP_SLOTS; i++) {
-		if (cap->slots[i].state == CAP_SLOT_FILLING) {
-			cap->slots[i].state = CAP_SLOT_FREE;
-		}
-	}
+	cap->epoch++;
 }
 
-static bool window_complete(const cap_t *cap, uint32_t slot)
-{
-	const cap_slot_t *s = &cap->slots[slot];
-
-	return s->state == CAP_SLOT_FILLING && cap->count >= s->trigger_index + CAP_POST_SAMPLES;
-}
-
-static void fill_slot(cap_t *cap, uint32_t slot)
-{
-	cap_slot_t *s = &cap->slots[slot];
-	uint32_t start = s->trigger_index - CAP_PRE_SAMPLES;
-
-	for (uint32_t k = 0; k < CAP_WINDOW_SAMPLES; k++) {
-		s->samples[k] = cap->ring[(start + k) % CAP_RING_SAMPLES];
-	}
-	s->state = CAP_SLOT_READY;
-}
-
-int cap_push(cap_t *cap, const sp_cap_sample_t *sample)
+void cap_push(cap_t *cap, const sp_cap_sample_t *sample)
 {
 	cap->ring[cap->count % CAP_RING_SAMPLES] = *sample;
 	cap->count++;
-	for (uint32_t i = 0; i < CAP_SLOTS; i++) {
-		if (window_complete(cap, i)) {
-			fill_slot(cap, i);
-			return (int)i;
-		}
-	}
-	return CAP_NO_SLOT;
 }
 
-int cap_request(cap_t *cap, const cap_request_t *req)
+static uint32_t oldest_held(const cap_t *cap)
 {
-	if (req->trigger_index < CAP_PRE_SAMPLES) {
-		return CAP_NO_SLOT;
-	}
-	uint32_t start = req->trigger_index - CAP_PRE_SAMPLES;
-	if (cap->count > start + CAP_RING_SAMPLES) {
-		return CAP_NO_SLOT;
-	}
-	uint32_t slot = cap->next_slot;
-	cap_slot_t *s = &cap->slots[slot];
-
-	cap->next_slot = (slot + 1) % CAP_SLOTS;
-	s->state = CAP_SLOT_FILLING;
-	s->seq = req->seq;
-	s->trigger_index = req->trigger_index;
-	return (int)slot;
+	return cap->count > CAP_RING_SAMPLES ? cap->count - CAP_RING_SAMPLES : 0u;
 }
 
-int cap_find(const cap_t *cap, uint32_t seq)
+bool cap_holds(const cap_t *cap, uint32_t index)
 {
-	for (uint32_t i = 0; i < CAP_SLOTS; i++) {
-		if (cap->slots[i].state == CAP_SLOT_READY && cap->slots[i].seq == seq) {
-			return (int)i;
-		}
+	return index < cap->count && index >= oldest_held(cap);
+}
+
+const sp_cap_sample_t *cap_sample(const cap_t *cap, uint32_t index)
+{
+	return &cap->ring[index % CAP_RING_SAMPLES];
+}
+
+cap_window_t cap_window(const cap_t *cap, const cap_request_t *req)
+{
+	cap_window_t empty = {0, 0, 0};
+	uint32_t oldest = oldest_held(cap);
+	uint32_t first = req->trigger > req->pre ? req->trigger - req->pre : 0u;
+
+	if (req->trigger < oldest || req->trigger >= cap->count) {
+		return empty;
 	}
-	return CAP_NO_SLOT;
+	return (cap_window_t){first > oldest ? first : oldest, req->trigger, req->trigger + req->post};
+}
+
+cap_request_t cap_mode_request(uint8_t mode, uint32_t trigger)
+{
+	if (mode == SP_CAPTURE_EXTENDED) {
+		return (cap_request_t){trigger, CAP_EXTENDED_PRE, CAP_EXTENDED_POST};
+	}
+	return (cap_request_t){trigger, CAP_STANDARD_PRE, CAP_STANDARD_POST};
 }
 
 uint32_t cap_index_to_ms(uint32_t index)
@@ -90,50 +66,42 @@ uint32_t cap_ms_to_index(uint32_t ms)
 	return (uint32_t)(((uint64_t)ms * CAP_ODR_HZ + MS_PER_S - 1u) / MS_PER_S);
 }
 
-static bool slot_ready(const cap_t *cap, const cap_packet_t *pkt)
+uint32_t cap_data_fit(size_t capacity)
 {
-	if (pkt->slot < 0 || pkt->slot >= (int)CAP_SLOTS) {
-		return false;
+	if (capacity < sizeof(sp_cap_data_t) + sizeof(sp_cap_sample_t)) {
+		return 0;
 	}
-	const cap_slot_t *s = &cap->slots[pkt->slot];
-
-	return s->state == CAP_SLOT_READY && s->seq == pkt->seq;
+	return (uint32_t)((capacity - sizeof(sp_cap_data_t)) / sizeof(sp_cap_sample_t));
 }
 
-size_t cap_pack_header(const cap_t *cap, const cap_packet_t *pkt)
+size_t cap_pack_header(const cap_header_info_t *info, const cap_buf_t *out)
 {
 	sp_cap_header_t h = {
 		.type = SP_CAP_HEADER,
-		.seq = pkt->seq,
-		.n_samples = slot_ready(cap, pkt) ? CAP_WINDOW_SAMPLES : 0u,
-		.trigger_index = CAP_PRE_SAMPLES,
+		.seq = info->seq,
+		.n_samples = info->n_samples,
+		.trigger_index = info->trigger_index,
 		.odr_hz = CAP_ODR_HZ,
 		.acc_ug_per_lsb = CAP_ACC_UG_PER_LSB,
 		.gyro_mdps_per_lsb = CAP_GYRO_MDPS_PER_LSB,
 	};
 
-	if (pkt->capacity < sizeof(h)) {
+	if (out->capacity < sizeof(h)) {
 		return 0;
 	}
-	memcpy(pkt->buf, &h, sizeof(h));
+	memcpy(out->buf, &h, sizeof(h));
 	return sizeof(h);
 }
 
-size_t cap_pack_data(const cap_t *cap, cap_packet_t *pkt)
+size_t cap_pack_data(const cap_data_info_t *data, const cap_buf_t *out)
 {
-	const size_t min_len = sizeof(sp_cap_data_t) + sizeof(sp_cap_sample_t);
+	sp_cap_data_t d = {.type = SP_CAP_DATA, .seq = data->seq, .first = data->first};
+	size_t samples_len = data->count * sizeof(sp_cap_sample_t);
 
-	if (!slot_ready(cap, pkt) || pkt->first >= CAP_WINDOW_SAMPLES || pkt->capacity < min_len) {
+	if (data->count == 0 || data->count > cap_data_fit(out->capacity)) {
 		return 0;
 	}
-	uint32_t fit = (uint32_t)((pkt->capacity - sizeof(sp_cap_data_t)) / sizeof(sp_cap_sample_t));
-	uint32_t left = CAP_WINDOW_SAMPLES - pkt->first;
-	uint32_t n = fit < left ? fit : left;
-	sp_cap_data_t d = {.type = SP_CAP_DATA, .seq = pkt->seq, .first = pkt->first};
-
-	memcpy(pkt->buf, &d, sizeof(d));
-	memcpy(pkt->buf + sizeof(d), &cap->slots[pkt->slot].samples[pkt->first],
-	       n * sizeof(sp_cap_sample_t));
-	pkt->first = (uint16_t)(pkt->first + n);
-	return sizeof(d) + n * sizeof(sp_cap_sample_t);
+	memcpy(out->buf, &d, sizeof(d));
+	memcpy(out->buf + sizeof(d), data->samples, samples_len);
+	return sizeof(d) + samples_len;
 }

@@ -1,4 +1,11 @@
-# ShotPuck BLE protocol (v2)
+# ShotPuck BLE protocol (v3)
+
+v3 (compared with v2, firmware 0.3.0):
+- Captures are stored compressed in flash and survive resets and updates. GET_CAPTURE works for any stored shot, not just the last 4.
+- CONFIG gains `capture_mode` (standard or extended) and is 20 bytes. 19-byte v2 writes are still accepted.
+- CAPTURE `n_samples` and `trigger_index` vary with the mode: always read them from the header.
+- A shot soon after the puck woke up gets a shorter capture that starts at the wake (v2 sent none).
+- The packet layouts are unchanged.
 
 v2 (compared with v1):
 - CAPTURE characteristic (raw 6-axis bow motion around each shot) and the GET_CAPTURE opcode.
@@ -78,7 +85,7 @@ Events are sent live as they happen, and again on REPLAY. Replayed and live even
 | Accepted shots | Flash log | about the last **900–1000 shots**; survives resets, battery cut-off and normal re-flashing (not a full-chip erase) |
 | Rejected candidates | RAM | the last 128; lost on reset |
 | `total`, `seq`, CONFIG, pairings | Flash (settings) | permanently |
-| Captures | RAM | the last 4 shots; lost on reset |
+| Captures | Flash, compressed (408 KB) | the newest that fit, see *CAPTURE*; survive resets, updates and normal re-flashing |
 
 ### CONTROL opcodes
 
@@ -89,14 +96,30 @@ Events are sent live as they happen, and again on REPLAY. Replayed and live even
 | `0x03` REPLAY | u32 from_seq | Re-sends stored events with seq ≥ from_seq: accepted shots from flash, then rejected candidates from RAM, batched on EVENT |
 | `0x04` FACTORY_CFG | – | Restores default thresholds |
 | `0x05` LED_BLINK | – | 5 blinks (find the puck) |
-| `0x06` GET_CAPTURE | u32 seq | Re-sends the capture of shot `seq` on CAPTURE (header with `n_samples = 0` if it is no longer held) |
+| `0x06` GET_CAPTURE | u32 seq | Re-sends the capture of shot `seq` from flash on CAPTURE (header with `n_samples = 0` if it is no longer stored) |
 | `0x07` FORGET_BONDS | – | Removes all pairings (see *Pairing*) |
 
 A REPLAY of the whole flash log (about 1000 events) takes roughly 10–20 s at MTU 247. It runs in the background: live shots are still detected and sent first.
 
 ### CAPTURE: bow motion around each shot
 
-For every **accepted** shot the puck records the raw accelerometer and gyroscope from **1.0 s before to 0.5 s after the release trigger** (720 samples at 480 Hz). When the phone is subscribed to CAPTURE, the puck streams it automatically right after the shot's EVENT: one header packet, then data packets until all samples are sent. The last **4 captures are kept in RAM** and can be fetched again with GET_CAPTURE. Rejected candidates are not captured.
+For every **accepted** shot the puck records the raw accelerometer and gyroscope around the release trigger at 480 Hz. CONFIG `capture_mode` picks the window:
+
+| Mode | Window | `n_samples` | `trigger_index` |
+|---|---|---|---|
+| 0 standard (default) | 1.0 s before to 0.5 s after the trigger | 720 | 480 |
+| 1 extended | 6 s before to 2 s after the trigger | 3840 | 2880 |
+
+If the puck woke up less than the pre-trigger time before the shot, the capture starts at the wake: `n_samples` and `trigger_index` are smaller by the missing part.
+
+Each capture is compressed (lossless) into a 408 KB flash area as soon as its window is complete; the newest captures push out the oldest. How many fit depends on how well the motion compresses:
+
+| Mode | Even with no compression | Expected (2–4× compression) |
+|---|---|---|
+| standard | 47 | about 90–150 |
+| extended | 8 | about 17–35 |
+
+The two modes share the area, so after a switch the new captures replace the old ones gradually. When the phone is subscribed to CAPTURE, the puck streams each capture automatically once it is stored (about 0.5 s after the EVENT in standard mode, 2 s in extended): one header packet, then data packets until all samples are sent. GET_CAPTURE fetches any stored capture again, also after a reset. Rejected candidates are not captured.
 
 Byte 0 of every packet is the packet type.
 
@@ -106,8 +129,8 @@ Byte 0 of every packet is the packet type.
 |---|---|---|---|
 | 0 | u8 | type | `0x01` |
 | 1 | u32 | seq | Same `seq` as the shot's EVENT |
-| 5 | u16 | n_samples | 720, or **0 if the capture is not available** |
-| 7 | u16 | trigger_index | Sample index of the release trigger (480) |
+| 5 | u16 | n_samples | 720 standard, 3840 extended, fewer after a recent wake; **0 if the capture is not available** |
+| 7 | u16 | trigger_index | Sample index of the release trigger (480 standard, 2880 extended, less after a recent wake) |
 | 9 | u16 | odr_hz | 480 |
 | 11 | u16 | acc_ug_per_lsb | 976 (±32 g) |
 | 13 | u16 | gyro_mdps_per_lsb | 70 (±2000 dps) |
@@ -124,12 +147,14 @@ Byte 0 of every packet is the packet type.
 Convert with `acc_mg = raw × acc_ug_per_lsb / 1000` and `gyro_dps = raw × gyro_mdps_per_lsb / 1000`. Sample `i` is at `(i − trigger_index) / odr_hz` seconds from the trigger, so the EVENT's `t_unix_ms` lines up with index `trigger_index`.
 
 - **Axes** are the LSM6DSV32X's own axes. +Z points out of the cap (it reads about +1000 mg with the puck lying cap-up). The X/Y mapping to the bow is fixed by the mounting and must be confirmed once on hardware (VALIDATION.md §2).
-- A transfer takes about 1–3 s at MTU 247. Packets arrive in order. If a `first` is missing (disconnect), discard the capture and request it again with GET_CAPTURE.
-- A shot less than 1.0 s after the puck woke up has no capture (header `n_samples = 0`), because there is not enough pre-trigger data. The IMU also needs a few tens of ms after a wake before the gyroscope delivers data (datasheet turn-on time 35 ms), so a shot just over 1.0 s after waking can have zero gyro values in its first samples.
+- A transfer takes about 1–3 s (standard) or 6–12 s (extended) at MTU 247. Packets arrive in order. If a `first` is missing (disconnect), discard the capture and request it again with GET_CAPTURE.
+- The IMU needs a few tens of ms after a wake before the gyroscope delivers data (datasheet turn-on time 35 ms), so a capture that starts at the wake can have zero gyro values in its first samples.
 
-### CONFIG (`sp_config_t`, 19 B)
+### CONFIG (`sp_config_t`, 20 B)
 
-`u8 version(=2)`, then u16 each: `trig_hf_mg` (1000–30000, default 6000), `move_mg` (50–2000, 300), `pre_still_min_ms` (0–10000, 500), `post_start_ms` (100), `post_end_ms` (≤1500, 600; must be greater than start), `post_lf_min_mg` (0–5000, 250), `refractory_ms` (200–10000, 1500), `wake_mg` (16–2000, 150), `idle_timeout_s` (5–3600, 30).
+`u8 version(=3)`, then u16 each: `trig_hf_mg` (1000–30000, default 6000), `move_mg` (50–2000, 300), `pre_still_min_ms` (0–10000, 500), `post_start_ms` (100), `post_end_ms` (≤1500, 600; must be greater than start), `post_lf_min_mg` (0–5000, 250), `refractory_ms` (200–10000, 1500), `wake_mg` (16–2000, 150), `idle_timeout_s` (5–3600, 30), then `u8 capture_mode` (0 standard, 1 extended; default 0).
+
+A 19-byte write with `version = 2` (no `capture_mode`) is still accepted and keeps the current mode. Reads always return the 20-byte v3 layout. FACTORY_CFG restores the thresholds but keeps the capture mode.
 
 Out-of-range writes are rejected with ATT error 0x13 (value not allowed). Accepted values are persisted.
 
@@ -146,7 +171,7 @@ Flags: bit0 VBUS (cable present), bit1 CHARGING, bit2 CHG_INHIBIT (too cold or h
 4. Read COUNT, then write `REPLAY(last_seq_seen_by_app + 1)`. The app owns this position; the puck keeps no per-phone sync state, so any number of phones can sync.
 5. Upsert events keyed by `(device_id, seq)`, with `device_id` = DIS serial number. seq is monotonic, so replays and duplicates are harmless.
 6. Stay connected during the end. Each shot arrives as an EVENT with `accepted = 1` about 0.6 s after release (the follow-through window), followed by its CAPTURE.
-7. Store captures keyed by `(device_id, seq)` as well. For accepted events without a complete capture, write `GET_CAPTURE(seq)`: the puck still holds the last 4.
+7. Store captures keyed by `(device_id, seq)` as well. For accepted events without a complete capture, write `GET_CAPTURE(seq)`: the puck keeps the newest captures in flash (see *CAPTURE*), so this also works after a session offline.
 
 Map shots to ends in the app: the puck has no notion of ends or arrows-per-end, and seq gaps are not errors.
 
@@ -160,4 +185,5 @@ The puck runs **MCUboot** and exposes the standard **MCUmgr SMP** service, so no
 - The puck also confirms a new image by itself once a paired phone has connected over an encrypted link and the image has run 10 s. Reconnect and pair (encrypt) after the OTA reset; until then the image stays on trial. If the new image crashes or hangs before that (the watchdog resets a hang after 10 s), MCUboot **rolls back** to the previous version on the next boot.
 - Only images signed with the ShotPuck private key are accepted: MCUboot checks the ECDSA-P256 signature before it boots anything.
 - Check the result with the DIS Firmware Revision String or STATUS `fw_major`/`fw_minor`. SMP `image list` shows both slots with their versions and flags.
-- Shots, counts, config and pairings are kept across updates (separate flash partitions).
+- Shots, captures, counts, config and pairings are kept across updates (separate flash partitions).
+- **Firmware 0.3.0 changed the flash layout** (two 256 KB slots and a capture area, instead of two 460 KB slots). Never send it over the air to a puck running 0.2.x: flash 0.2.x pucks once by cable (`shotpuck_full.hex`, which includes the new bootloader). Updates between 0.3.x versions go over the air as before.

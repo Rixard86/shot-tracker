@@ -74,13 +74,18 @@ static ssize_t wr_cfg(struct bt_conn *conn, const struct bt_gatt_attr *attr, con
 	ARG_UNUSED(conn);
 	ARG_UNUSED(attr);
 	ARG_UNUSED(flags);
-	sp_config_t c;
+	sp_config_t c = v_cfg;
+	bool current = len == sizeof(c);
 
-	if (offset != 0 || len != sizeof(c)) {
+	if (offset != 0 || (!current && len != SP_CONFIG_V2_BYTES)) {
 		return BT_GATT_ERR(BT_ATT_ERR_INVALID_ATTRIBUTE_LEN);
 	}
-	memcpy(&c, buf, sizeof(c));
-	if (c.version != PROTO_VERSION || !on_cfg || on_cfg(&c) != 0) {
+	memcpy(&c, buf, len);
+	if (c.version != (current ? PROTO_VERSION : PROTO_VERSION_V2)) {
+		return BT_GATT_ERR(BT_ATT_ERR_VALUE_NOT_ALLOWED);
+	}
+	c.version = PROTO_VERSION;
+	if (!on_cfg || on_cfg(&c) != 0) {
 		return BT_GATT_ERR(BT_ATT_ERR_VALUE_NOT_ALLOWED);
 	}
 	v_cfg = c;

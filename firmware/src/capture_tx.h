@@ -4,9 +4,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "capture.h"
+#include "capstore.h"
+#include "capwriter.h"
 
-void cap_tx_init(const cap_t *cap);
+void cap_tx_init(const capstore_t *store, const capw_t *writer);
 void cap_tx_queue(uint32_t seq);
 bool cap_tx_busy(void);
 void cap_tx_pump(void);

@@ -8,7 +8,8 @@
 
 #include <stdint.h>
 
-#define PROTO_VERSION 2
+#define PROTO_VERSION 3
+#define PROTO_VERSION_V2 2
 
 /* 128-bit UUIDs: 7a1e00XX-5b0c-4f3a-9c6e-3a5d2b9e0a01 */
 #define SP_UUID_BASE(x) \
@@ -87,7 +88,15 @@ typedef struct __attribute__((packed)) {
 	uint16_t refractory_ms;
 	uint16_t wake_mg;
 	uint16_t idle_timeout_s;
+	uint8_t capture_mode;
 } sp_config_t;
+
+#define SP_CONFIG_V2_BYTES 19u
+
+enum {
+	SP_CAPTURE_STANDARD = 0,
+	SP_CAPTURE_EXTENDED = 1,
+};
 
 enum {
 	SP_ST_VBUS = 1u << 0,        /* charger cable present                 */

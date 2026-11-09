@@ -26,6 +26,9 @@ static int set_cb(const char *key, size_t len, settings_read_cb read_cb, void *c
 	if (!strcmp(key, "seq") && len == sizeof(uint32_t)) {
 		return read_cb(cb_arg, &target->seq, len) < 0 ? -EIO : 0;
 	}
+	if (!strcmp(key, "capmode") && len == sizeof(target->capture_mode)) {
+		return read_cb(cb_arg, &target->capture_mode, len) < 0 ? -EIO : 0;
+	}
 	if (!strcmp(key, "cfg") && len == sizeof(struct cfg_blob)) {
 		struct cfg_blob b;
 		if (read_cb(cb_arg, &b, len) < 0) {
@@ -66,5 +69,7 @@ int store_save_counts(const store_t *s)
 int store_save_cfg(const store_t *s)
 {
 	struct cfg_blob b = {.magic = CFG_MAGIC, .cfg = s->cfg};
-	return settings_save_one("sp/cfg", &b, sizeof(b));
+	int err = settings_save_one("sp/cfg", &b, sizeof(b));
+
+	return err ? err : settings_save_one("sp/capmode", &s->capture_mode, sizeof(s->capture_mode));
 }
