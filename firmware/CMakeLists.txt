@@ -17,6 +17,7 @@ target_sources(app PRIVATE
   src/capstore_layout.c
   src/capstore_scan.c
   src/capwriter.c
+  src/charge.c
   src/chg_led.c
   src/evlog.c
   src/factory.c

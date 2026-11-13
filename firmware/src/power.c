@@ -26,6 +26,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/poweroff.h>
 
+#include "charge.h"
 #include "recovery.h"
 
 LOG_MODULE_REGISTER(power, LOG_LEVEL_INF);
@@ -49,6 +50,7 @@ static bool calibrated;
 static bool temp_known;
 static int8_t calibrated_at_c;
 static uint32_t low_readings;
+static charge_ctl_t charge;
 
 static const struct adc_channel_cfg vddh_ch = {
 	.gain = ADC_GAIN_1_2,
@@ -59,7 +61,7 @@ static const struct adc_channel_cfg vddh_ch = {
 };
 
 /* Li-ion open-circuit-ish curve at light load */
-static const uint16_t curve_mv[] = {3300, 3450, 3680, 3740, 3770, 3790, 3820,
+static const uint16_t curve_mv[] = {3300, 3500, 3580, 3710, 3770, 3790, 3820,
 				    3870, 3920, 3980, 4050, 4150};
 static const uint8_t curve_pct[] = {0, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100};
 
@@ -149,20 +151,8 @@ static int read_temp_c(int8_t *c)
 	return 0;
 }
 
-const power_state_t *power_update(void)
+static void read_charger(void)
 {
-	uint16_t mv;
-	int8_t tc;
-
-	if (read_temp_c(&tc) == 0) {
-		st.temp_c = tc;
-		temp_known = true;
-	}
-	if (read_vbat_mv(&mv) == 0) {
-		st.battery_mv = mv;
-		st.battery_pct = mv_to_pct(mv);
-		low_readings = low_battery_count_next(low_readings, mv > 0 && mv < CUTOFF_MV);
-	}
 	st.vbus = nrf_power_usbregstatus_vbusdet_get(NRF_POWER);
 	if (st.vbus) {
 		gpio_pin_configure_dt(&chg_stat, GPIO_INPUT | GPIO_PULL_UP);
@@ -172,7 +162,10 @@ const power_state_t *power_update(void)
 		gpio_pin_configure_dt(&chg_stat, GPIO_INPUT);
 		st.charging = false;
 	}
+}
 
+static void update_temperature_gate(void)
+{
 	/* temperature window with hysteresis */
 	if (!temp_known) {
 		st.chg_inhibit = false;
@@ -184,7 +177,34 @@ const power_state_t *power_update(void)
 		   st.temp_c <= CHG_MAX_C - CHG_HYST_C) {
 		st.chg_inhibit = false;
 	}
-	gpio_pin_set_dt(&chg_inhibit, st.chg_inhibit ? 1 : 0);
+}
+
+static void update_charge_control(void)
+{
+	charge_sample_t s = {.vbus = st.vbus, .charging = st.charging, .paused = st.chg_inhibit,
+			     .mv = st.battery_mv, .now_ms = k_uptime_get_32()};
+	charge_step(&charge, &s);
+	st.full = charge.full;
+	st.battery_pct = charge_shown_pct(&charge, mv_to_pct(charge_cell_mv(&charge, st.battery_mv)));
+	gpio_pin_set_dt(&chg_inhibit, (st.chg_inhibit || charge_holds_off(&charge)) ? 1 : 0);
+}
+
+const power_state_t *power_update(void)
+{
+	uint16_t mv;
+	int8_t tc;
+
+	if (read_temp_c(&tc) == 0) {
+		st.temp_c = tc;
+		temp_known = true;
+	}
+	if (read_vbat_mv(&mv) == 0) {
+		st.battery_mv = mv;
+		low_readings = low_battery_count_next(low_readings, mv > 0 && mv < CUTOFF_MV);
+	}
+	read_charger();
+	update_temperature_gate();
+	update_charge_control();
 	return &st;
 }
 

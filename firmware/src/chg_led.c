@@ -14,7 +14,7 @@ chg_led_mode_t chg_led_mode(const power_state_t *p)
 	if (p->charging) {
 		return CHG_LED_CHARGING;
 	}
-	return p->battery_mv >= CHG_LED_FULL_MIN_MV ? CHG_LED_FULL : CHG_LED_OFF;
+	return p->full ? CHG_LED_FULL : CHG_LED_OFF;
 }
 
 uint8_t chg_led_pulses(chg_led_mode_t mode)

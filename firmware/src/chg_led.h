@@ -8,7 +8,6 @@
 #define CHG_LED_TICK_MS 2000u
 #define CHG_LED_PULSE_MS 30
 #define CHG_LED_GAP_MS 150
-#define CHG_LED_FULL_MIN_MV 4100u
 
 typedef enum {
 	CHG_LED_OFF,

@@ -1,5 +1,9 @@
 # ShotPuck BLE protocol (v3)
 
+Firmware 0.3.5 (still v3):
+- **Battery percent while charging** (STATUS `battery_pct` and the Battery Service): the charge current's lift (40 mV) is taken off the reading before it becomes a percent, and the percent stops at 99 while the charger is charging. It shows 100 only once the charge has ended. `battery_mv` stays the raw reading. The voltage table's 5/10/20 % points follow the cell's datasheet (3500/3580/3710 mV).
+- **The firmware ends the charge**: when the charger terminates by itself (cell ≥ 4.10 V), or 60 min after the reading first reaches 4.15 V, whichever comes first. It then keeps the charger off (LED steady, 100 %, CHARGING clear) until the cell falls below 4.05 V, then tops up. A charge that has not ended 5 h after it started is stopped until the cable is plugged in again: LED dark, STATUS shows VBUS without CHARGING or CHG_INHIBIT.
+
 Firmware 0.3.4 (still v3):
 - A phone the puck already has a pairing for can pair again through the charger window, for example after "forget" on the phone or a reinstall. 0.3.3 and older refused that with "authentication requirements" (SMP 0x03) and needed a factory reset.
 
@@ -53,7 +57,7 @@ Source of truth: `firmware/src/protocol.h`. All multi-byte values are **little-e
 Everything in the ShotPuck service needs an **encrypted link**, which a phone only gets by pairing (bonding) with the puck. Reading COUNT, CONFIG or STATUS, subscribing to any notification, and writing CONTROL or CONFIG all fail without it (ATT "insufficient encryption/authentication"). The Device Information Service and the standard Battery Service stay open.
 
 - **Pairing window:** the puck accepts a *new* pairing only for **60 s after the charger is attached, and only while it stays attached** (0.3.2; also after a boot with the charger attached). Removing the charger closes the window at once. The LED blinks once a second while the window is open, and blinks twice when a phone has paired. Outside the window, pairing requests are rejected. Phones that are already paired reconnect and encrypt at any time.
-- **Charger LED** (after the pairing window, while the charger stays attached; `firmware/src/chg_led.c`): one short blink every 2 s while charging; **steady on** when the charger reports done and the cell reads ≥ 4.10 V; three quick blinks every 2 s when charging is paused by the temperature gate; dark if the charger is attached but neither charging nor full (no input power or a fault). The steady LED starts only after the MCP73831 has terminated, so its ~1 mA never holds the charge current above the termination threshold. It slowly drains the cell; when the charger tops up (below its recharge threshold), the LED blinks again until done. STATUS carries the same state (`SP_ST_VBUS`, `SP_ST_CHARGING`, `SP_ST_CHG_INHIBIT`).
+- **Charger LED** (after the pairing window, while the charger stays attached; `firmware/src/chg_led.c`): one short blink every 2 s while charging; **steady on** once the charge has ended (the charger reports done with the cell ≥ 4.10 V, or since 0.3.5 the firmware ends it 60 min after the reading first reaches 4.15 V); three quick blinks every 2 s when charging is paused by the temperature gate; dark if the charger is attached but neither charging nor full (no input power, a fault, or since 0.3.5 the 5 h charge time limit). The steady LED starts only after the charge has ended, so its ~1 mA never holds the charge current above the termination threshold. It slowly drains the cell; since 0.3.5 the firmware keeps the charger off until the cell falls below 4.05 V, then the LED blinks again while it tops up. STATUS carries the same state (`SP_ST_VBUS`, `SP_ST_CHARGING`, `SP_ST_CHG_INHIBIT`).
 - **Factory reset (reset pads JP2, cap off):** bridge the two round pads beside the module with tweezers. The LED lights while they are bridged (within about 2 s); held for 5 s, the puck erases its settings, pairings, shot count, shot log and captures (the LED stays on for about 10 s while it erases), blinks 5 times fast and reboots. `seq` carries on from where it was, so later events never reuse an earlier seq. Only a bridge made while the puck runs counts: pads already shorted at boot do nothing until released. After 3 crash or watchdog resets in a row, each within a minute of boot, the firmware erases its settings and pairings by itself; the shot log and captures stay. Phones must forget the puck and pair again (through the charger window).
 - Method: LE Secure Connections, "Just Works" (no PIN). iOS and Android show their standard pairing prompt.
 - Up to **4 phones** can be paired. Pairing a 5th replaces the one paired longest ago.
@@ -187,6 +191,7 @@ Out-of-range writes are rejected with ATT error 0x13 (value not allowed). Accept
 
 `u8 battery_pct`, `u16 battery_mv`, `i8 temp_c`, `u8 flags`, `u8 fw_major`, `u8 fw_minor`.
 Flags: bit0 VBUS (cable present), bit1 CHARGING, bit2 CHG_INHIBIT (too cold or hot to charge), bit3 ACTIVE, bit4 TIME_SET.
+`battery_pct` comes from the cell voltage through a table; from 0.3.5 it is at most 99 while CHARGING and 100 while the charge has ended with the cable still attached (see the 0.3.5 notes at the top). `battery_mv` is the raw reading.
 
 ### DIAG (`sp_diag_t`, 8 B, firmware 0.3.1)
 

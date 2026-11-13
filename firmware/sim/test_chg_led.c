@@ -44,12 +44,11 @@ static void test_charging(void)
 static void test_full(void)
 {
 	power_state_t p = on_charger(CELL_FULL_MV, false);
-	check(chg_led_mode(&p) == CHG_LED_FULL, "done and high is full");
+	p.full = true;
+	check(chg_led_mode(&p) == CHG_LED_FULL, "ended charge is full");
 	check(chg_led_pulses(CHG_LED_FULL) == 0u, "full is steady, no blinks");
-	p.battery_mv = CHG_LED_FULL_MIN_MV;
-	check(chg_led_mode(&p) == CHG_LED_FULL, "full at the threshold");
-	p.battery_mv = CHG_LED_FULL_MIN_MV - 1u;
-	check(chg_led_mode(&p) == CHG_LED_OFF, "not charging and low is not full");
+	p.full = false;
+	check(chg_led_mode(&p) == CHG_LED_OFF, "not charging and not full is dark");
 }
 
 static void test_paused(void)
@@ -58,7 +57,7 @@ static void test_paused(void)
 	p.chg_inhibit = true;
 	check(chg_led_mode(&p) == CHG_LED_PAUSED, "temperature pause");
 	check(chg_led_pulses(CHG_LED_PAUSED) == PAUSED_BLINKS, "pause blinks three times");
-	p.battery_mv = CELL_FULL_MV;
+	p.full = true;
 	check(chg_led_mode(&p) == CHG_LED_PAUSED, "pause wins over full");
 }
 

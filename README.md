@@ -17,7 +17,7 @@ A Ø40 × 10.4 mm puck that bolts onto the free face of an Avalon riser weight (
 ```
 layout.json                 shared geometry: CAD and PCB both read it
 firmware/                   Zephyr app (src/, boards/shotpuck/, prj.conf, debug.conf)
-firmware/sim/               Monte Carlo validation of src/shot_detect.c, unit tests of capture.c, evlog.c, chg_led.c, recovery.c, led_seq.c, wire.c, evq.c, the capture codec and store, and an end-to-end capture test (+ results.txt)
+firmware/sim/               Monte Carlo validation of src/shot_detect.c, unit tests of capture.c, evlog.c, chg_led.c, charge.c, recovery.c, led_seq.c, wire.c, evq.c, the capture codec and store, and an end-to-end capture test (+ results.txt)
 firmware/VERSION            firmware version (signed into the OTA image, shown in DIS and STATUS)
 firmware/sysbuild.*         MCUboot + signing setup (refuses MCUboot's public dev key)
 firmware/shotpuck_full.hex  MCUboot + signed app, for the first flash via the SWD test pads

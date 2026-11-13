@@ -12,6 +12,7 @@ typedef struct {
 	bool vbus;
 	bool charging;
 	bool chg_inhibit;
+	bool full;
 } power_state_t;
 
 void power_regout0_3v0(void); /* call first thing in main(); may reset */
