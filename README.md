@@ -42,7 +42,8 @@ mechanical/puck.py          CadQuery model + mass/balance -> out/ (STEP, STL, ma
                             geometry.py, puck_parts.py, puck_report.py hold its constants, parts and output
 mechanical/plate_drawing.py plate manufacturing drawing (hole table, M2 thread callout) -> out/plate_drawing.pdf;
                             5052 sheet-metal prototype variant -> out/plate_drawing_5052.pdf + out/plate_5052.step
-mechanical/plate_fdm.py     3D-printable (FDM) plate: locating lip instead of the O-ring, cell pocket, tube lip -> out/plate_fdm.stl
+mechanical/plate_fdm.py     3D-printable (FDM) plate: locating lip with a step for a 0.6 mm rim O-ring, cell pocket and lip, tube lip (inner lips with 45° gussets), + sloped strip post and collared socket for the clip-in cell spring -> out/plate_fdm.stl (arc and sector helpers in fdm_shapes.py)
+mechanical/cell_spring_fdm.py the clip-in cell spring, three tab thicknesses printed together for a press fit -> out/cell_spring_fdm.stl
 mechanical/viewer/          3D viewer of the rev 0A puck: assembled-to-exploded slider, cut view, cap seal band old/new
                             (three.js, one index.html with the meshes and the PCB embedded); also the private artifact claude.ai/artifact/EnhZPnRmLfCq5PVbHscZpo
 mechanical/blender/         Blender scene + exploded-view assembly animation -> out/shotpuck_assembly.mp4/.blend

@@ -1,5 +1,8 @@
 # ShotPuck BLE protocol (v3)
 
+Firmware 0.3.4 (still v3):
+- A phone the puck already has a pairing for can pair again through the charger window, for example after "forget" on the phone or a reinstall. 0.3.3 and older refused that with "authentication requirements" (SMP 0x03) and needed a factory reset.
+
 Firmware 0.3.3 (still v3):
 - Faster firmware updates: the puck answers the MCUmgr parameters command (4 buffers of 384 bytes), so an app can send several upload chunks at once in larger frames, and it uses the 15–30 ms connection interval while an upload runs (see *Firmware update*).
 
@@ -54,6 +57,7 @@ Everything in the ShotPuck service needs an **encrypted link**, which a phone on
 - **Factory reset (reset pads JP2, cap off):** bridge the two round pads beside the module with tweezers. The LED lights while they are bridged (within about 2 s); held for 5 s, the puck erases its settings, pairings, shot count, shot log and captures (the LED stays on for about 10 s while it erases), blinks 5 times fast and reboots. `seq` carries on from where it was, so later events never reuse an earlier seq. Only a bridge made while the puck runs counts: pads already shorted at boot do nothing until released. After 3 crash or watchdog resets in a row, each within a minute of boot, the firmware erases its settings and pairings by itself; the shot log and captures stay. Phones must forget the puck and pair again (through the charger window).
 - Method: LE Secure Connections, "Just Works" (no PIN). iOS and Android show their standard pairing prompt.
 - Up to **4 phones** can be paired. Pairing a 5th replaces the one paired longest ago.
+- **A phone that forgot the puck** (removed it in its Bluetooth settings, reinstalled the app) can pair again through the charger window from firmware 0.3.4: the new pairing replaces the puck's old one for that phone. Firmware 0.3.3 and older refuse it with "authentication requirements" (SMP 0x03), and only a factory reset on the board helps.
 - **FORGET_BONDS** (CONTROL `0x07`, from a paired phone) removes all pairings, including the caller's, and disconnects. Use it when giving the puck away.
 
 App flow for adding a puck (firmware 0.3.1; no unencrypted link is held while the user waits):
