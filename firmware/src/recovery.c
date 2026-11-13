@@ -2,6 +2,9 @@
 
 #include "protocol.h"
 
+#define BITS_PER_BYTE 8u
+#define CODE_OFFSET 1u
+
 void pad_hold_init(pad_hold_t *h)
 {
 	h->armed = false;
@@ -131,3 +134,20 @@ bool pairing_window_step(pairing_window_t *w, const vbus_sample_t *s)
 	return w->open;
 }
 
+static uint32_t read_le32(const uint8_t *p)
+{
+	uint32_t v = 0u;
+
+	for (uint32_t i = 0; i < sizeof(v); i++) {
+		v |= (uint32_t)p[i] << (i * BITS_PER_BYTE);
+	}
+	return v;
+}
+
+remote_reset_verdict_t remote_reset_check(const remote_reset_req_t *r)
+{
+	if (r->len < SP_FACTORY_RESET_LEN || read_le32(&r->data[CODE_OFFSET]) != SP_FACTORY_RESET_CODE) {
+		return REMOTE_RESET_BAD_CODE;
+	}
+	return r->vbus ? REMOTE_RESET_OK : REMOTE_RESET_NO_CHARGER;
+}

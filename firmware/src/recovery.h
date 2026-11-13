@@ -34,6 +34,18 @@ typedef struct {
 	uint32_t now_ms;
 } vbus_sample_t;
 
+typedef enum {
+	REMOTE_RESET_OK,
+	REMOTE_RESET_BAD_CODE,
+	REMOTE_RESET_NO_CHARGER,
+} remote_reset_verdict_t;
+
+typedef struct {
+	const uint8_t *data;
+	uint16_t len;
+	bool vbus;
+} remote_reset_req_t;
+
 typedef struct {
 	uint8_t crash_mark;
 	bool lockup;
@@ -58,5 +70,6 @@ uint8_t reset_classify(const reset_flags_t *f);
 bool reset_is_crash(uint8_t cause);
 uint16_t crash_count_next(uint16_t count, uint8_t cause);
 bool pairing_window_step(pairing_window_t *w, const vbus_sample_t *s);
+remote_reset_verdict_t remote_reset_check(const remote_reset_req_t *r);
 
 #endif

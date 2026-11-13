@@ -200,6 +200,23 @@ static void test_pairing_window(uint32_t start)
 	check(window_at(&boot, true, start), "boot with the charger attached opens the window");
 }
 
+static void test_remote_reset(void)
+{
+	uint8_t cmd[] = {SP_CTRL_FACTORY_RESET, 'W', 'I', 'P', 'E'};
+	remote_reset_req_t r = {.data = cmd, .len = sizeof(cmd), .vbus = true};
+
+	check(remote_reset_check(&r) == REMOTE_RESET_OK, "code and charger: reset");
+	r.vbus = false;
+	check(remote_reset_check(&r) == REMOTE_RESET_NO_CHARGER, "no charger: refused");
+	r.len = sizeof(cmd) - 1u;
+	check(remote_reset_check(&r) == REMOTE_RESET_BAD_CODE, "short code: refused first");
+	r.vbus = true;
+	check(remote_reset_check(&r) == REMOTE_RESET_BAD_CODE, "short code with charger: refused");
+	r.len = sizeof(cmd);
+	cmd[sizeof(cmd) - 1u] = 'X';
+	check(remote_reset_check(&r) == REMOTE_RESET_BAD_CODE, "wrong code: refused");
+}
+
 int main(void)
 {
 	test_bridged_at_boot();
@@ -214,6 +231,7 @@ int main(void)
 	test_crash_count();
 	test_pairing_window(0u);
 	test_pairing_window(NEAR_WRAP_MS);
+	test_remote_reset();
 	printf("RECOVERY TESTS: %s\n", failures ? "FAIL" : "PASS");
 	return failures ? 1 : 0;
 }

@@ -7,5 +7,6 @@ void factory_boot_guard(void);
 int factory_pads_init(void);
 void factory_poll(void);
 bool factory_pads_held(void);
+void factory_reset_remote(void);
 
 #endif

@@ -85,14 +85,20 @@ static void blink_done(void)
 	}
 }
 
-static void factory_reset(void)
+static void factory_reset(const char *source)
 {
-	LOG_WRN("factory reset from the reset pads");
+	LOG_WRN("factory reset from %s", source);
 	if (wipe_user_data()) {
 		LOG_ERR("factory reset: erase failed");
 	}
 	blink_done();
 	sys_reboot(SYS_REBOOT_COLD);
+}
+
+void factory_reset_remote(void)
+{
+	led_steady((led_steady_t){LED_STEADY_PAD_HOLD, true});
+	factory_reset("the app");
 }
 
 static void mark_healthy(uint32_t now_ms)
@@ -110,7 +116,7 @@ void factory_poll(void)
 
 	mark_healthy(s.now_ms);
 	if (pad_hold_step(&hold, &s)) {
-		factory_reset();
+		factory_reset("the reset pads");
 	}
 	if (pad_hold_active(&hold) != was_held) {
 		led_steady((led_steady_t){LED_STEADY_PAD_HOLD, pad_hold_active(&hold)});

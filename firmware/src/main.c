@@ -124,8 +124,25 @@ static void accel_isr(void)
 	k_sem_give(&wake_sem);
 }
 
+static int remote_reset_refusal(const uint8_t *data, uint16_t len)
+{
+	remote_reset_req_t r = {.data = data, .len = len, .vbus = power_vbus_present()};
+	remote_reset_verdict_t verdict = remote_reset_check(&r);
+
+	if (verdict == REMOTE_RESET_BAD_CODE) {
+		return -EINVAL;
+	}
+	return verdict == REMOTE_RESET_NO_CHARGER ? -EPERM : 0;
+}
+
 static int on_ctrl(const uint8_t *data, uint16_t len)
 {
+	if (data[0] == SP_CTRL_FACTORY_RESET) {
+		int refused = remote_reset_refusal(data, len);
+		if (refused) {
+			return refused;
+		}
+	}
 	struct ctrl_msg m = {.len = (uint8_t)MIN(len, sizeof(m.data))};
 	memcpy(m.data, data, m.len);
 	int err = k_msgq_put(&ctrl_q, &m, K_NO_WAIT);
@@ -334,6 +351,11 @@ static void handle_ctrl(void)
 		case SP_CTRL_DELETE_SHOT:
 			if (m.len >= CTRL_SEQ_MSG_LEN) {
 				delete_shot(sys_get_le32(&m.data[1]));
+			}
+			break;
+		case SP_CTRL_FACTORY_RESET:
+			if (remote_reset_refusal(m.data, m.len) == 0) {
+				factory_reset_remote();
 			}
 			break;
 		case SP_CTRL_REPLAY:

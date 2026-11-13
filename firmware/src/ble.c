@@ -80,7 +80,15 @@ static ssize_t wr_ctrl(struct bt_conn *conn, const struct bt_gatt_attr *attr, co
 	if (offset != 0 || len < 1 || len > 16) {
 		return BT_GATT_ERR(BT_ATT_ERR_INVALID_ATTRIBUTE_LEN);
 	}
-	if (on_ctrl && on_ctrl(buf, len) != 0) {
+	int err = on_ctrl ? on_ctrl(buf, len) : 0;
+
+	if (err == -EINVAL) {
+		return BT_GATT_ERR(BT_ATT_ERR_VALUE_NOT_ALLOWED);
+	}
+	if (err == -EPERM) {
+		return BT_GATT_ERR(BT_ATT_ERR_WRITE_REQ_REJECTED);
+	}
+	if (err) {
 		return BT_GATT_ERR(BT_ATT_ERR_INSUFFICIENT_RESOURCES);
 	}
 	return len;
