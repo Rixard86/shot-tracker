@@ -9,6 +9,7 @@
 int event_tx_init(void);
 void event_tx_record(const sp_event_t *event);
 void event_tx_replay(uint32_t from_seq);
+int event_tx_delete(uint32_t seq);
 bool event_tx_busy(void);
 void event_tx_pump(void);
 uint32_t event_tx_newest_seq(void);

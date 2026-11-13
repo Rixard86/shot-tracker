@@ -1,5 +1,9 @@
 # ShotPuck BLE protocol (v3)
 
+Firmware 0.3.6 (still v3):
+- **DELETE_SHOT** (CONTROL `0x08` + u32 seq) removes an accepted shot from the shot log, for example a false shot: REPLAY no longer sends it, and if it is newer than the last RESET_COUNT, `total` goes down by one and COUNT is notified. Its capture stays (GET_CAPTURE still returns it until it ages out). There is no undo. An unknown, already deleted or aged-out seq is ignored. Firmware 0.3.5 and older ignore the opcode.
+- RESET_COUNT now also stores the seq at the reset, so deleting a shot from before the reset leaves the count alone. A puck updated from 0.3.5 or older has no stored reset point, so until its next RESET_COUNT every deletion lowers the count.
+
 Firmware 0.3.5 (still v3):
 - **Battery percent while charging** (STATUS `battery_pct` and the Battery Service): the charge current's lift (40 mV) is taken off the reading before it becomes a percent, and the percent stops at 99 while the charger is charging. It shows 100 only once the charge has ended. `battery_mv` stays the raw reading. The voltage table's 5/10/20 % points follow the cell's datasheet (3500/3580/3710 mV).
 - **The firmware ends the charge**: when the charger terminates by itself (cell ≥ 4.10 V), or 60 min after the reading first reaches 4.15 V, whichever comes first. It then keeps the charger off (LED steady, 100 %, CHARGING clear) until the cell falls below 4.05 V, then tops up. A charge that has not ended 5 h after it started is stopped until the cable is plugged in again: LED dark, STATUS shows VBUS without CHARGING or CHG_INHIBIT.
@@ -119,12 +123,13 @@ Events are sent live as they happen, and again on REPLAY. Replayed and live even
 | Byte 0 | Payload | Effect |
 |---|---|---|
 | `0x01` SET_TIME | i64 unix_ms | Sets the wall clock. Send on every connect. |
-| `0x02` RESET_COUNT | – | total = 0 (seq keeps counting) |
-| `0x03` REPLAY | u32 from_seq | Re-sends stored events with seq ≥ from_seq: accepted shots from flash, then rejected candidates from RAM, batched on EVENT |
+| `0x02` RESET_COUNT | – | total = 0 (seq keeps counting); from 0.3.6 also remembers the seq at the reset for DELETE_SHOT |
+| `0x03` REPLAY | u32 from_seq | Re-sends stored events with seq ≥ from_seq: accepted shots from flash (not deleted ones), then rejected candidates from RAM, batched on EVENT |
 | `0x04` FACTORY_CFG | – | Restores default thresholds |
 | `0x05` LED_BLINK | – | 5 blinks (find the puck) |
 | `0x06` GET_CAPTURE | u32 seq | Re-sends the capture of shot `seq` from flash on CAPTURE (header with `n_samples = 0` if it is no longer stored) |
 | `0x07` FORGET_BONDS | – | Removes all pairings (see *Pairing*) |
+| `0x08` DELETE_SHOT | u32 seq | Removes accepted shot `seq` from the shot log (0.3.6): REPLAY skips it, `total` drops by one if the shot is newer than the last RESET_COUNT (COUNT notified), the capture stays; no undo, unknown seq ignored |
 
 The puck queues up to 4 commands. A CONTROL write that arrives while 4 are still waiting fails with ATT error 0x11 (insufficient resources) and is not run: wait about 100 ms and write it again (firmware 0.3.1; 0.3.0 accepted the write and dropped the command).
 

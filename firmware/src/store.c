@@ -25,6 +25,9 @@ static int set_cb(const char *key, size_t len, settings_read_cb read_cb, void *c
 	if (!strcmp(key, "seq") && len == sizeof(uint32_t)) {
 		return read_cb(cb_arg, &target->seq, len) < 0 ? -EIO : 0;
 	}
+	if (!strcmp(key, "resetseq") && len == sizeof(target->count_reset_seq)) {
+		return read_cb(cb_arg, &target->count_reset_seq, len) < 0 ? -EIO : 0;
+	}
 	if (!strcmp(key, "crashes") && len == sizeof(target->crashes)) {
 		return read_cb(cb_arg, &target->crashes, len) < 0 ? -EIO : 0;
 	}
@@ -84,4 +87,12 @@ int store_save_cfg(const store_t *s)
 int store_save_crashes(const store_t *s)
 {
 	return settings_save_one("sp/crashes", &s->crashes, sizeof(s->crashes));
+}
+
+int store_save_count_reset(const store_t *s)
+{
+	int err = store_save_counts(s);
+
+	return err ? err : settings_save_one("sp/resetseq", &s->count_reset_seq,
+					     sizeof(s->count_reset_seq));
 }

@@ -11,9 +11,11 @@
 
 static uint32_t checksum(const evlog_record_t *rec)
 {
-	const uint8_t *p = (const uint8_t *)rec;
+	evlog_record_t sealed = *rec;
+	const uint8_t *p = (const uint8_t *)&sealed;
 	uint32_t crc = CRC_INIT;
 
+	sealed.magic = EVLOG_MAGIC;
 	for (size_t i = 0; i < offsetof(evlog_record_t, check); i++) {
 		crc ^= p[i];
 		for (uint32_t b = 0; b < BITS_PER_BYTE; b++) {
@@ -25,7 +27,13 @@ static uint32_t checksum(const evlog_record_t *rec)
 
 static bool is_valid(const evlog_record_t *rec)
 {
-	return rec->magic == EVLOG_MAGIC && rec->check == checksum(rec);
+	return (rec->magic == EVLOG_MAGIC || rec->magic == EVLOG_MAGIC_DELETED) &&
+	       rec->check == checksum(rec);
+}
+
+static bool is_live(const evlog_record_t *rec)
+{
+	return rec->magic == EVLOG_MAGIC && is_valid(rec);
 }
 
 static bool is_blank(const evlog_record_t *rec)
@@ -138,9 +146,28 @@ int evlog_next(const evlog_t *log, evlog_cursor_t *cur)
 		if (err) {
 			return err;
 		}
-		if (is_valid(&rec) && rec.event.seq >= cur->from_seq) {
+		if (is_live(&rec) && rec.event.seq >= cur->from_seq) {
 			cur->event = rec.event;
 			return 1;
+		}
+	}
+	return 0;
+}
+
+int evlog_delete(const evlog_t *log, uint32_t seq)
+{
+	for (uint32_t slot = 0; slot < log->slots; slot++) {
+		evlog_record_t rec;
+		int err = log->flash->read(slot_offset(slot), &rec);
+
+		if (err) {
+			return err;
+		}
+		if (is_live(&rec) && rec.event.seq == seq) {
+			uint32_t magic_at = slot_offset(slot) + (uint32_t)offsetof(evlog_record_t, magic);
+
+			err = log->flash->write_word(magic_at, EVLOG_MAGIC_DELETED);
+			return err ? err : 1;
 		}
 	}
 	return 0;

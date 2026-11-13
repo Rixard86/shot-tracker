@@ -56,6 +56,7 @@ enum {
 	SP_CTRL_LED_BLINK = 0x05,   /* find-my-puck blink                       */
 	SP_CTRL_GET_CAPTURE = 0x06,
 	SP_CTRL_FORGET_BONDS = 0x07,
+	SP_CTRL_DELETE_SHOT = 0x08,
 };
 
 enum {

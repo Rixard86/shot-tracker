@@ -13,6 +13,7 @@ LOG_MODULE_REGISTER(event_tx, LOG_LEVEL_INF);
 
 static const struct flash_area *area;
 static evlog_t shots;
+static bool shots_ready;
 static evq_t queue;
 
 static int area_read(uint32_t offset, evlog_record_t *rec)
@@ -30,10 +31,16 @@ static int area_erase(uint32_t offset)
 	return flash_area_erase(area, offset, SECTOR_BYTES);
 }
 
+static int area_write_word(uint32_t offset, uint32_t word)
+{
+	return flash_area_write(area, offset, &word, sizeof(word));
+}
+
 static evlog_flash_t shots_flash = {
 	.read = area_read,
 	.write = area_write,
 	.erase_sector = area_erase,
+	.write_word = area_write_word,
 	.sector_size = SECTOR_BYTES,
 };
 
@@ -46,9 +53,15 @@ int event_tx_init(void)
 		shots_flash.size = (uint32_t)area->fa_size;
 		err = evlog_init(&shots, &shots_flash);
 	}
-	deps.shots = err ? NULL : &shots;
+	shots_ready = err == 0;
+	deps.shots = shots_ready ? &shots : NULL;
 	evq_init(&queue, &deps);
 	return err;
+}
+
+int event_tx_delete(uint32_t seq)
+{
+	return shots_ready ? evlog_delete(&shots, seq) : 0;
 }
 
 void event_tx_record(const sp_event_t *event)

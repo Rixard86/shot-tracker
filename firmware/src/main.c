@@ -291,6 +291,27 @@ static void handle_accel(void)
 	}
 }
 
+static void reset_count(void)
+{
+	st.total = 0;
+	st.count_reset_seq = st.seq;
+	store_save_count_reset(&st);
+	publish_count();
+}
+
+static void delete_shot(uint32_t seq)
+{
+	if (event_tx_delete(seq) != 1) {
+		return;
+	}
+	LOG_INF("deleted shot seq %u", seq);
+	if (seq > st.count_reset_seq && st.total > 0u) {
+		st.total--;
+		store_save_counts(&st);
+		publish_count();
+	}
+}
+
 static void handle_ctrl(void)
 {
 	struct ctrl_msg m;
@@ -308,9 +329,12 @@ static void handle_ctrl(void)
 			}
 			break;
 		case SP_CTRL_RESET_COUNT:
-			st.total = 0;
-			store_save_counts(&st);
-			publish_count();
+			reset_count();
+			break;
+		case SP_CTRL_DELETE_SHOT:
+			if (m.len >= CTRL_SEQ_MSG_LEN) {
+				delete_shot(sys_get_le32(&m.data[1]));
+			}
 			break;
 		case SP_CTRL_REPLAY:
 			if (m.len >= 5) {

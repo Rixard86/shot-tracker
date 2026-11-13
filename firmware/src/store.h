@@ -11,6 +11,7 @@ typedef struct {
 	sd_config_t cfg;  /* detector thresholds */
 	uint8_t capture_mode;
 	uint16_t crashes;
+	uint32_t count_reset_seq;
 } store_t;
 
 /* Loads persisted values into *s (keeps caller defaults if absent). */
@@ -19,5 +20,6 @@ int store_save_counts(const store_t *s);
 int store_save_cfg(const store_t *s);
 int store_forget_except_seq(void);
 int store_save_crashes(const store_t *s);
+int store_save_count_reset(const store_t *s);
 
 #endif
