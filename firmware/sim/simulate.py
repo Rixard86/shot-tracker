@@ -398,7 +398,8 @@ UNIT_TESTS = [("test_capture.c", ["capture.c"]), ("test_evlog.c", ["evlog.c"]), 
               ("test_capwriter_faults.c", ["capwriter.c", "capture.c"] + CODEC + CAPSTORE),
               ("test_led_seq.c", ["led_seq.c"]), ("test_wire.c", ["wire.c", "shot_detect.c"]),
               ("test_evq.c", ["evq.c", "evlog.c", "../sim/evq_harness.c"]), ("test_charge.c", ["charge.c"]),
-              ("test_evlog_delete.c", ["evlog.c"])]
+              ("test_evlog_delete.c", ["evlog.c"]), ("test_lifecount.c", ["lifecount.c"]),
+              ("test_capjoin.c", ["capjoin.c"] + CAPSTORE)]
 
 
 def unit_test_passes(pair):

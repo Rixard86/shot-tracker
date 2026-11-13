@@ -13,6 +13,7 @@ target_sources(app PRIVATE
   src/capcodec.c
   src/capdec.c
   src/capflash.c
+  src/capjoin.c
   src/capstore.c
   src/capstore_layout.c
   src/capstore_scan.c
@@ -28,6 +29,8 @@ target_sources(app PRIVATE
   src/identity.c
   src/led.c
   src/led_seq.c
+  src/lifecount.c
+  src/lifetime.c
   src/ota.c
   src/power.c
   src/recovery.c

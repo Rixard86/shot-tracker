@@ -1,3 +1,16 @@
 &reg1 {
 	regulator-initial-mode = <NRF5X_REG_MODE_DCDC>;
 };
+
+&boot_partition {
+	reg = <0x00000000 0x0000A000>;
+};
+
+&flash0 {
+	partitions {
+		lifetime_partition: partition@a000 {
+			label = "lifetime";
+			reg = <0x0000A000 0x00002000>;
+		};
+	};
+};

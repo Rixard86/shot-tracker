@@ -8,7 +8,7 @@ A Ø40 × 10.4 mm puck that bolts onto the free face of an Avalon riser weight (
 | Radio / MCU | u-blox BMD-340 (nRF52840, 1 MB flash / 256 KB RAM, PCB antenna), BLE 5 |
 | Sensor | ST LSM6DSV32X IMU: 480 Hz, ±32 g accelerometer + ±2000 dps gyroscope while active; accelerometer only, 15 Hz wake-on-motion, while idle |
 | Battery | LIR1254 Li-ion coin, 45–65 mAh, plain (no tabs) on spring contacts, protected by TI BQ29700 + DMN2004DWK; charged through a waterproof (IPX8) side-entry USB-C port, power only (21 mA, temperature-gated) |
-| Firmware | Zephyr 4.1, custom board `shotpuck/nrf52840`, MCUboot 28 KB + signed app 201 KB (256 KB slots) / 107 KB RAM (58 KB of it the capture ring); captures compressed into a 408 KB flash area (D31) |
+| Firmware | Zephyr 4.1, custom board `shotpuck/nrf52840`, MCUboot 28 KB + signed app 201 KB (256 KB slots) / 107 KB RAM (58 KB of it the capture ring); captures compressed into a 408 KB flash area (D31), about 660 KB with the second firmware slot between updates (0.3.8) |
 | Updates | Over the air: MCUboot with ECDSA-P256 signed images and automatic rollback, MCUmgr/SMP over BLE for paired phones, 10 s watchdog |
 | Security / sync | Pairing required (LE Secure Connections); new phones only within 60 s of attaching the charger and while it stays attached, which the advertising data signals so the app pairs by itself; firmware updates over Bluetooth only while the charger is attached; links that do not encrypt within 30 s are dropped. Last ~900 shots kept in flash for replay. |
 
@@ -17,7 +17,7 @@ A Ø40 × 10.4 mm puck that bolts onto the free face of an Avalon riser weight (
 ```
 layout.json                 shared geometry: CAD and PCB both read it
 firmware/                   Zephyr app (src/, boards/shotpuck/, prj.conf, debug.conf)
-firmware/sim/               Monte Carlo validation of src/shot_detect.c, unit tests of capture.c, evlog.c, chg_led.c, charge.c, recovery.c, led_seq.c, wire.c, evq.c, the capture codec and store, and an end-to-end capture test (+ results.txt)
+firmware/sim/               Monte Carlo validation of src/shot_detect.c, unit tests of capture.c, evlog.c, chg_led.c, charge.c, lifecount.c, capjoin.c, recovery.c, led_seq.c, wire.c, evq.c, the capture codec and store, and an end-to-end capture test (+ results.txt)
 firmware/VERSION            firmware version (signed into the OTA image, shown in DIS and STATUS)
 firmware/sysbuild.*         MCUboot + signing setup (refuses MCUboot's public dev key)
 firmware/shotpuck_full.hex  MCUboot + signed app, for the first flash via the SWD test pads

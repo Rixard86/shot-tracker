@@ -32,6 +32,7 @@ enum {
 typedef struct __attribute__((packed)) {
 	uint32_t total;     /* lifetime accepted shots (persisted)           */
 	uint32_t last_seq;  /* seq of newest event in the device log         */
+	uint32_t lifetime;
 } sp_count_t;
 
 /* Every triggered candidate is reported, accepted or not, so thresholds can

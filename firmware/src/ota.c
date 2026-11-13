@@ -8,6 +8,7 @@
 #include <zephyr/mgmt/mcumgr/mgmt/mgmt_defines.h>
 #include <zephyr/sys/atomic.h>
 
+#include "capflash.h"
 #include "power.h"
 
 LOG_MODULE_REGISTER(ota, LOG_LEVEL_INF);
@@ -20,6 +21,7 @@ LOG_MODULE_REGISTER(ota, LOG_LEVEL_INF);
 static const struct device *const wdt = DEVICE_DT_GET(DT_ALIAS(watchdog0));
 static int channel = NO_CHANNEL;
 static bool confirmed;
+static bool slot1_idle;
 static uint32_t started_ms;
 static atomic_t upload_seen;
 static atomic_t last_chunk_ms;
@@ -35,6 +37,7 @@ static enum mgmt_cb_return upload_gate(uint32_t event, enum mgmt_cb_return prev_
 	ARG_UNUSED(data);
 	ARG_UNUSED(data_size);
 	if (power_vbus_present()) {
+		capflash_spare_claim();
 		atomic_set(&last_chunk_ms, (atomic_val_t)k_uptime_get_32());
 		atomic_set(&upload_seen, 1);
 		return MGMT_CB_OK;
@@ -57,6 +60,7 @@ int ota_init(void)
 
 	started_ms = k_uptime_get_32();
 	confirmed = boot_is_img_confirmed();
+	slot1_idle = mcuboot_swap_type() == BOOT_SWAP_TYPE_NONE;
 	mgmt_callback_register(&upload_gate_cb);
 	if (!device_is_ready(wdt)) {
 		return -ENODEV;
@@ -86,7 +90,13 @@ void ota_confirm_when_healthy(bool link_secured)
 		return;
 	}
 	confirmed = boot_write_img_confirmed() == 0;
+	slot1_idle = mcuboot_swap_type() == BOOT_SWAP_TYPE_NONE;
 	LOG_INF("image %s", confirmed ? "confirmed" : "confirm failed");
+}
+
+bool ota_spare_allowed(void)
+{
+	return confirmed && slot1_idle && !capflash_spare_claimed();
 }
 
 bool ota_upload_active(void)

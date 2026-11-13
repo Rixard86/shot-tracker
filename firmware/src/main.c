@@ -29,6 +29,7 @@
 #include "event_tx.h"
 #include "factory.h"
 #include "led.h"
+#include "lifetime.h"
 #include "ota.h"
 #include "power.h"
 #include "protocol.h"
@@ -94,7 +95,7 @@ static void resume_seq(void)
 
 static void publish_count(void)
 {
-	sp_count_t c = {.total = st.total, .last_seq = st.seq};
+	sp_count_t c = {.total = st.total, .last_seq = st.seq, .lifetime = lifetime_count()};
 	ble_update_count(&c);
 }
 
@@ -229,6 +230,7 @@ static void handle_detection(const sd_event_t *e, int64_t uptime_ms)
 	if (e->accepted) {
 		st.total++;
 		store_save_counts(&st);
+		lifetime_shot();
 		publish_count();
 		request_capture(e, w.seq);
 		led_play(LED_SHOT);
@@ -322,11 +324,12 @@ static void delete_shot(uint32_t seq)
 		return;
 	}
 	LOG_INF("deleted shot seq %u", seq);
+	lifetime_unshot(seq);
 	if (seq > st.count_reset_seq && st.total > 0u) {
 		st.total--;
 		store_save_counts(&st);
-		publish_count();
 	}
+	publish_count();
 }
 
 static void handle_ctrl(void)
@@ -503,6 +506,15 @@ static void charge_feedback(void)
 	led_play_pulses(chg_led_pulses(mode));
 }
 
+static void update_capture_area(void)
+{
+	bool want = ota_spare_allowed();
+
+	if (want != capflash_spare_in_use() && !capw_busy(&capw)) {
+		captures_ok = capflash_open(&capstore, want) == 0;
+	}
+}
+
 static uint32_t poll_period(bool active)
 {
 	if (event_tx_busy() || cap_tx_busy() || capw_busy(&capw)) {
@@ -553,10 +565,11 @@ int main(void)
 		LOG_ERR("shot log unavailable");
 	}
 	resume_seq();
+	lifetime_init(st.seq);
 	st.cfg.fs_hz = (float)CAP_ODR_HZ;
 	sd_init(&det, &st.cfg);
 	cap_init(&cap);
-	captures_ok = capflash_init(&capstore) == 0;
+	captures_ok = capflash_open(&capstore, ota_spare_allowed()) == 0;
 	if (!captures_ok) {
 		LOG_ERR("capture store unavailable");
 	}
@@ -603,6 +616,7 @@ int main(void)
 		if (capw_busy(&capw) && capw_pump(&capw) == CAPW_COMMITTED) {
 			cap_tx_queue(capw.committed_seq);
 		}
+		update_capture_area();
 		if (cap_tx_busy()) {
 			cap_tx_pump();
 		}

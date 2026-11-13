@@ -1,5 +1,9 @@
 # ShotPuck BLE protocol (v3)
 
+Firmware 0.3.8 (still v3):
+- **Lifetime shot counter:** COUNT grows from 8 to 12 bytes; the new `uint32 lifetime` at offset 8 counts accepted shots over the puck's whole life. It goes up with every accepted shot and down by one when DELETE_SHOT removes a shot taken since the counter started. RESET_COUNT, factory resets (pads or app), the boot-loop recovery and firmware updates (over the air or by cable without a chip erase) never change it; only a full-chip erase by cable clears it. It starts at 0 on the first boot of 0.3.8 or later. Apps that read only the first 8 bytes keep working.
+- **More room for captures:** the second firmware slot holds captures while no update is in progress, about 660 KB instead of 408 KB (see *CAPTURE*). An update loses the captures stored there, so fetch captures before updating.
+
 Firmware 0.3.7 (still v3):
 - **FACTORY_RESET** (CONTROL `0x09` + the 4 ASCII bytes `WIPE`, i.e. `09 57 49 50 45`) does the same erase as the reset pads: settings, pairings, shot count, shot log and captures; `seq` carries on. It runs only while the charger is attached (the same rule as pairing and updates, so the puck is in someone's hand), and the puck refuses the write itself: ATT 0x13 (value not allowed) for a missing or wrong code, ATT 0xFC (write request rejected) without the charger; nothing is erased then. When accepted, the LED stays on while it erases (about 10 s), the link drops (the pairing is gone), it blinks 5 times fast and reboots. The phone must forget the puck and pair again through the charger window. Firmware 0.3.6 and older ignore the opcode.
 
@@ -84,7 +88,7 @@ Ask the user to keep the charger in until the phone has paired: unplugging close
 
 | UUID (7a1e00XX-…) | Name | Props | Payload |
 |---|---|---|---|
-| `…0002…` | COUNT | read, notify | `uint32 total`, `uint32 last_seq` (8 B) |
+| `…0002…` | COUNT | read, notify | `uint32 total`, `uint32 last_seq`, from 0.3.8 `uint32 lifetime` (12 B; 8 B before 0.3.8) |
 | `…0003…` | EVENT | notify | 1–10 × `sp_event_t` (24 B each), below |
 | `…0004…` | CONTROL | write | opcode + payload, below |
 | `…0005…` | CONFIG | read, write | `sp_config_t` (19 B), below |
@@ -122,7 +126,8 @@ Events are sent live as they happen, and again on REPLAY. Replayed and live even
 | Accepted shots | Flash log | about the last **900–1000 shots**; survives resets, battery cut-off and normal re-flashing (not a full-chip erase) |
 | Rejected candidates | RAM | the last 128; lost on reset |
 | `total`, `seq`, CONFIG, pairings | Flash (settings) | permanently |
-| Captures | Flash, compressed (408 KB) | the newest that fit, see *CAPTURE*; survive resets, updates and normal re-flashing; a factory reset erases them |
+| `lifetime` (0.3.8) | Flash, the free end of the bootloader area | through factory resets, RESET_COUNT and every firmware update; only a full-chip erase clears it |
+| Captures | Flash, compressed (408 KB; about 660 KB with the second firmware slot from 0.3.8) | the newest that fit, see *CAPTURE*; survive resets and normal re-flashing; an update keeps those in the 408 KB area and loses those in the second slot; a factory reset erases them |
 
 ### CONTROL opcodes
 
@@ -153,12 +158,14 @@ For every **accepted** shot the puck records the raw accelerometer and gyroscope
 
 If the puck woke up less than the pre-trigger time before the shot, the capture starts at the wake: `n_samples` and `trigger_index` are smaller by the missing part.
 
-Each capture is compressed (lossless) into a 408 KB flash area as soon as its window is complete; the newest captures push out the oldest. How many fit depends on how well the motion compresses:
+Each capture is compressed (lossless) into a 408 KB flash area as soon as its window is complete; the newest captures push out the oldest. From 0.3.8 the area also takes in the second firmware slot while no update is in progress, about 660 KB in all. How many fit depends on how well the motion compresses:
 
-| Mode | Even with no compression | Expected (2–4× compression) |
-|---|---|---|
-| standard | 47 | about 90–150 |
-| extended | 8 | about 17–35 |
+| Mode | No compression, 408 KB | Expected (2–4×), 408 KB | No compression, 660 KB (0.3.8) | Expected (2–4×), 660 KB (0.3.8) |
+|---|---|---|---|---|
+| standard | 47 | about 90–150 | about 75 | about 145–240 |
+| extended | 8 | about 17–35 | about 12 | about 27–56 |
+
+The 660 KB area shrinks back to 408 KB when a firmware update starts (the captures stored in the second slot are lost then) and while a just-updated firmware is on trial; it grows again once the new firmware has confirmed itself. Fetch the captures you want to keep before starting an update.
 
 The two modes share the area, so after a switch the new captures replace the old ones gradually. When the phone is subscribed to CAPTURE, the puck streams each capture automatically once it is stored (about 0.5 s after the EVENT in standard mode, 2 s in extended): one header packet, then data packets until all samples are sent. GET_CAPTURE fetches any stored capture again, also after a reset. Rejected candidates are not captured.
 
