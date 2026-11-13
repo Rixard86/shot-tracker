@@ -107,7 +107,9 @@ Each notification carries **one or more events back to back** (length = 24 × n,
 | 18 | u16 | pre_still_ms | Stillness before the trigger |
 | 20 | u16 | post_lf_mg | Bow motion after release |
 | 22 | u8 | accepted | **1 = counted as a shot** |
-| 23 | u8 | reason | 0 ok, 1 not still before, 2 no follow-through |
+| 23 | u8 | reason | 0 ok, 1 not still before, 2 no follow-through; 254 and 255 reserved for the app (below) |
+
+**Reserved reasons:** the firmware never sends `reason` 254 or 255; they belong to the app. archesk marks its stored shots with them: 254 = removed by the archer, the puck not told yet; 255 = removed and DELETE_SHOT sent. Values 3–253 are free for future firmware reasons. A new firmware reason must never use 254 or 255.
 
 Rejected events are sent on purpose. Log them in the app during tuning: they are the data you need to set thresholds (see VALIDATION.md).
 
