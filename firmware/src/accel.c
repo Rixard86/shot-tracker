@@ -71,7 +71,8 @@ static int configure(void)
 	k_msleep(RESET_WAIT_MS);
 	err = err ? err : wr(REG_CTRL3, CTRL3_BDU | CTRL3_IF_INC);
 	err = err ? err : wr(REG_IF_CFG, IF_CFG_ANTISPIKE_ALWAYS_ON);
-	err = err ? err : wr(REG_CTRL8, CTRL8_RESERVED_SET | FS_XL_32G);
+	err = err ? err : wr(REG_CTRL8, CTRL8_HP_BW_ODR_DIV_45 | CTRL8_RESERVED_SET | FS_XL_32G);
+	err = err ? err : wr(REG_CTRL9, CTRL9_XL_FASTSETTL_MODE);
 	return err ? err : wr(REG_CTRL6, FS_G_2000DPS);
 }
 
@@ -118,8 +119,9 @@ int accel_set_idle(uint16_t wake_mg)
 	wr(REG_INT1_CTRL, REG_OFF);
 	wr(REG_FIFO_CTRL4, FIFO_MODE_BYPASS);
 	wr(REG_CTRL2, REG_OFF);
+	wr(REG_CTRL1, REG_OFF);
 	wr(REG_CTRL1, OP_MODE_XL_LOW_POWER_2_AVG | ODR_15HZ);
-	wr(REG_TAP_CFG0, TAP_CFG0_LATCHED);
+	wr(REG_TAP_CFG0, TAP_CFG0_LATCHED | TAP_CFG0_WAKE_HPF);
 	wr(REG_FUNCTIONS_ENABLE, FUNCTIONS_INTERRUPTS_ENABLE);
 	wr(REG_INACTIVITY_DUR, WAKE_THS_WEIGHT_31MG | INACT_ODR_DEFAULT);
 	wr(REG_WAKE_UP_THS, sd_wake_ths_lsb((float)wake_mg));

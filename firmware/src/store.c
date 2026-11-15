@@ -9,7 +9,9 @@
 
 LOG_MODULE_REGISTER(store, LOG_LEVEL_INF);
 
-#define CFG_MAGIC 0x53504331u /* "SPC1" */
+#define CFG_MAGIC_SLOPE_WAKE 0x53504331u /* "SPC1" */
+#define CFG_MAGIC 0x53504332u
+#define SLOPE_WAKE_DEFAULT_MG 150.0f
 
 struct cfg_blob {
 	uint32_t magic;
@@ -34,6 +36,19 @@ static const field_t fields[] = {
 
 static store_t *target;
 
+static sd_config_t migrate_slope_wake(const sd_config_t *old)
+{
+	sd_config_t cfg = *old;
+
+	if (cfg.wake_mg == SLOPE_WAKE_DEFAULT_MG) {
+		sd_config_t defaults;
+
+		sd_default_config(&defaults);
+		cfg.wake_mg = defaults.wake_mg;
+	}
+	return cfg;
+}
+
 static int set_cb(const char *key, size_t len, settings_read_cb read_cb, void *cb_arg)
 {
 	for (size_t i = 0; i < ARRAY_SIZE(fields); i++) {
@@ -48,6 +63,8 @@ static int set_cb(const char *key, size_t len, settings_read_cb read_cb, void *c
 		}
 		if (b.magic == CFG_MAGIC) {
 			target->cfg = b.cfg;
+		} else if (b.magic == CFG_MAGIC_SLOPE_WAKE) {
+			target->cfg = migrate_slope_wake(&b.cfg);
 		}
 		return 0;
 	}

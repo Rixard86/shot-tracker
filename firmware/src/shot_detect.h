@@ -78,6 +78,7 @@ typedef struct {
 	/* mode manager */
 	sd_mode_t mode;
 	float idle_ref[3];
+	float idle_hp[3];
 	uint8_t have_idle_ref;
 } sd_state_t;
 

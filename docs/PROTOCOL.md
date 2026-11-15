@@ -1,5 +1,10 @@
 # ShotPuck BLE protocol (v3)
 
+Firmware 0.3.10 (still v3):
+- **A sleeping puck wakes when the bow is lifted or drawn.** Before, the sensor woke on a sudden change: more than 312 mg on one axis between two 15 Hz samples. A smooth lift or draw never made one. None of 37 real shots (2026-11-15) did in the 6 s before release, and neither did a 100° lift. Now it wakes on high-pass filtered acceleration (cutoff 1/45 of the sample rate, 0.33 Hz), so tilting and steady motion count.
+- The CONFIG `wake_mg` default is now **90**; the sensor rounds it up to 93.75 mg. A saved config that still has the old default of 150 changes to 90 at boot; any other saved value is kept.
+- No change to any layout or command.
+
 Firmware 0.3.9 (still v3):
 - **Faster inside; stored formats unchanged.** Stored shots, captures and settings keep their format, so an update from 0.3.8 keeps everything a 0.3.8-to-0.3.8 re-flash would keep (captures held in the second firmware slot are lost by any update, as before).
 - **Two developer commands** for the app's hidden dev page (nothing changes for an app that does not use them):
@@ -211,7 +216,7 @@ Convert with `acc_mg = raw × acc_ug_per_lsb / 1000` and `gyro_dps = raw × gyro
 
 ### CONFIG (`sp_config_t`, 20 B)
 
-`u8 version(=3)`, then u16 each: `trig_hf_mg` (1000–30000, default 6000), `move_mg` (50–2000, 300), `pre_still_min_ms` (0–10000, 500), `post_start_ms` (100), `post_end_ms` (≤1500, 600; must be greater than start), `post_lf_min_mg` (0–5000, 250), `refractory_ms` (200–10000, 1500), `wake_mg` (16–2000, 150), `idle_timeout_s` (5–3600, 30), then `u8 capture_mode` (0 standard, 1 extended; default 0).
+`u8 version(=3)`, then u16 each: `trig_hf_mg` (1000–30000, default 6000), `move_mg` (50–2000, 300), `pre_still_min_ms` (0–10000, 500), `post_start_ms` (100), `post_end_ms` (≤1500, 600; must be greater than start), `post_lf_min_mg` (0–5000, 250), `refractory_ms` (200–10000, 1500), `wake_mg` (16–2000, 90; high-pass filtered from 0.3.10), `idle_timeout_s` (5–3600, 30), then `u8 capture_mode` (0 standard, 1 extended; default 0).
 
 A 19-byte write with `version = 2` (no `capture_mode`) is still accepted and keeps the current mode. Reads always return the 20-byte v3 layout. FACTORY_CFG restores the thresholds but keeps the capture mode.
 

@@ -11,7 +11,8 @@
 #define PEAK_WIN_MS 20u
 #define WAKE_THS_LSB_MG 31.25f
 #define WAKE_THS_MAX 63u
-#define SLOPE_DIVISOR 2.0f
+#define WAKE_HP_ODR_DIVISOR 45.0f
+#define TWO_PI 6.2831853f
 #define TAU_GRAVITY_S 0.25f /* gravity estimate time constant             */
 #define TAU_LF_S 0.03f     /* low-frequency motion time constant (~5 Hz)  */
 
@@ -25,7 +26,7 @@ void sd_default_config(sd_config_t *c)
 	c->post_end_ms = 600;
 	c->post_lf_min_mg = 250.0f;
 	c->refractory_ms = 1500;
-	c->wake_mg = 150.0f;
+	c->wake_mg = 90.0f;
 	c->idle_timeout_ms = 30000;
 }
 
@@ -171,12 +172,14 @@ int sd_idle_sample(sd_state_t *s, const int16_t xyz_mg[3], uint32_t t_ms)
 {
 	(void)t_ms;
 	float threshold = (float)sd_wake_ths_lsb(s->cfg.wake_mg) * WAKE_THS_LSB_MG;
+	float alpha = 1.0f / (1.0f + TWO_PI / WAKE_HP_ODR_DIVISOR);
 	int wake = 0;
 
 	for (int i = 0; i < 3; i++) {
 		float x = (float)xyz_mg[i];
 
-		if (s->have_idle_ref && fabsf(x - s->idle_ref[i]) / SLOPE_DIVISOR > threshold) {
+		s->idle_hp[i] = s->have_idle_ref ? alpha * (s->idle_hp[i] + x - s->idle_ref[i]) : 0.0f;
+		if (fabsf(s->idle_hp[i]) > threshold) {
 			wake = 1;
 		}
 		s->idle_ref[i] = x;
