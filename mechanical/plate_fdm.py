@@ -15,12 +15,9 @@ STUD_LEN = Z_KAPTON_TOP - L["bosses"]["tip_inset"]
 STUD_TIP_CLEAR = 0.2
 LIP_FIT_CLEAR = 0.1
 LIP_TOP_CLEAR = 0.05
-ORING_CS = 0.6
-ORING_SQUEEZE = 0.25
-ORING_STEP_WIDTH = 0.6
-CELL_FIT_CLEAR = 0.15
+CELL_FIT_CLEAR = -0.05
 CELL_POCKET_DEPTH = 1.0
-TUBE_FIT_CLEAR = 0.2
+TUBE_FIT_CLEAR = 0.0
 TUBE_LIP_WALL = 0.8
 TUBE_LIP_PCB_CLEAR = 0.2
 TUBE_LIP_CELL_GAP = 0.5
@@ -35,23 +32,8 @@ CELL_LIP_HEIGHT = 1.0
 CELL_LIP_CHAMFER = 0.3
 LIP_CAP_CLEAR = 0.2
 LIP_TUBE_GAP = 0.4
-HALF_TURN_DEG = 180.0
 FULL_TURN_DEG = 360.0
-SPRING_TURN_DEG = 15.0
-SPRING_ARC_DEG = 55.0
-SPRING_POCKET_GAP = 0.1
-SPRING_T = 0.6
-SPRING_ROOT_T = 1.6
-SPRING_ROOT_LEN = 2.0
-SPRING_INNER_GAP = 0.2
-SPRING_SLOT_GAP = 0.5
-SPRING_PCB_CLEAR = 0.6
-SOCKET_FIT_CLEAR = 0.05
-BOTTOM_SOLID = 1.0
-ARM_FLOOR_CLEAR = 0.3
-BUMP_W = 1.5
 POST_CHAMFER = 0.4
-SOCKET_WALL = 0.8
 STL_NAME = "plate_fdm.stl"
 STL_FINE = {"tolerance": 0.005, "angularTolerance": 0.05}
 TUBE_BORE_R = (L["sleeve"]["od"] + FDM_HOLE_GROWTH) / 2 + TUBE_FIT_CLEAR
@@ -76,8 +58,7 @@ def blind_stud_hole(xy):
 
 def locating_lip():
     r_in = (L["seal"]["ledge_od"] + FDM_HOLE_GROWTH) / 2 + LIP_FIT_CLEAR
-    lip = tube((0, 0, R, T_PLATE, Z_SEAL_TOP - LIP_TOP_CLEAR), r_in)
-    return lip.cut(column((0, 0, r_in + ORING_STEP_WIDTH, Z_SEAL_TOP - ORING_CS * (1 - ORING_SQUEEZE), Z_SEAL_TOP)))
+    return tube((0, 0, R, T_PLATE, Z_SEAL_TOP - LIP_TOP_CLEAR), r_in)
 
 
 def cell_pocket_r():
@@ -122,7 +103,8 @@ def cell_lip():
     r_cut = r0 + CELL_LIP_WALL + backing_run((T_PLATE, top)) + CUT_MARGIN
     wedge, z_span = (r0 - CUT_MARGIN, r_cut), (T_PLATE - CUT_MARGIN, top + CUT_MARGIN)
     ring = ring.cut(sector(wedge, (rim - near, rim + near) + z_span))
-    return ring.cut(sector(wedge, (spring_deg(), rim + FULL_TURN_DEG - far) + z_span))
+    ring = ring.cut(sector(wedge, (rim + far, rim + FULL_TURN_DEG - far) + z_span))
+    return ring.cut(sector(wedge, post_span() + z_span))
 
 
 def standoff_pads():
@@ -140,70 +122,30 @@ def pad_dir_deg():
     return math.degrees(math.atan2(pad["y"] - c["y"], pad["x"] - c["x"]))
 
 
-def spring_deg():
-    return pad_dir_deg() - HALF_TURN_DEG + SPRING_TURN_DEG
+def post_face_r():
+    return L["cell"]["dia"] / 2 + STRIP_T + POST_STRIP_GAP
+
+
+def post_span():
+    a, half = pad_dir_deg(), arc_deg(POST_WIDTH / 2, post_face_r())
+    return a - half, a + half
+
+
+def strip_slot():
+    radii = (cell_pocket_r() - CUT_MARGIN, post_face_r())
+    return sector(radii, post_span() + (T_PLATE - CELL_POCKET_DEPTH, T_PLATE + CUT_MARGIN))
 
 
 def strip_post():
-    r_face = L["cell"]["dia"] / 2 + STRIP_T + POST_STRIP_GAP
-    a, half = pad_dir_deg(), arc_deg(POST_WIDTH / 2, r_face)
+    r_face = post_face_r()
     top = Z_PCB - POST_PCB_CLEAR
     profile = [(r_face, T_PLATE), (r_face, top - POST_CHAMFER), (r_face + POST_CHAMFER, top), (r_face + POST_DEPTH, top)]
-    return keep_clear(sloped_post(profile, (a - half, a + half)), KEEP_CLEAR_RADII)
-
-
-def spring_inner_r():
-    return cell_pocket_r() + SPRING_POCKET_GAP
-
-
-def spring_outer_r():
-    return spring_inner_r() + SPRING_T
-
-
-def slot_floor_z():
-    return Z_UNDERSIDE + BOTTOM_SOLID
-
-
-def part_bottom_z():
-    return slot_floor_z() + ARM_FLOOR_CLEAR
-
-
-def spring_top_z():
-    return Z_PCB - SPRING_PCB_CLEAR
-
-
-def root_deg():
-    return spring_deg() + SPRING_ARC_DEG
-
-
-def tab_deg():
-    return arc_deg(SPRING_ROOT_T, spring_inner_r() + SPRING_ROOT_LEN / 2)
-
-
-def socket_span(clear):
-    r0 = spring_inner_r()
-    return root_deg() - arc_deg(clear, r0), root_deg() + tab_deg() + arc_deg(clear, r0)
-
-
-def socket_collar():
-    clear = FDM_HOLE_GROWTH / 2 + SOCKET_FIT_CLEAR + SOCKET_WALL
-    r_out, top = spring_inner_r() + SPRING_ROOT_LEN + clear, spring_top_z()
-    profile = [(cell_pocket_r(), T_PLATE), (cell_pocket_r(), top), (r_out, top)]
-    return keep_clear(sloped_post(profile, socket_span(clear)), KEEP_CLEAR_RADII)
-
-
-def spring_slot():
-    r0, top = spring_inner_r(), Z_PCB
-    tip = spring_deg() - arc_deg(BUMP_W / 2 + SPRING_SLOT_GAP, r0)
-    arm = sector((r0 - SPRING_INNER_GAP, spring_outer_r() + SPRING_SLOT_GAP), (tip, root_deg(), slot_floor_z(), top))
-    clear = FDM_HOLE_GROWTH / 2 + SOCKET_FIT_CLEAR
-    socket = sector((r0 - clear, r0 + SPRING_ROOT_LEN + clear), socket_span(clear) + (part_bottom_z(), top))
-    return arm.union(socket)
+    return keep_clear(sloped_post(profile, post_span()), KEEP_CLEAR_RADII)
 
 
 def make_fdm_plate():
-    p = thick_plate().union(locating_lip()).union(tube_lip()).union(standoff_pads()).cut(cell_pocket())
-    p = p.union(cell_lip()).union(strip_post()).union(socket_collar()).cut(spring_slot())
+    p = thick_plate().union(locating_lip()).union(tube_lip()).union(standoff_pads()).cut(cell_pocket()).cut(strip_slot())
+    p = p.union(cell_lip()).union(strip_post())
     p = p.cut(printed_hole((0, 0), L["bolt"]["clearance_dia"]))
     for xy in boss_xy():
         p = p.cut(blind_stud_hole(xy))

@@ -3,7 +3,7 @@ import math
 import cadquery as cq
 
 from geometry import L, T_PLATE, Z_PCB, boss_xy
-from puck_parts import CUT_MARGIN, column, placed, slab, tube
+from puck_parts import CUT_MARGIN, column, placed, tube
 
 BACKING_RUN_PER_RISE = 1.0
 FULL_TURN_DEG = 360.0
@@ -24,11 +24,6 @@ def at_cell(wp, deg):
     return placed(wp, (c["x"], c["y"], deg))
 
 
-def box_between(xy, z_range):
-    (x0, x1), (y0, y1) = xy
-    return slab((x1 - x0, y1 - y0), z_range).translate(((x0 + x1) / 2, (y0 + y1) / 2, 0))
-
-
 def outline(ring, z):
     (r0, r1), (a0, a1) = ring
     mid = (a0 + a1) / 2
@@ -40,12 +35,6 @@ def outline(ring, z):
 def sector(radii, span):
     a0, a1, z0, z1 = span
     return at_cell(outline((radii, (a0, a1)), z0).extrude(z1 - z0), 0)
-
-
-def sector_loft(rings, z_range):
-    (low, high), (z0, z1) = rings, z_range
-    solid = cq.Solid.makeLoft([outline(low, z0).val(), outline(high, z1).val()], True)
-    return at_cell(cq.Workplane("XY").add(solid), 0)
 
 
 def backing_run(z_range):
