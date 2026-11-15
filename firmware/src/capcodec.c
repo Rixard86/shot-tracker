@@ -54,15 +54,18 @@ void capenc_init(capenc_t *enc)
 
 static void put_bits(capenc_t *enc, codec_bits_t bits)
 {
-	for (uint32_t i = bits.count; i > 0; i--) {
-		uint32_t byte = enc->out_bits / BITS_PER_BYTE;
-		uint32_t shift = (BITS_PER_BYTE - 1u) - enc->out_bits % BITS_PER_BYTE;
+	for (uint32_t left = bits.count; left > 0u;) {
+		uint32_t used = enc->out_bits % BITS_PER_BYTE;
+		uint32_t room = BITS_PER_BYTE - used;
+		uint32_t take = left < room ? left : room;
+		uint8_t *byte = &enc->out[enc->out_bits / BITS_PER_BYTE];
 
-		if (shift == BITS_PER_BYTE - 1u) {
-			enc->out[byte] = 0;
+		if (used == 0u) {
+			*byte = 0;
 		}
-		enc->out[byte] |= (uint8_t)(((bits.value >> (i - 1u)) & 1u) << shift);
-		enc->out_bits++;
+		*byte |= (uint8_t)(((bits.value >> (left - take)) & ones(take)) << (room - take));
+		enc->out_bits += take;
+		left -= take;
 	}
 }
 
@@ -113,6 +116,11 @@ static uint32_t series_cost(const axis_job_t *job, uint32_t k)
 	return bits;
 }
 
+static uint32_t least_cost(const axis_job_t *job, uint32_t k)
+{
+	return CODEC_K_BITS + job->block->count * rice_bits(0u, k);
+}
+
 static void choose(axis_job_t *job)
 {
 	uint32_t best = job->block->count * CODEC_RAW_BITS;
@@ -120,7 +128,7 @@ static void choose(axis_job_t *job)
 	uint32_t best_k = 0;
 
 	for (job->mode = 0; job->mode < CODEC_PREDICTORS; job->mode++) {
-		for (uint32_t k = 0; k <= CODEC_MAX_K; k++) {
+		for (uint32_t k = 0; k <= CODEC_MAX_K && least_cost(job, k) < best; k++) {
 			uint32_t bits = series_cost(job, k);
 			if (bits < best) {
 				best = bits;
@@ -169,15 +177,15 @@ void capenc_finish(capenc_t *enc)
 	enc->out_bits = (enc->out_bits + BITS_PER_BYTE - 1u) / BITS_PER_BYTE * BITS_PER_BYTE;
 }
 
-uint32_t capenc_take(capenc_t *enc, codec_bytes_t *bytes)
+uint32_t capenc_ready(const capenc_t *enc)
 {
-	uint32_t whole = enc->out_bits / BITS_PER_BYTE;
-	uint32_t n = whole < bytes->len ? whole : bytes->len;
-	uint32_t keep_bits = enc->out_bits - n * BITS_PER_BYTE;
+	return enc->out_bits / BITS_PER_BYTE;
+}
 
-	memcpy(bytes->data, enc->out, n);
-	memmove(enc->out, enc->out + n, (keep_bits + BITS_PER_BYTE - 1u) / BITS_PER_BYTE);
+void capenc_drop(capenc_t *enc, uint32_t bytes)
+{
+	uint32_t keep_bits = enc->out_bits - bytes * BITS_PER_BYTE;
+
+	memmove(enc->out, enc->out + bytes, (keep_bits + BITS_PER_BYTE - 1u) / BITS_PER_BYTE);
 	enc->out_bits = keep_bits;
-	bytes->len = n;
-	return n;
 }

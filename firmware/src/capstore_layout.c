@@ -1,20 +1,15 @@
 #include <stddef.h>
 
 #include "capstore_priv.h"
+#include "crc32.h"
 
-#define CRC_POLY 0xEDB88320u
-#define BITS_PER_BYTE 8u
 #define CRC_CHUNK_BYTES 64u
 
 uint32_t capstore_crc(uint32_t crc, const capstore_chunk_t *chunk)
 {
-	for (uint32_t i = 0; i < chunk->len; i++) {
-		crc ^= chunk->data[i];
-		for (uint32_t b = 0; b < BITS_PER_BYTE; b++) {
-			crc = (crc >> 1) ^ (CRC_POLY & (0u - (crc & 1u)));
-		}
-	}
-	return crc;
+	crc32_bytes_t bytes = {chunk->data, chunk->len};
+
+	return crc32_step(crc, &bytes);
 }
 
 uint32_t capstore_check(const capstore_header_t *header, uint32_t payload_crc)

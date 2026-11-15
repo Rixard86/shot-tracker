@@ -36,6 +36,11 @@ LOG_MODULE_REGISTER(power, LOG_LEVEL_INF);
 #define CHG_HYST_C 3
 #define CUTOFF_MV 3300 /* protect cell (CP1654 has no internal PCM) */
 #define CALIBRATE_EVERY_C 10
+#define ADC_RESOLUTION_BITS 12
+#define ADC_OVERSAMPLING 4
+#define ADC_ACQ_US 10
+#define VDDH_FULL_SCALE_MV 6000u
+#define STAT_SETTLE_US 50
 
 static const struct device *const adc = DEVICE_DT_GET(DT_NODELABEL(adc));
 static const struct device *const temp_dev = DEVICE_DT_GET(DT_NODELABEL(temp));
@@ -45,7 +50,6 @@ static const struct gpio_dt_spec chg_inhibit =
 	GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), chg_inhibit_gpios);
 
 static power_state_t st;
-static int16_t adc_buf;
 static bool calibrated;
 static bool temp_known;
 static int8_t calibrated_at_c;
@@ -55,7 +59,7 @@ static charge_ctl_t charge;
 static const struct adc_channel_cfg vddh_ch = {
 	.gain = ADC_GAIN_1_2,
 	.reference = ADC_REF_INTERNAL, /* 0.6 V -> 1.2 V full scale */
-	.acquisition_time = ADC_ACQ_TIME(ADC_ACQ_TIME_MICROSECONDS, 10),
+	.acquisition_time = ADC_ACQ_TIME(ADC_ACQ_TIME_MICROSECONDS, ADC_ACQ_US),
 	.channel_id = 0,
 	.input_positive = NRF_SAADC_VDDHDIV5,
 };
@@ -119,12 +123,13 @@ static bool needs_calibration(void)
 
 static int read_vbat_mv(uint16_t *mv)
 {
+	int16_t adc_buf = 0;
 	struct adc_sequence seq = {
 		.channels = BIT(0),
 		.buffer = &adc_buf,
 		.buffer_size = sizeof(adc_buf),
-		.resolution = 12,
-		.oversampling = 4,
+		.resolution = ADC_RESOLUTION_BITS,
+		.oversampling = ADC_OVERSAMPLING,
 		.calibrate = needs_calibration(),
 	};
 	int err = adc_read(adc, &seq);
@@ -135,8 +140,8 @@ static int read_vbat_mv(uint16_t *mv)
 		calibrated = true;
 		calibrated_at_c = st.temp_c;
 	}
-	int32_t v = adc_buf < 0 ? 0 : adc_buf;
-	*mv = (uint16_t)(v * 1200 * 5 / 4096);
+	uint32_t raw = adc_buf < 0 ? 0u : (uint32_t)adc_buf;
+	*mv = (uint16_t)((raw * VDDH_FULL_SCALE_MV) >> ADC_RESOLUTION_BITS);
 	return 0;
 }
 
@@ -156,7 +161,7 @@ static void read_charger(void)
 	st.vbus = nrf_power_usbregstatus_vbusdet_get(NRF_POWER);
 	if (st.vbus) {
 		gpio_pin_configure_dt(&chg_stat, GPIO_INPUT | GPIO_PULL_UP);
-		k_busy_wait(50);
+		k_busy_wait(STAT_SETTLE_US);
 		st.charging = gpio_pin_get_dt(&chg_stat) == 1; /* active-low in DT */
 	} else {
 		gpio_pin_configure_dt(&chg_stat, GPIO_INPUT);

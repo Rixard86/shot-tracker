@@ -60,6 +60,7 @@ typedef enum { SD_MODE_IDLE = 0, SD_MODE_ACTIVE = 1 } sd_mode_t;
 typedef struct {
 	sd_config_t cfg;
 	float a_g_lp, a_lf;        /* filter coefficients                        */
+	uint32_t guard_ms;         /* GUARD_SAMPLES in ms                        */
 	float g_lp[3];             /* gravity estimate (slow LP)                 */
 	float lf[3];               /* low-frequency acceleration (fast LP)       */
 	float prev[3];

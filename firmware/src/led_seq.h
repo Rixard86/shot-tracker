@@ -22,10 +22,12 @@ typedef struct {
 	uint8_t len;
 	uint8_t step;
 	uint32_t steady;
+	const led_pattern_t *loop;
 } led_seq_t;
 
 void led_seq_init(led_seq_t *s);
 bool led_seq_push(led_seq_t *s, const led_pattern_t *pattern);
+bool led_seq_loop(led_seq_t *s, const led_pattern_t *pattern);
 void led_seq_steady(led_seq_t *s, led_steady_t request);
 void led_seq_advance(led_seq_t *s);
 bool led_seq_level(const led_seq_t *s);

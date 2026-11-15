@@ -1,6 +1,7 @@
 /* store.c - see store.h */
 #include "store.h"
 
+#include <stddef.h>
 #include <string.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
@@ -15,24 +16,30 @@ struct cfg_blob {
 	sd_config_t cfg;
 };
 
+typedef struct {
+	const char *key;
+	size_t offset;
+	size_t size;
+} field_t;
+
+#define FIELD(key, member) {key, offsetof(store_t, member), sizeof(((store_t *)0)->member)}
+
+static const field_t fields[] = {
+	FIELD("total", total),
+	FIELD("seq", seq),
+	FIELD("resetseq", count_reset_seq),
+	FIELD("crashes", crashes),
+	FIELD("capmode", capture_mode),
+};
+
 static store_t *target;
 
 static int set_cb(const char *key, size_t len, settings_read_cb read_cb, void *cb_arg)
 {
-	if (!strcmp(key, "total") && len == sizeof(uint32_t)) {
-		return read_cb(cb_arg, &target->total, len) < 0 ? -EIO : 0;
-	}
-	if (!strcmp(key, "seq") && len == sizeof(uint32_t)) {
-		return read_cb(cb_arg, &target->seq, len) < 0 ? -EIO : 0;
-	}
-	if (!strcmp(key, "resetseq") && len == sizeof(target->count_reset_seq)) {
-		return read_cb(cb_arg, &target->count_reset_seq, len) < 0 ? -EIO : 0;
-	}
-	if (!strcmp(key, "crashes") && len == sizeof(target->crashes)) {
-		return read_cb(cb_arg, &target->crashes, len) < 0 ? -EIO : 0;
-	}
-	if (!strcmp(key, "capmode") && len == sizeof(target->capture_mode)) {
-		return read_cb(cb_arg, &target->capture_mode, len) < 0 ? -EIO : 0;
+	for (size_t i = 0; i < ARRAY_SIZE(fields); i++) {
+		if (!strcmp(key, fields[i].key) && len == fields[i].size) {
+			return read_cb(cb_arg, (uint8_t *)target + fields[i].offset, len) < 0 ? -EIO : 0;
+		}
 	}
 	if (!strcmp(key, "cfg") && len == sizeof(struct cfg_blob)) {
 		struct cfg_blob b;

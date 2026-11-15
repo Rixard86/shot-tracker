@@ -4,6 +4,9 @@
 #include "../src/capture.h"
 
 #define ROUND_TRIP_SAMPLES 100000u
+#define WIDE_SAMPLES 100000u
+#define WIDE_STRIDE 104729u
+#define MS_PER_S 1000u
 #define SHOT_SEQ 42u
 #define WAKE_TRIGGER 100u
 #define LONG_RUN (CAP_RING_SAMPLES * 3u)
@@ -50,6 +53,18 @@ static void test_round_trip(void)
 		ok &= cap_ms_to_index(cap_index_to_ms(i)) == i;
 	}
 	check(ok, "ms <-> sample index round trip");
+}
+
+static void test_wide_range(void)
+{
+	int ok = 1;
+
+	for (uint32_t i = 0; i < WIDE_SAMPLES; i++) {
+		uint32_t index = i * WIDE_STRIDE;
+
+		ok &= cap_index_to_ms(index) == (uint32_t)((uint64_t)index * MS_PER_S / CAP_ODR_HZ);
+	}
+	check(ok, "sample index -> ms equals the 64-bit division over the whole index range");
 }
 
 static int window_is(const cap_window_t *w, const cap_window_t *expected)
@@ -131,6 +146,7 @@ static void test_packing(void)
 int main(void)
 {
 	test_round_trip();
+	test_wide_range();
 	test_windows();
 	test_short_and_missing();
 	test_reset();

@@ -14,6 +14,8 @@
 #define FIND_ON_MS 80
 #define FIND_OFF_MS 120
 #define RESET_DONE_MS 80
+#define FAST_BLINK_ON_MS 50
+#define FAST_BLINK_OFF_MS 50
 #define MAX_PULSES 3u
 #define ONE_PULSE_STEPS 1u
 #define TWO_PULSE_STEPS 3u
@@ -42,6 +44,9 @@ static const led_pattern_t patterns[LED_PATTERNS] = {
 	[LED_FIND] = {find_ms, ARRAY_SIZE(find_ms)},
 	[LED_RESET_DONE] = {reset_done_ms, ARRAY_SIZE(reset_done_ms)},
 };
+
+static const uint16_t fast_blink_ms[] = {FAST_BLINK_ON_MS, FAST_BLINK_OFF_MS};
+static const led_pattern_t fast_blink = {fast_blink_ms, ARRAY_SIZE(fast_blink_ms)};
 
 static const led_pattern_t pulse_trains[MAX_PULSES] = {
 	{pulses_ms, ONE_PULSE_STEPS},
@@ -107,10 +112,21 @@ void led_play_pulses(uint8_t count)
 void led_steady(led_steady_t request)
 {
 	k_spinlock_key_t key = k_spin_lock(&lock);
+	bool before = led_seq_level(&seq);
 
 	led_seq_steady(&seq, request);
-	if (!led_seq_busy(&seq)) {
+	if (!led_seq_busy(&seq) && led_seq_level(&seq) != before) {
 		gpio_pin_set_dt(&led, led_seq_level(&seq) ? 1 : 0);
+	}
+	k_spin_unlock(&lock, key);
+}
+
+void led_fast_blink(bool on)
+{
+	k_spinlock_key_t key = k_spin_lock(&lock);
+
+	if (led_seq_loop(&seq, on ? &fast_blink : NULL)) {
+		show_locked();
 	}
 	k_spin_unlock(&lock, key);
 }

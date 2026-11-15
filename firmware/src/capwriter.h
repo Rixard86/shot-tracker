@@ -17,6 +17,7 @@ typedef struct {
 	uint32_t trigger;
 	uint32_t epoch;
 	uint8_t mode;
+	uint32_t samples;
 } capw_request_t;
 
 typedef struct {

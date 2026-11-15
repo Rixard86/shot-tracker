@@ -6,10 +6,10 @@
 #include "ble.h"
 #include "evlog.h"
 #include "evq.h"
+#include "flash_sector.h"
 
 LOG_MODULE_REGISTER(event_tx, LOG_LEVEL_INF);
 
-#define SECTOR_BYTES 4096u
 
 static const struct flash_area *area;
 static evlog_t shots;
@@ -28,7 +28,7 @@ static int area_write(uint32_t offset, const evlog_record_t *rec)
 
 static int area_erase(uint32_t offset)
 {
-	return flash_area_erase(area, offset, SECTOR_BYTES);
+	return flash_area_erase(area, offset, FLASH_SECTOR_BYTES);
 }
 
 static int area_write_word(uint32_t offset, uint32_t word)
@@ -41,7 +41,7 @@ static evlog_flash_t shots_flash = {
 	.write = area_write,
 	.erase_sector = area_erase,
 	.write_word = area_write_word,
-	.sector_size = SECTOR_BYTES,
+	.sector_size = FLASH_SECTOR_BYTES,
 };
 
 int event_tx_init(void)

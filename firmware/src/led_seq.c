@@ -19,6 +19,14 @@ bool led_seq_push(led_seq_t *s, const led_pattern_t *pattern)
 	return s->len == 1u;
 }
 
+bool led_seq_loop(led_seq_t *s, const led_pattern_t *pattern)
+{
+	bool starting = pattern != NULL && s->loop == NULL;
+
+	s->loop = pattern;
+	return starting && led_seq_push(s, pattern);
+}
+
 void led_seq_steady(led_seq_t *s, led_steady_t request)
 {
 	uint32_t bit = 1u << request.source;
@@ -38,6 +46,9 @@ void led_seq_advance(led_seq_t *s)
 	s->step = 0;
 	s->head = (uint8_t)((s->head + 1u) % LED_SEQ_QUEUE_LEN);
 	s->len--;
+	if (s->len == 0u && s->loop != NULL) {
+		(void)led_seq_push(s, s->loop);
+	}
 }
 
 bool led_seq_level(const led_seq_t *s)

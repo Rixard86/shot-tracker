@@ -3,26 +3,19 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "crc32.h"
+
 #define CRC_INIT 0xFFFFFFFFu
-#define CRC_POLY 0xEDB88320u
-#define BITS_PER_BYTE 8u
 #define ERASED_BYTE 0xFFu
 #define ERR_LAYOUT (-1)
 
 static uint32_t checksum(const evlog_record_t *rec)
 {
 	evlog_record_t sealed = *rec;
-	const uint8_t *p = (const uint8_t *)&sealed;
-	uint32_t crc = CRC_INIT;
+	crc32_bytes_t bytes = {(const uint8_t *)&sealed, (uint32_t)offsetof(evlog_record_t, check)};
 
 	sealed.magic = EVLOG_MAGIC;
-	for (size_t i = 0; i < offsetof(evlog_record_t, check); i++) {
-		crc ^= p[i];
-		for (uint32_t b = 0; b < BITS_PER_BYTE; b++) {
-			crc = (crc >> 1) ^ (CRC_POLY & (0u - (crc & 1u)));
-		}
-	}
-	return ~crc;
+	return ~crc32_step(CRC_INIT, &bytes);
 }
 
 static bool is_valid(const evlog_record_t *rec)
@@ -70,7 +63,7 @@ static int find_head(evlog_t *log)
 		if (err) {
 			return err;
 		}
-		if (is_valid(&rec) && (!found || rec.event.seq > newest_seq)) {
+		if ((!found || rec.event.seq > newest_seq) && is_valid(&rec)) {
 			found = true;
 			newest_seq = rec.event.seq;
 			newest = slot;
@@ -146,7 +139,7 @@ int evlog_next(const evlog_t *log, evlog_cursor_t *cur)
 		if (err) {
 			return err;
 		}
-		if (is_live(&rec) && rec.event.seq >= cur->from_seq) {
+		if (rec.event.seq >= cur->from_seq && is_live(&rec)) {
 			cur->event = rec.event;
 			return 1;
 		}
@@ -163,7 +156,7 @@ int evlog_delete(const evlog_t *log, uint32_t seq)
 		if (err) {
 			return err;
 		}
-		if (is_live(&rec) && rec.event.seq == seq) {
+		if (rec.event.seq == seq && is_live(&rec)) {
 			uint32_t magic_at = slot_offset(slot) + (uint32_t)offsetof(evlog_record_t, magic);
 
 			err = log->flash->write_word(magic_at, EVLOG_MAGIC_DELETED);

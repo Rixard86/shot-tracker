@@ -77,6 +77,15 @@ static void fill(signal_t kind, uint32_t count)
 	}
 }
 
+static uint32_t take(capenc_t *enc, uint32_t len)
+{
+	uint32_t n = capenc_ready(enc);
+
+	memcpy(&stream[len], enc->out, n);
+	capenc_drop(enc, n);
+	return len + n;
+}
+
 static uint32_t encode(uint32_t count)
 {
 	capenc_t enc;
@@ -87,12 +96,10 @@ static uint32_t encode(uint32_t count)
 		uint32_t left = count - first;
 		codec_block_t block = {&input[first], left < CODEC_BLOCK_SAMPLES ? left : CODEC_BLOCK_SAMPLES};
 		check(capenc_block(&enc, &block) == 0, "block encodes");
-		codec_bytes_t out = {&stream[len], STREAM_BYTES - len};
-		len += capenc_take(&enc, &out);
+		len = take(&enc, len);
 	}
 	capenc_finish(&enc);
-	codec_bytes_t out = {&stream[len], STREAM_BYTES - len};
-	return len + capenc_take(&enc, &out);
+	return take(&enc, len);
 }
 
 static int refill(capdec_t *dec)

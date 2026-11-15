@@ -9,6 +9,7 @@
 
 void cap_tx_init(const capstore_t *store, const capw_t *writer);
 void cap_tx_queue(uint32_t seq);
+void cap_tx_hold(bool hold);
 bool cap_tx_busy(void);
 void cap_tx_pump(void);
 

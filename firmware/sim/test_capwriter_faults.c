@@ -35,7 +35,15 @@ typedef struct {
 	int erases;
 } flash_ops_t;
 
+typedef struct {
+	uint32_t seq;
+	uint32_t trigger;
+} shot_t;
+
 static const fault_plan_t no_faults = {NO_FAULT, NO_FAULT};
+static const shot_t check_shot = {CHECK_SEQ, CHECK_TRIGGER};
+static shot_t decoded;
+static int corrupt;
 static uint8_t flash[FLASH_BYTES];
 static fault_plan_t plan;
 static flash_ops_t ops;
@@ -107,22 +115,23 @@ static void run_to(uint32_t count)
 
 static int refill(capdec_t *dec)
 {
-	const capstore_entry_t *e = capstore_find(&store, CHECK_SEQ);
+	const capstore_entry_t *e = capstore_find(&store, decoded.seq);
 	uint32_t left = e ? e->payload_len - dec->source_offset : 0u;
-	capstore_read_t req = {CHECK_SEQ, dec->source_offset, dec->in, left < CODEC_IN_BYTES ? left : CODEC_IN_BYTES};
+	capstore_read_t req = {decoded.seq, dec->source_offset, dec->in, left < CODEC_IN_BYTES ? left : CODEC_IN_BYTES};
 
 	dec->in_len = req.len;
 	dec->source_offset += req.len;
 	return req.len ? capstore_read(&store, &req) : 0;
 }
 
-static bool check_capture_intact(void)
+static bool capture_intact(const shot_t *shot)
 {
-	const capstore_entry_t *e = capstore_find(&store, CHECK_SEQ);
-	uint32_t first = CHECK_TRIGGER - CAP_STANDARD_PRE;
+	const capstore_entry_t *e = capstore_find(&store, shot->seq);
+	uint32_t first = shot->trigger - CAP_STANDARD_PRE;
 	capdec_t dec = {.refill = refill};
 	sp_cap_sample_t got;
 
+	decoded = *shot;
 	if (!e || e->n_samples != CAP_STANDARD_PRE + CAP_STANDARD_POST) {
 		return false;
 	}
@@ -138,7 +147,7 @@ static bool check_capture_intact(void)
 
 static void request(uint32_t seq, uint32_t trigger)
 {
-	capw_request_t req = {seq, trigger, cap.epoch, SP_CAPTURE_STANDARD};
+	capw_request_t req = {seq, trigger, cap.epoch, SP_CAPTURE_STANDARD, 0u};
 
 	capw_request(&writer, &req);
 }
@@ -146,6 +155,7 @@ static void request(uint32_t seq, uint32_t trigger)
 static bool recovers(uint32_t trigger, fault_plan_t faults)
 {
 	capw_deps_t deps = {&cap, &store};
+	shot_t faulty = {FAULTY_SEQ, trigger};
 
 	memset(flash, ERASED, sizeof(flash));
 	cap_init(&cap);
@@ -158,13 +168,14 @@ static bool recovers(uint32_t trigger, fault_plan_t faults)
 	run_to(FAULT_PHASE_END);
 	fault_phase = ops;
 	plan = no_faults;
+	corrupt += capstore_find(&store, FAULTY_SEQ) != NULL && !capture_intact(&faulty);
 	request(CHECK_SEQ, CHECK_TRIGGER);
 	run_to(CHECK_PHASE_END);
-	if (!check_capture_intact()) {
+	if (!capture_intact(&check_shot)) {
 		return false;
 	}
 	check(capstore_init(&store, &dev) == 0, "store reboot");
-	return check_capture_intact();
+	return capture_intact(&check_shot);
 }
 
 static int lost_after_faults(uint32_t trigger, bool erase_faults)
@@ -192,6 +203,7 @@ static void test_single_faults(void)
 	}
 	printf("info: %d single write/erase faults, %d lost the next capture (live or after a reboot)\n", points, lost);
 	check(lost == 0, "a failed flash write or erase never loses a later capture, also after a reboot");
+	check(corrupt == 0, "a capture hit by a failed flash write is dropped, never kept with wrong samples");
 }
 
 int main(void)

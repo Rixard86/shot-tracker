@@ -35,6 +35,7 @@ static struct bt_uuid_128 uuid_cfg = BT_UUID_INIT_128(SP_UUID_CONFIG);
 static struct bt_uuid_128 uuid_status = BT_UUID_INIT_128(SP_UUID_STATUS);
 static struct bt_uuid_128 uuid_capture = BT_UUID_INIT_128(SP_UUID_CAPTURE);
 static struct bt_uuid_128 uuid_diag = BT_UUID_INIT_128(SP_UUID_DIAG);
+static struct bt_uuid_128 uuid_stream = BT_UUID_INIT_128(SP_UUID_STREAM);
 
 static sp_count_t v_count;
 static sp_status_t v_status;
@@ -50,7 +51,7 @@ static atomic_t link_secured;
 
 static struct bt_conn *cur_conn;
 static bool advertising;
-static bool notify_count, notify_event, notify_status, notify_capture;
+static bool notify_count, notify_event, notify_status, notify_capture, notify_stream;
 static bool fast_link;
 static uint32_t bulk_seen_ms;
 
@@ -80,7 +81,7 @@ static ssize_t wr_ctrl(struct bt_conn *conn, const struct bt_gatt_attr *attr, co
 	if (offset != 0 || len < 1 || len > 16) {
 		return BT_GATT_ERR(BT_ATT_ERR_INVALID_ATTRIBUTE_LEN);
 	}
-	int err = on_ctrl ? on_ctrl(buf, len) : 0;
+	int err = on_ctrl(buf, len);
 
 	if (err == -EINVAL) {
 		return BT_GATT_ERR(BT_ATT_ERR_VALUE_NOT_ALLOWED);
@@ -107,7 +108,7 @@ static ssize_t wr_cfg(struct bt_conn *conn, const struct bt_gatt_attr *attr, con
 	if (parsed == WIRE_CFG_BAD_LENGTH) {
 		return BT_GATT_ERR(BT_ATT_ERR_INVALID_ATTRIBUTE_LEN);
 	}
-	if (parsed != WIRE_CFG_OK || !on_cfg || on_cfg(&c) != 0) {
+	if (parsed != WIRE_CFG_OK || on_cfg(&c) != 0) {
 		return BT_GATT_ERR(BT_ATT_ERR_VALUE_NOT_ALLOWED);
 	}
 	v_cfg = c;
@@ -133,6 +134,11 @@ static void ccc_capture(const struct bt_gatt_attr *a, uint16_t v)
 {
 	ARG_UNUSED(a);
 	notify_capture = v == BT_GATT_CCC_NOTIFY;
+}
+static void ccc_stream(const struct bt_gatt_attr *a, uint16_t v)
+{
+	ARG_UNUSED(a);
+	notify_stream = v == BT_GATT_CCC_NOTIFY;
 }
 
 BT_GATT_SERVICE_DEFINE(sp_svc,
@@ -161,12 +167,16 @@ BT_GATT_SERVICE_DEFINE(sp_svc,
 	BT_GATT_CCC(ccc_capture, ENCRYPTED_CCC),
 	BT_GATT_CHARACTERISTIC(&uuid_diag.uuid, BT_GATT_CHRC_READ, BT_GATT_PERM_READ_ENCRYPT,
 			       rd_blob, NULL, &v_diag),
+	BT_GATT_CHARACTERISTIC(&uuid_stream.uuid, BT_GATT_CHRC_NOTIFY, BT_GATT_PERM_NONE,
+			       NULL, NULL, NULL),
+	BT_GATT_CCC(ccc_stream, ENCRYPTED_CCC),
 );
 
 #define ATTR_COUNT (&sp_svc.attrs[1])
 #define ATTR_EVENT (&sp_svc.attrs[4])
 #define ATTR_STATUS (&sp_svc.attrs[11])
 #define ATTR_CAPTURE (&sp_svc.attrs[14])
+#define ATTR_STREAM (&sp_svc.attrs[19])
 
 enum { AD_FLAGS, AD_SERVICE, AD_PAIRING, AD_FIELDS };
 
@@ -201,9 +211,7 @@ static void connected(struct bt_conn *conn, uint8_t err)
 	atomic_clear(&notify_in_flight);
 	mtu_params.func = mtu_cb;
 	bt_gatt_exchange_mtu(conn, &mtu_params);
-	if (on_conn) {
-		on_conn(true);
-	}
+	on_conn(true);
 }
 
 static void disconnected(struct bt_conn *conn, uint8_t reason)
@@ -213,11 +221,9 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 		bt_conn_unref(cur_conn);
 		cur_conn = NULL;
 	}
-	notify_count = notify_event = notify_status = notify_capture = false;
+	notify_count = notify_event = notify_status = notify_capture = notify_stream = false;
 	fast_link = false;
-	if (on_conn) {
-		on_conn(false); /* main decides whether to re-advertise */
-	}
+	on_conn(false); /* main decides whether to re-advertise */
 }
 
 static void security_changed(struct bt_conn *conn, bt_security_t level, enum bt_security_err err)
@@ -359,9 +365,7 @@ static void paced_sent(struct bt_conn *conn, void *user_data)
 	if (atomic_get(&notify_in_flight) > 0) {
 		atomic_dec(&notify_in_flight);
 	}
-	if (on_tx_done) {
-		on_tx_done();
-	}
+	on_tx_done();
 }
 
 static uint16_t room_if(bool subscribed)
@@ -419,6 +423,25 @@ int ble_send_capture(const uint8_t *data, uint16_t len)
 	};
 
 	if (!cur_conn || !notify_capture) {
+		return -ENOTCONN;
+	}
+	return send_paced(&params);
+}
+
+uint16_t ble_stream_room(void)
+{
+	return room_if(notify_stream);
+}
+
+int ble_send_stream(const uint8_t *data, uint16_t len)
+{
+	struct bt_gatt_notify_params params = {
+		.attr = ATTR_STREAM,
+		.data = data,
+		.len = len,
+	};
+
+	if (!cur_conn || !notify_stream) {
 		return -ENOTCONN;
 	}
 	return send_paced(&params);

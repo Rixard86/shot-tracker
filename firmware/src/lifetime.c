@@ -4,11 +4,11 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/storage/flash_map.h>
 
+#include "flash_sector.h"
 #include "lifecount.h"
 
 LOG_MODULE_REGISTER(lifetime, LOG_LEVEL_INF);
 
-#define SECTOR_BYTES 4096u
 
 static const struct flash_area *area;
 static lifecount_t life;
@@ -26,21 +26,21 @@ static int area_write(uint32_t offset, const lifecount_record_t *rec)
 
 static int area_erase(uint32_t offset)
 {
-	return flash_area_erase(area, offset, SECTOR_BYTES);
+	return flash_area_erase(area, offset, FLASH_SECTOR_BYTES);
 }
 
 static const lifecount_flash_t life_flash = {
 	.read = area_read,
 	.write = area_write,
 	.erase_sector = area_erase,
-	.sector_size = SECTOR_BYTES,
+	.sector_size = FLASH_SECTOR_BYTES,
 };
 
 int lifetime_init(uint32_t start_seq)
 {
 	int err = flash_area_open(FIXED_PARTITION_ID(lifetime_partition), &area);
 
-	if (!err && area->fa_size != LIFECOUNT_SECTORS * SECTOR_BYTES) {
+	if (!err && area->fa_size != LIFECOUNT_SECTORS * FLASH_SECTOR_BYTES) {
 		err = LIFECOUNT_ERR_LAYOUT;
 	}
 	err = err ? err : lifecount_init(&life, &life_flash);

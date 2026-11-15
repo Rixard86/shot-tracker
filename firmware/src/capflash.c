@@ -6,10 +6,10 @@
 #include <zephyr/sys/atomic.h>
 
 #include "capjoin.h"
+#include "flash_sector.h"
 
 LOG_MODULE_REGISTER(capflash, LOG_LEVEL_INF);
 
-#define SECTOR_BYTES 4096u
 #define SPARE_TRAILER_SECTORS 1u
 #define BYTES_PER_KB 1024u
 
@@ -76,15 +76,15 @@ static int joined_write(const capstore_wspan_t *span)
 
 static int joined_erase(uint32_t offset)
 {
-	capjoin_req_t req = {(uint32_t)area->fa_size, offset, SECTOR_BYTES};
+	capjoin_req_t req = {(uint32_t)area->fa_size, offset, FLASH_SECTOR_BYTES};
 	capjoin_piece_t piece = capjoin_piece(&req);
 	int err;
 
 	if (!piece.spare) {
-		return flash_area_erase(area, piece.local, SECTOR_BYTES);
+		return flash_area_erase(area, piece.local, FLASH_SECTOR_BYTES);
 	}
 	k_mutex_lock(&spare_lock, K_FOREVER);
-	err = atomic_get(&spare_claimed) ? -EBUSY : flash_area_erase(spare, piece.local, SECTOR_BYTES);
+	err = atomic_get(&spare_claimed) ? -EBUSY : flash_area_erase(spare, piece.local, FLASH_SECTOR_BYTES);
 	k_mutex_unlock(&spare_lock);
 	return err;
 }
@@ -93,7 +93,7 @@ static capstore_flash_t joined_flash = {
 	.read = joined_read,
 	.write = joined_write,
 	.erase_sector = joined_erase,
-	.sector_size = SECTOR_BYTES,
+	.sector_size = FLASH_SECTOR_BYTES,
 };
 
 static int open_areas(void)
@@ -113,7 +113,7 @@ int capflash_open(capstore_t *store, bool with_spare)
 	spare_in_use = with_spare && !atomic_get(&spare_claimed);
 	joined_flash.size = (uint32_t)area->fa_size;
 	if (spare_in_use) {
-		joined_flash.size += (uint32_t)spare->fa_size - SPARE_TRAILER_SECTORS * SECTOR_BYTES;
+		joined_flash.size += (uint32_t)spare->fa_size - SPARE_TRAILER_SECTORS * FLASH_SECTOR_BYTES;
 	}
 	LOG_INF("captures: %u KB%s", joined_flash.size / BYTES_PER_KB, spare_in_use ? " incl. slot 1" : "");
 	return capstore_init(store, &joined_flash);

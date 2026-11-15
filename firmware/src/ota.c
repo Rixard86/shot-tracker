@@ -10,6 +10,7 @@
 
 #include "capflash.h"
 #include "power.h"
+#include "supply.h"
 
 LOG_MODULE_REGISTER(ota, LOG_LEVEL_INF);
 
@@ -51,6 +52,15 @@ static struct mgmt_callback upload_gate_cb = {
 	.event_id = MGMT_EVT_OP_IMG_MGMT_DFU_CHUNK,
 };
 
+static void note_image_state(bool is_confirmed)
+{
+	confirmed = is_confirmed;
+	slot1_idle = confirmed && mcuboot_swap_type() == BOOT_SWAP_TYPE_NONE;
+	if (confirmed) {
+		supply_unused_ram_off();
+	}
+}
+
 int ota_init(void)
 {
 	struct wdt_timeout_cfg cfg = {
@@ -59,8 +69,7 @@ int ota_init(void)
 	};
 
 	started_ms = k_uptime_get_32();
-	confirmed = boot_is_img_confirmed();
-	slot1_idle = mcuboot_swap_type() == BOOT_SWAP_TYPE_NONE;
+	note_image_state(boot_is_img_confirmed());
 	mgmt_callback_register(&upload_gate_cb);
 	if (!device_is_ready(wdt)) {
 		return -ENODEV;
@@ -89,8 +98,7 @@ void ota_confirm_when_healthy(bool link_secured)
 	if (confirmed || !link_secured || k_uptime_get_32() - started_ms < CONFIRM_AFTER_MS) {
 		return;
 	}
-	confirmed = boot_write_img_confirmed() == 0;
-	slot1_idle = mcuboot_swap_type() == BOOT_SWAP_TYPE_NONE;
+	note_image_state(boot_write_img_confirmed() == 0);
 	LOG_INF("image %s", confirmed ? "confirmed" : "confirm failed");
 }
 

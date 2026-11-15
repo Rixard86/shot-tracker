@@ -26,6 +26,7 @@ int led_init(void);
 void led_play(led_pattern_id_t id);
 void led_play_pulses(uint8_t count);
 void led_steady(led_steady_t request);
+void led_fast_blink(bool on);
 bool led_busy(void);
 
 #endif

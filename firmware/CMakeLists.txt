@@ -20,6 +20,9 @@ target_sources(app PRIVATE
   src/capwriter.c
   src/charge.c
   src/chg_led.c
+  src/crc32.c
+  src/devrec.c
+  src/devstream.c
   src/evlog.c
   src/factory.c
   src/event_tx.c
@@ -35,6 +38,9 @@ target_sources(app PRIVATE
   src/power.c
   src/recovery.c
   src/store.c
+  src/supply.c
   src/ble.c
   src/wire.c
 )
+
+zephyr_linker_sources(SECTIONS ram_limit.ld)

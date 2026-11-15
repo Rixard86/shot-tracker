@@ -2,6 +2,10 @@
 	regulator-initial-mode = <NRF5X_REG_MODE_DCDC>;
 };
 
+&gpio1 {
+	status = "disabled";
+};
+
 &boot_partition {
 	reg = <0x00000000 0x0000A000>;
 };

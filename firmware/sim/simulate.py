@@ -390,16 +390,20 @@ def margins(res):
         print(f"    {nm:13s} shots {np.round(ps).astype(int)}   non-shots {np.round(pn).astype(int)}")
 
 
-CAPSTORE = ["capstore.c", "capstore_layout.c", "capstore_scan.c"]
+CAPSTORE = ["capstore.c", "capstore_layout.c", "capstore_scan.c", "crc32.c"]
 CODEC = ["capcodec.c", "capdec.c"]
-UNIT_TESTS = [("test_capture.c", ["capture.c"]), ("test_evlog.c", ["evlog.c"]), ("test_chg_led.c", ["chg_led.c"]),
+EVLOG = ["evlog.c", "crc32.c"]
+UNIT_TESTS = [("test_capture.c", ["capture.c"]), ("test_evlog.c", EVLOG), ("test_chg_led.c", ["chg_led.c"]),
               ("test_recovery.c", ["recovery.c"]), ("test_capcodec.c", CODEC), ("test_capstore.c", CAPSTORE),
               ("test_capwriter.c", ["capwriter.c", "capture.c"] + CODEC + CAPSTORE),
               ("test_capwriter_faults.c", ["capwriter.c", "capture.c"] + CODEC + CAPSTORE),
               ("test_led_seq.c", ["led_seq.c"]), ("test_wire.c", ["wire.c", "shot_detect.c"]),
-              ("test_evq.c", ["evq.c", "evlog.c", "../sim/evq_harness.c"]), ("test_charge.c", ["charge.c"]),
-              ("test_evlog_delete.c", ["evlog.c"]), ("test_lifecount.c", ["lifecount.c"]),
-              ("test_capjoin.c", ["capjoin.c"] + CAPSTORE)]
+              ("test_evq.c", ["evq.c", "../sim/evq_harness.c"] + EVLOG), ("test_charge.c", ["charge.c"]),
+              ("test_evlog_delete.c", EVLOG), ("test_lifecount.c", ["lifecount.c"]),
+              ("test_capjoin.c", ["capjoin.c"] + CAPSTORE), ("test_crc32.c", ["crc32.c"]),
+              ("test_capcodec_choice.c", ["capcodec.c"]), ("test_flash_formats.c", ["evlog.c"] + CAPSTORE),
+              ("test_devrec.c", ["devrec.c", "capwriter.c", "capture.c"] + CODEC + CAPSTORE),
+              ("test_capstore_wrap.c", CAPSTORE), ("test_devstream.c", ["devstream.c"])]
 
 
 def unit_test_passes(pair):

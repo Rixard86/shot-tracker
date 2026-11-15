@@ -2,8 +2,6 @@
 
 #include <string.h>
 
-#define DRAIN_BYTES 64u
-
 typedef enum { STEP_ENCODED, STEP_WAIT, STEP_FINISHED, STEP_LOST } step_t;
 
 void capw_init(capw_t *w, const capw_deps_t *deps)
@@ -40,26 +38,33 @@ bool capw_pending(const capw_t *w, uint32_t seq)
 	return false;
 }
 
-static int drain(capw_t *w)
+static int store_bytes(capw_t *w, uint32_t len)
 {
-	uint8_t buf[DRAIN_BYTES];
+	capstore_chunk_t chunk = {w->enc.out, len};
+	int err = capstore_write(w->deps.store, &chunk);
 
-	for (;;) {
-		codec_bytes_t out = {buf, sizeof(buf)};
-		if (capenc_take(&w->enc, &out) == 0) {
-			return 0;
-		}
-		capstore_chunk_t chunk = {buf, out.len};
-		int err = capstore_write(w->deps.store, &chunk);
-		if (err) {
-			return err;
-		}
+	capenc_drop(&w->enc, len);
+	return err;
+}
+
+static int store_words(capw_t *w)
+{
+	uint32_t ready = capenc_ready(&w->enc);
+
+	return store_bytes(w, ready - ready % CAPSTORE_WORD_BYTES);
+}
+
+static cap_request_t window_request(const capw_request_t *req)
+{
+	if (req->samples > 0u) {
+		return (cap_request_t){req->trigger, 0u, req->samples};
 	}
+	return cap_mode_request(req->mode, req->trigger);
 }
 
 static bool start(capw_t *w, const capw_request_t *req)
 {
-	cap_request_t window_req = cap_mode_request(req->mode, req->trigger);
+	cap_request_t window_req = window_request(req);
 
 	if (req->epoch != w->deps.cap->epoch) {
 		return false;
@@ -117,7 +122,7 @@ static step_t encode_block(capw_t *w)
 		samples[i] = *cap_sample(cap, w->next + i);
 	}
 	codec_block_t block = {samples, n};
-	if (capenc_block(&w->enc, &block) != 0 || drain(w) != 0) {
+	if (capenc_block(&w->enc, &block) != 0 || store_words(w) != 0) {
 		return STEP_LOST;
 	}
 	w->next += n;
@@ -128,7 +133,7 @@ static int finish(capw_t *w)
 {
 	w->active = false;
 	capenc_finish(&w->enc);
-	if (drain(w) != 0) {
+	if (store_bytes(w, capenc_ready(&w->enc)) != 0) {
 		capstore_abort(w->deps.store);
 		return 0;
 	}

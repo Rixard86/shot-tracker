@@ -92,6 +92,11 @@ static int resync(const capstore_t *store, walk_t *walk)
 	return STEP_END;
 }
 
+static bool seq_follows(const walk_t *walk, const capstore_header_t *header)
+{
+	return !walk->have_seq || header->seq > walk->max_seq;
+}
+
 static int judge(const capstore_t *store, const walk_t *walk)
 {
 	capstore_at_t at = {.pos = walk->pos};
@@ -100,10 +105,7 @@ static int judge(const capstore_t *store, const walk_t *walk)
 	if (err) {
 		return err;
 	}
-	if (walk->have_seq && at.header.seq <= walk->max_seq) {
-		return CAPSTORE_RECORD_BAD;
-	}
-	return capstore_classify(store, &at);
+	return seq_follows(walk, &at.header) ? capstore_classify(store, &at) : CAPSTORE_RECORD_BAD;
 }
 
 static int rescan(const capstore_t *store, walk_t *walk)
@@ -139,7 +141,7 @@ static int walk_step(capstore_t *store, walk_t *walk)
 		walk->frontier = walk->pos;
 		return STEP_END;
 	}
-	int kind = judge(store, walk);
+	int kind = seq_follows(walk, h) ? capstore_classify(store, &at) : CAPSTORE_RECORD_BAD;
 	if (kind < 0) {
 		return kind;
 	}

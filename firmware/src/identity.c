@@ -13,8 +13,6 @@
 #define NAME_MAX_CHARS 24
 #define DIS_SERIAL_KEY "bt/dis/serial"
 
-static char serial[SERIAL_CHARS + 1];
-
 static void hex_to_upper(char *s)
 {
 	for (; *s; s++) {
@@ -28,6 +26,7 @@ int identity_apply(void)
 {
 	uint8_t id[DEVICE_ID_BYTES] = {0};
 	char name[NAME_MAX_CHARS];
+	char serial[SERIAL_CHARS + 1];
 	ssize_t got = hwinfo_get_device_id(id, sizeof(id));
 
 	if (got < 0) {

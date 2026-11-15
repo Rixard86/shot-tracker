@@ -141,7 +141,6 @@ int accel_set_active(void)
 	wr(REG_FUNCTIONS_ENABLE, REG_OFF);
 	wr(REG_FIFO_CTRL4, FIFO_MODE_BYPASS);
 	wr(REG_FIFO_CTRL1, FIFO_WTM_WORDS);
-	wr(REG_FIFO_CTRL2, REG_OFF);
 	wr(REG_FIFO_CTRL3, FIFO_BDR_XL_GY_480HZ);
 	wr(REG_CTRL1, OP_MODE_HIGH_PERF | ODR_480HZ);
 	wr(REG_CTRL2, OP_MODE_HIGH_PERF | ODR_480HZ);
@@ -211,11 +210,8 @@ static void unpack_axes(const uint8_t *b, int16_t out[AXES])
 
 static void store_acc(sp_cap_sample_t *s, const uint8_t *b)
 {
-	int16_t acc[AXES];
-
-	unpack_axes(b, acc);
 	for (int i = 0; i < AXES; i++) {
-		s->acc[i] = acc[i];
+		s->acc[i] = (int16_t)sys_get_le16(&b[i * AXIS_BYTES]);
 		s->gyro[i] = last_gyro[i];
 	}
 }

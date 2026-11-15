@@ -30,5 +30,7 @@ uint16_t ble_capture_room(void);
 uint16_t ble_event_room(void);
 int ble_send_events(const uint8_t *data, uint16_t len);
 int ble_send_capture(const uint8_t *data, uint16_t len);
+uint16_t ble_stream_room(void);
+int ble_send_stream(const uint8_t *data, uint16_t len);
 
 #endif

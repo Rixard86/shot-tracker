@@ -25,6 +25,8 @@
 #include "capwriter.h"
 #include "chg_led.h"
 #include "claim.h"
+#include "devrec.h"
+#include "devstream.h"
 #include "diag.h"
 #include "event_tx.h"
 #include "factory.h"
@@ -36,6 +38,7 @@
 #include "recovery.h"
 #include "shot_detect.h"
 #include "store.h"
+#include "supply.h"
 #include "wire.h"
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
@@ -49,6 +52,7 @@ LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 #define FIFO_WATERMARK_SAMPLES 26
 #define FIFO_DRAIN_ROUNDS 4
 #define CTRL_SEQ_MSG_LEN 5
+#define CTRL_TIME_MSG_LEN 9
 #define TX_POLL_MS 20
 #define ACTIVE_POLL_MS 1000
 #define IDLE_POLL_MS 2000
@@ -77,6 +81,8 @@ static capstore_t capstore;
 static capw_t capw;
 static bool captures_ok;
 static sd_state_t det;
+static devrec_t rec;
+static devstream_t live_stream;
 
 static wire_clock_t wall_clock;
 
@@ -109,7 +115,7 @@ static void publish_status(void)
 		.flags = (p->vbus ? SP_ST_VBUS : 0) | (p->charging ? SP_ST_CHARGING : 0) |
 			 (p->chg_inhibit ? SP_ST_CHG_INHIBIT : 0) |
 			 (det.mode == SD_MODE_ACTIVE ? SP_ST_ACTIVE : 0) |
-			 (wall_clock.set ? SP_ST_TIME_SET : 0),
+			 (wall_clock.set ? SP_ST_TIME_SET : 0) | (supply_reg0_ldo() ? SP_ST_REG0_LDO : 0),
 		.fw_major = FW_MAJOR,
 		.fw_minor = FW_MINOR,
 	};
@@ -138,6 +144,12 @@ static int remote_reset_refusal(const uint8_t *data, uint16_t len)
 
 static int on_ctrl(const uint8_t *data, uint16_t len)
 {
+	if (!devcmd_valid(&(devcmd_req_t){data, len})) {
+		return -EINVAL;
+	}
+	if (data[0] == SP_CTRL_STREAM && data[1] > 0u && ble_stream_room() == 0u) {
+		return -EPERM;
+	}
 	if (data[0] == SP_CTRL_FACTORY_RESET) {
 		int refused = remote_reset_refusal(data, len);
 		if (refused) {
@@ -177,14 +189,19 @@ static void on_conn(bool connected)
 
 /* -------------------------------------------------------------- modes */
 
+static void begin_stream(uint32_t now)
+{
+	active_start_ms = now;
+	sample_idx = 0;
+	cap_reset(&cap);
+	sd_start_active(&det, now);
+}
+
 static void go_active(void)
 {
 	accel_set_active();
-	active_start_ms = k_uptime_get_32();
+	begin_stream(k_uptime_get_32());
 	last_batch_ms = active_start_ms;
-	sample_idx = 0;
-	cap_reset(&cap);
-	sd_start_active(&det, active_start_ms);
 	ble_adv_start();
 	LOG_INF("ACTIVE");
 }
@@ -250,10 +267,19 @@ static uint32_t sample_ms(uint32_t index)
 static void restart_stream(uint32_t now)
 {
 	LOG_WRN("FIFO overrun");
-	active_start_ms = now;
-	sample_idx = 0;
-	cap_reset(&cap);
-	sd_start_active(&det, now);
+	begin_stream(now);
+}
+
+static void live_stream_sample(const sp_cap_sample_t *sample)
+{
+	if (!devstream_push(&live_stream, sample)) {
+		return;
+	}
+	devstream_packet_t packet = devstream_take(&live_stream);
+
+	if (!event_tx_busy() && !cap_tx_busy()) {
+		(void)ble_send_stream(packet.data, packet.len);
+	}
 }
 
 static void process_batch(const accel_fifo_t *fifo, uint32_t n)
@@ -266,10 +292,40 @@ static void process_batch(const accel_fifo_t *fifo, uint32_t n)
 		sd_event_t e;
 
 		cap_push(&cap, &fifo->samples[i]);
+		live_stream_sample(&fifo->samples[i]);
 		accel_to_mg(&fifo->samples[i], mg);
 		if (sd_process(&det, mg, sample_ms(sample_idx++), &e)) {
 			handle_detection(&e, now - (t_last - e.t_ms));
 		}
+	}
+}
+
+static void start_recording(uint8_t seconds)
+{
+	devrec_start(&rec, seconds);
+	if (det.mode != SD_MODE_ACTIVE) {
+		go_active();
+	}
+}
+
+static void issue_recording(void)
+{
+	if (!devrec_due(&rec, sample_idx)) {
+		return;
+	}
+	int64_t uptime_ms = k_uptime_get();
+	sp_event_t w = {
+		.seq = ++st.seq,
+		.t_unix_ms = wire_clock_unix_ms(&wall_clock, uptime_ms),
+		.t_uptime_ms = (uint32_t)uptime_ms,
+		.reason = SP_EVENT_REASON_RECORDING,
+	};
+	devrec_at_t at = {w.seq, sample_idx, cap.epoch};
+	capw_request_t req = devrec_take(&rec, &at);
+
+	event_tx_record(&w);
+	if (captures_ok) {
+		capw_request(&capw, &req);
 	}
 }
 
@@ -303,7 +359,9 @@ static void handle_accel(void)
 			break;
 		}
 	}
-	if (sd_active_should_sleep(&det, sample_ms(sample_idx))) {
+	issue_recording();
+	if (sd_active_should_sleep(&det, sample_ms(sample_idx)) && !devrec_running(&rec, &capw) &&
+	    !devstream_on(&live_stream)) {
 		go_idle();
 	} else {
 		accel_irq_rearm();
@@ -332,6 +390,35 @@ static void delete_shot(uint32_t seq)
 	publish_count();
 }
 
+static void start_live_stream(uint8_t divider)
+{
+	devstream_req_t req = {divider, devstream_fit(ble_stream_room()), k_uptime_get_32()};
+
+	devstream_start(&live_stream, &req);
+	if (devstream_on(&live_stream) && det.mode != SD_MODE_ACTIVE) {
+		go_active();
+	}
+}
+
+static void check_live_stream(void)
+{
+	if (ble_stream_room() == 0u || devstream_expired(&live_stream, k_uptime_get_32())) {
+		devstream_stop(&live_stream);
+	}
+}
+
+static void handle_dev_ctrl(const struct ctrl_msg *m)
+{
+	if (m->data[0] == SP_CTRL_REG0_MODE) {
+		supply_reg0_set_ldo(m->data[1] == SP_REG0_LDO);
+		publish_status();
+	} else if (m->data[0] == SP_CTRL_RECORD) {
+		start_recording(m->data[1]);
+	} else if (m->data[0] == SP_CTRL_STREAM) {
+		start_live_stream(m->data[1]);
+	}
+}
+
 static void handle_ctrl(void)
 {
 	struct ctrl_msg m;
@@ -339,7 +426,7 @@ static void handle_ctrl(void)
 	while (k_msgq_get(&ctrl_q, &m, K_NO_WAIT) == 0) {
 		switch (m.data[0]) {
 		case SP_CTRL_SET_TIME:
-			if (m.len >= 9) {
+			if (m.len >= CTRL_TIME_MSG_LEN) {
 				wire_time_t now = {
 					.unix_ms = (int64_t)sys_get_le64(&m.data[1]),
 					.uptime_ms = k_uptime_get(),
@@ -362,7 +449,7 @@ static void handle_ctrl(void)
 			}
 			break;
 		case SP_CTRL_REPLAY:
-			if (m.len >= 5) {
+			if (m.len >= CTRL_SEQ_MSG_LEN) {
 				event_tx_replay(sys_get_le32(&m.data[1]));
 			}
 			break;
@@ -387,6 +474,7 @@ static void handle_ctrl(void)
 			led_play(LED_FIND);
 			break;
 		default:
+			handle_dev_ctrl(&m);
 			break;
 		}
 	}
@@ -429,7 +517,7 @@ static void apply_config(void)
 	LOG_INF("config updated");
 }
 
-static void housekeeping(void)
+static void guard_battery(void)
 {
 	power_update();
 	if (power_should_cutoff()) {
@@ -438,6 +526,11 @@ static void housekeeping(void)
 		ble_adv_stop();
 		power_off_until_charger();
 	}
+}
+
+static void housekeeping(void)
+{
+	guard_battery();
 	check_sensor();
 	publish_status();
 }
@@ -455,6 +548,8 @@ static void check_boot_battery(void)
 
 static void wait_without_sensor(void)
 {
+	guard_battery();
+	publish_status();
 	for (uint32_t waited = 0; waited < SENSOR_RETRY_MS; waited += NO_SENSOR_POLL_MS) {
 		if (ota_image_confirmed()) {
 			ota_feed();
@@ -617,10 +712,13 @@ int main(void)
 			cap_tx_queue(capw.committed_seq);
 		}
 		update_capture_area();
+		check_live_stream();
+		led_fast_blink(devstream_on(&live_stream));
+		cap_tx_hold(devstream_on(&live_stream));
 		if (cap_tx_busy()) {
 			cap_tx_pump();
 		}
-		ble_set_bulk(event_tx_busy() || cap_tx_busy() || ota_upload_active());
+		ble_set_bulk(event_tx_busy() || cap_tx_busy() || ota_upload_active() || devstream_on(&live_stream));
 		apply_config();
 
 		uint32_t now = k_uptime_get_32();

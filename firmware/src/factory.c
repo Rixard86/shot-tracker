@@ -9,6 +9,7 @@
 
 #include "claim.h"
 #include "diag.h"
+#include "flash_sector.h"
 #include "led.h"
 #include "ota.h"
 #include "recovery.h"
@@ -19,7 +20,6 @@ LOG_MODULE_REGISTER(factory, LOG_LEVEL_INF);
 #define BOOT_COUNT_REG 1u
 #define HEALTHY_AFTER_MS 60000u
 #define DONE_WAIT_POLL_MS 20
-#define SECTOR_BYTES 4096u
 
 static const struct gpio_dt_spec pads = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), reset_pads_gpios);
 static pad_hold_t hold;
@@ -33,8 +33,8 @@ static int erase_partition(uint8_t id)
 	if (err) {
 		return err;
 	}
-	for (uint32_t offset = 0; offset < area->fa_size && !err; offset += SECTOR_BYTES) {
-		err = flash_area_erase(area, offset, SECTOR_BYTES);
+	for (uint32_t offset = 0; offset < area->fa_size && !err; offset += FLASH_SECTOR_BYTES) {
+		err = flash_area_erase(area, offset, FLASH_SECTOR_BYTES);
 		ota_feed();
 	}
 	flash_area_close(area);
@@ -79,6 +79,7 @@ bool factory_pads_held(void)
 
 static void blink_done(void)
 {
+	led_fast_blink(false);
 	led_play(LED_RESET_DONE);
 	while (led_busy()) {
 		k_msleep(DONE_WAIT_POLL_MS);

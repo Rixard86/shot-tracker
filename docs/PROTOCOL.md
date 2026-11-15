@@ -1,5 +1,12 @@
 # ShotPuck BLE protocol (v3)
 
+Firmware 0.3.9 (still v3):
+- **Faster inside; stored formats unchanged.** Stored shots, captures and settings keep their format, so an update from 0.3.8 keeps everything a 0.3.8-to-0.3.8 re-flash would keep (captures held in the second firmware slot are lost by any update, as before).
+- **Two developer commands** for the app's hidden dev page (nothing changes for an app that does not use them):
+  - **REG0_MODE** (CONTROL `0x0A` + u8: 0 = DC/DC, 1 = LDO) switches the regulator that makes the puck's 3.0 V from the cell. It is not saved: every reboot returns to DC/DC. STATUS `flags` bit 5 is set while REG0 runs as LDO, and STATUS is notified right after the switch.
+  - **STREAM** (CONTROL `0x0C` + u8 divider, new STREAM characteristic `…0009…`): a live IMU stream for a plot, see *STREAM* below. The characteristic is appended to the ShotPuck service, the last service on the puck, so no existing handle moves; an app finds it after a new service discovery.
+  - **RECORD** (CONTROL `0x0B` + u8 seconds, 1–10) records the IMU from now on for that many seconds as a capture that is not a shot. The puck sends an EVENT with `accepted` 0 and `reason` 3 (recording) and the same `seq` as the capture; the capture follows on CAPTURE like a shot's (header `trigger_index` 0, `n_samples` = seconds × 480). Nothing is counted (COUNT, lifetime and the shot log are untouched). An idle puck wakes for it and stays awake until it is stored. Any other value is refused with ATT 0x13.
+
 Firmware 0.3.8 (still v3):
 - **Lifetime shot counter:** COUNT grows from 8 to 12 bytes; the new `uint32 lifetime` at offset 8 counts accepted shots over the puck's whole life. It goes up with every accepted shot and down by one when DELETE_SHOT removes a shot taken since the counter started. RESET_COUNT, factory resets (pads or app), the boot-loop recovery and firmware updates (over the air or by cable without a chip erase) never change it; only a full-chip erase by cable clears it. It starts at 0 on the first boot of 0.3.8 or later. Apps that read only the first 8 bytes keep working.
 - **More room for captures:** the second firmware slot holds captures while no update is in progress, about 660 KB instead of 408 KB (see *CAPTURE*). An update loses the captures stored there, so fetch captures before updating.
@@ -95,6 +102,7 @@ Ask the user to keep the charger in until the phone has paired: unplugging close
 | `…0006…` | STATUS | read, notify | `sp_status_t` (7 B), below |
 | `…0007…` | CAPTURE | notify | capture packets (header + data), below |
 | `…0008…` | DIAG | read | `sp_diag_t` (8 B), below (firmware 0.3.1) |
+| `…0009…` | STREAM | notify | live IMU samples for the dev page (firmware 0.3.9), see *STREAM* below |
 
 All seven require a paired (encrypted) link.
 
@@ -111,9 +119,9 @@ Each notification carries **one or more events back to back** (length = 24 × n,
 | 18 | u16 | pre_still_ms | Stillness before the trigger |
 | 20 | u16 | post_lf_mg | Bow motion after release |
 | 22 | u8 | accepted | **1 = counted as a shot** |
-| 23 | u8 | reason | 0 ok, 1 not still before, 2 no follow-through; 254 and 255 reserved for the app (below) |
+| 23 | u8 | reason | 0 ok, 1 not still before, 2 no follow-through, 3 dev recording (0.3.9, CONTROL RECORD; never a shot); 254 and 255 reserved for the app (below) |
 
-**Reserved reasons:** the firmware never sends `reason` 254 or 255; they belong to the app. archesk marks its stored shots with them: 254 = removed by the archer, the puck not told yet; 255 = removed and DELETE_SHOT sent. Values 3–253 are free for future firmware reasons. A new firmware reason must never use 254 or 255.
+**Reserved reasons:** the firmware never sends `reason` 254 or 255; they belong to the app. archesk marks its stored shots with them: 254 = removed by the archer, the puck not told yet; 255 = removed and DELETE_SHOT sent. Value 3 is the dev recording (0.3.9); 4–253 are free for future firmware reasons. A new firmware reason must never use 254 or 255.
 
 Rejected events are sent on purpose. Log them in the app during tuning: they are the data you need to set thresholds (see VALIDATION.md).
 
@@ -142,6 +150,9 @@ Events are sent live as they happen, and again on REPLAY. Replayed and live even
 | `0x07` FORGET_BONDS | – | Removes all pairings (see *Pairing*) |
 | `0x08` DELETE_SHOT | u32 seq | Removes accepted shot `seq` from the shot log (0.3.6): REPLAY skips it, `total` drops by one if the shot is newer than the last RESET_COUNT (COUNT notified), the capture stays; no undo, unknown seq ignored |
 | `0x09` FACTORY_RESET | 4 bytes `WIPE` (`57 49 50 45`) | Erases settings, pairings, count, shot log and captures, then reboots (0.3.7). Only with the charger attached: refused with ATT 0x13 for a wrong code and ATT 0xFC without the charger |
+| `0x0A` REG0_MODE | u8 mode (0 DC/DC, 1 LDO) | Dev page (0.3.9): switches REG0, not saved (a reboot returns to DC/DC); STATUS bit 5 shows LDO. Other values: ATT 0x13 |
+| `0x0B` RECORD | u8 seconds (1–10) | Dev page (0.3.9): records the IMU for that long as a capture that is not a shot (EVENT reason 3, then CAPTURE). Other values: ATT 0x13 |
+| `0x0C` STREAM | u8 divider (0 stop, 1–8) | Dev page (0.3.9): live IMU stream on STREAM at 480 Hz / divider, see *STREAM*. Not subscribed: ATT 0xFC; divider above 8: ATT 0x13 |
 
 The puck queues up to 4 commands. A CONTROL write that arrives while 4 are still waiting fails with ATT error 0x11 (insufficient resources) and is not run: wait about 100 ms and write it again (firmware 0.3.1; 0.3.0 accepted the write and dropped the command).
 
@@ -209,7 +220,7 @@ Out-of-range writes are rejected with ATT error 0x13 (value not allowed). Accept
 ### STATUS (`sp_status_t`, 7 B)
 
 `u8 battery_pct`, `u16 battery_mv`, `i8 temp_c`, `u8 flags`, `u8 fw_major`, `u8 fw_minor`.
-Flags: bit0 VBUS (cable present), bit1 CHARGING, bit2 CHG_INHIBIT (too cold or hot to charge), bit3 ACTIVE, bit4 TIME_SET.
+Flags: bit0 VBUS (cable present), bit1 CHARGING, bit2 CHG_INHIBIT (too cold or hot to charge), bit3 ACTIVE, bit4 TIME_SET, bit5 REG0_LDO (0.3.9, set while REG0 runs as LDO after REG0_MODE 1).
 `battery_pct` comes from the cell voltage through a table; from 0.3.5 it is at most 99 while CHARGING and 100 while the charge has ended with the cable still attached (see the 0.3.5 notes at the top). `battery_mv` is the raw reading.
 
 ### DIAG (`sp_diag_t`, 8 B, firmware 0.3.1)
@@ -225,6 +236,10 @@ Read-only diagnostics, so a crash in the field leaves a trace the app can show o
 | 6 | u16 | workq_stack_free | The same for the 1 KB system work queue |
 
 On a fatal error the puck now reboots at once (0.3.0 halted until the 10 s watchdog fired). A crash still counts towards the boot-loop guard, and an unconfirmed update still rolls back. The values are refreshed at boot, on SET_TIME and every 10 s (60 s while idle); read DIAG when needed, there are no notifications. An app can log it once per connection and flag a growing `crash_count`.
+
+### STREAM (firmware 0.3.9, dev page)
+
+Subscribe to STREAM, then write CONTROL `0C` + divider: the puck streams every divider-th IMU sample, 480 Hz / divider (1 = 480 Hz, 2 = 240 Hz, 4 = 120 Hz, 8 = 60 Hz); `0C 00` stops. Starting without a STREAM subscription fails with ATT 0xFC, a divider above 8 with ATT 0x13. Each notification is `u32 first` (index of its first sample, counted at the stream rate from the start), `u8 divider`, then up to 19 samples in the CAPTURE sample format (`i16 acc[3]`, `i16 gyro[3]`, 976 µg and 70 mdps per LSB); with a smaller MTU fewer samples fit. A sample reaches the app at most 19 samples' time after it was measured, plus the link: about 0.1 s at 480 Hz, 0.35 s at 60 Hz. Packets the link cannot take are dropped, and so are those while a shot's EVENT is being sent: a jump in `first` is a gap. **Captures wait while the stream runs** (Richard): a shot still counts and its EVENT is sent at once, but its capture is only stored, and is sent when the stream stops (up to 8 wait; beyond that the oldest waiting ones are not sent by themselves but stay stored for GET_CAPTURE). GET_CAPTURE requests wait too. A capture that is already being sent when the stream starts finishes first, so the stream may start with a gap of a few seconds. The puck stays awake and on the fast connection interval while streaming, and stops by itself on disconnect, when STREAM is unsubscribed, and 10 minutes after the start (write `0C` + divider again to continue; that restarts `first` at 0). Shot detection and counting carry on as usual. Full rate is 5.8 KB/s, about twice what capture transfers were designed for: if `first` jumps a lot at 480 Hz, use 2 or 4. While the stream runs, the LED blinks fast and continuously (50 ms on, 50 ms off, 10 Hz, about 0.5 mA); other signals such as a shot flash or the charger pulses play between two blinks, and the blinking stops with the stream. Streaming costs battery: an estimated 1–3 mA on top of the ~0.85 mA of an active puck plus the LED's ~0.5 mA, unmeasured.
 
 ## Recommended app sync (PowerSync-friendly)
 

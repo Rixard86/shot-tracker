@@ -6,7 +6,6 @@
 
 #define REG_IF_CFG 0x03
 #define REG_FIFO_CTRL1 0x07
-#define REG_FIFO_CTRL2 0x08
 #define REG_FIFO_CTRL3 0x09
 #define REG_FIFO_CTRL4 0x0A
 #define REG_INT1_CTRL 0x0D

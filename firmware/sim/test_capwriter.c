@@ -29,6 +29,8 @@
 #define TWO_PI 6.283185307179586
 #define INT16_LIMIT 32767.0
 #define AXES_PER_SENSOR 3u
+#define STANDARD_BLOCKS ((CAP_STANDARD_PRE + CAP_STANDARD_POST + CODEC_BLOCK_SAMPLES - 1u) / CODEC_BLOCK_SAMPLES)
+#define WRITES_BESIDE_BLOCKS 8u
 
 typedef struct {
 	const capstore_t *store;
@@ -36,6 +38,7 @@ typedef struct {
 } source_t;
 
 static uint8_t flash[FLASH_BYTES];
+static uint32_t writes;
 static uint32_t triggers[MAX_SHOTS];
 static uint32_t shots;
 static cap_t cap;
@@ -60,6 +63,7 @@ static int fake_read(const capstore_span_t *span)
 
 static int fake_write(const capstore_wspan_t *span)
 {
+	writes++;
 	for (uint32_t i = 0; i < span->len; i++) {
 		flash[span->offset + i] &= span->data[i];
 	}
@@ -153,7 +157,7 @@ static void shoot(uint32_t trigger, uint8_t mode)
 {
 	triggers[shots++] = trigger;
 	run_to(trigger + DETECT_DELAY);
-	capw_request_t req = {++seq, trigger, cap.epoch, mode};
+	capw_request_t req = {++seq, trigger, cap.epoch, mode, 0u};
 	capw_request(&writer, &req);
 }
 
@@ -199,6 +203,16 @@ static void test_reset_aborts(void)
 	check(capture_matches(2, SHOT_SPACING / 2u - CAP_STANDARD_PRE), "next capture after a reset");
 }
 
+static void test_write_calls(void)
+{
+	setup();
+	writes = 0;
+	shoot(SHOT_SPACING, SP_CAPTURE_STANDARD);
+	run_to(2u * SHOT_SPACING);
+	check(capture_matches(1, SHOT_SPACING - CAP_STANDARD_PRE), "capture stored for the write count");
+	check(writes <= STANDARD_BLOCKS + WRITES_BESIDE_BLOCKS, "a capture takes about one flash write per block");
+}
+
 static void report_capacity(uint8_t mode, const char *name)
 {
 	setup();
@@ -217,6 +231,7 @@ int main(void)
 {
 	test_modes();
 	test_reset_aborts();
+	test_write_calls();
 	report_capacity(SP_CAPTURE_STANDARD, "standard");
 	report_capacity(SP_CAPTURE_EXTENDED, "extended");
 	printf("CAPWRITER TESTS: %s\n", failures ? "FAIL" : "PASS");

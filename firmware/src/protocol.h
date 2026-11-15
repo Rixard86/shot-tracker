@@ -22,6 +22,7 @@
 #define SP_UUID_STATUS  SP_UUID_BASE(0x06) /* read, notify: sp_status_t        */
 #define SP_UUID_CAPTURE SP_UUID_BASE(0x07)
 #define SP_UUID_DIAG    SP_UUID_BASE(0x08)
+#define SP_UUID_STREAM  SP_UUID_BASE(0x09)
 
 #define SP_ADV_COMPANY_ID 0xFFFFu
 
@@ -59,10 +60,23 @@ enum {
 	SP_CTRL_FORGET_BONDS = 0x07,
 	SP_CTRL_DELETE_SHOT = 0x08,
 	SP_CTRL_FACTORY_RESET = 0x09,
+	SP_CTRL_REG0_MODE = 0x0A,
+	SP_CTRL_RECORD = 0x0B,
+	SP_CTRL_STREAM = 0x0C,
 };
 
 #define SP_FACTORY_RESET_CODE 0x45504957u
 #define SP_FACTORY_RESET_LEN 5u
+
+enum {
+	SP_REG0_DCDC = 0,
+	SP_REG0_LDO = 1,
+};
+
+#define SP_RECORD_MIN_S 1u
+#define SP_RECORD_MAX_S 10u
+#define SP_EVENT_REASON_RECORDING 3u
+#define SP_STREAM_MAX_DIVIDER 8u
 
 enum {
 	SP_CAP_HEADER = 0x01,
@@ -91,6 +105,11 @@ typedef struct __attribute__((packed)) {
 } sp_cap_sample_t;
 
 typedef struct __attribute__((packed)) {
+	uint32_t first;
+	uint8_t divider;
+} sp_stream_head_t;
+
+typedef struct __attribute__((packed)) {
 	uint8_t version;          /* PROTO_VERSION                            */
 	uint16_t trig_hf_mg;
 	uint16_t move_mg;
@@ -117,6 +136,7 @@ enum {
 	SP_ST_CHG_INHIBIT = 1u << 2, /* charging blocked by temperature        */
 	SP_ST_ACTIVE = 1u << 3,      /* detector running                       */
 	SP_ST_TIME_SET = 1u << 4,
+	SP_ST_REG0_LDO = 1u << 5,
 };
 
 typedef struct __attribute__((packed)) {

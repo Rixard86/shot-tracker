@@ -58,7 +58,7 @@ cap_request_t cap_mode_request(uint8_t mode, uint32_t trigger)
 
 uint32_t cap_index_to_ms(uint32_t index)
 {
-	return (uint32_t)(((uint64_t)index * MS_PER_S) / CAP_ODR_HZ);
+	return (index / CAP_ODR_HZ) * MS_PER_S + (index % CAP_ODR_HZ) * MS_PER_S / CAP_ODR_HZ;
 }
 
 uint32_t cap_ms_to_index(uint32_t ms)

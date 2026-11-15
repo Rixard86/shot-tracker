@@ -1,6 +1,7 @@
 #include "capture_tx.h"
 
 #include <errno.h>
+#include <string.h>
 #include <zephyr/sys/util.h>
 
 #include "ble.h"
@@ -15,6 +16,7 @@ typedef struct {
 	uint32_t seq;
 	uint16_t n_samples;
 	uint16_t trigger_index;
+	uint32_t payload_len;
 	uint16_t next;
 	uint16_t packet_samples;
 	size_t packet_len;
@@ -28,19 +30,15 @@ static uint32_t queue[QUEUE_LEN];
 static uint32_t queue_head;
 static uint32_t queue_len;
 static bool sending;
+static bool held;
 static tx_job_t job;
 static capdec_t dec;
 static uint8_t payload[PAYLOAD_MAX];
 
 static int refill(capdec_t *d)
 {
-	const capstore_entry_t *e = capstore_find(store, job.seq);
-
-	if (!e) {
-		return -ENOENT;
-	}
 	capstore_read_t req = {job.seq, d->source_offset, d->in,
-			       MIN(e->payload_len - d->source_offset, CODEC_IN_BYTES)};
+			       MIN(job.payload_len - d->source_offset, CODEC_IN_BYTES)};
 	d->in_len = req.len;
 	d->source_offset += req.len;
 	return req.len ? capstore_read(store, &req) : 0;
@@ -52,6 +50,7 @@ void cap_tx_init(const capstore_t *capture_store, const capw_t *capture_writer)
 	writer = capture_writer;
 	queue_len = 0;
 	sending = false;
+	held = false;
 	dec.refill = refill;
 }
 
@@ -65,9 +64,14 @@ void cap_tx_queue(uint32_t seq)
 	queue_len++;
 }
 
+void cap_tx_hold(bool hold)
+{
+	held = hold;
+}
+
 bool cap_tx_busy(void)
 {
-	return sending || queue_len > 0;
+	return sending || (queue_len > 0 && !held);
 }
 
 static bool start_next(void)
@@ -80,7 +84,10 @@ static bool start_next(void)
 	queue_head = (queue_head + 1u) % QUEUE_LEN;
 	queue_len--;
 	const capstore_entry_t *e = capstore_find(store, seq);
-	job = (tx_job_t){.seq = seq, .n_samples = e ? e->n_samples : 0u, .trigger_index = e ? e->trigger_index : 0u};
+	job = (tx_job_t){.seq = seq,
+			  .n_samples = e ? e->n_samples : 0u,
+			  .trigger_index = e ? e->trigger_index : 0u,
+			  .payload_len = e ? e->payload_len : 0u};
 	capdec_init(&dec, job.n_samples);
 	sending = true;
 	return true;
@@ -88,7 +95,6 @@ static bool start_next(void)
 
 static size_t build_packet(size_t capacity)
 {
-	sp_cap_sample_t samples[FIT_MAX];
 	cap_buf_t out = {payload, capacity};
 
 	if (!job.header_sent) {
@@ -98,14 +104,22 @@ static size_t build_packet(size_t capacity)
 	uint32_t fit = MIN(cap_data_fit(capacity), FIT_MAX);
 	uint32_t n = MIN(fit, (uint32_t)(job.n_samples - job.next));
 
+	sp_cap_data_t head = {.type = SP_CAP_DATA, .seq = job.seq, .first = job.next};
+
+	if (n == 0u) {
+		return 0;
+	}
 	for (uint32_t i = 0; i < n; i++) {
-		if (capdec_next(&dec, &samples[i]) != 1) {
+		sp_cap_sample_t sample;
+
+		if (capdec_next(&dec, &sample) != 1) {
 			return 0;
 		}
+		memcpy(&payload[sizeof(head) + i * sizeof(sample)], &sample, sizeof(sample));
 	}
-	cap_data_info_t data = {job.seq, job.next, samples, n};
+	memcpy(payload, &head, sizeof(head));
 	job.packet_samples = (uint16_t)n;
-	return cap_pack_data(&data, &out);
+	return sizeof(head) + n * sizeof(sp_cap_sample_t);
 }
 
 static void drop_all(void)
@@ -117,7 +131,7 @@ static void drop_all(void)
 void cap_tx_pump(void)
 {
 	for (;;) {
-		if (!sending && (queue_len == 0 || !start_next())) {
+		if (!sending && (held || queue_len == 0 || !start_next())) {
 			return;
 		}
 		uint16_t room = ble_capture_room();

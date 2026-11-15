@@ -49,6 +49,7 @@ void sd_init(sd_state_t *s, const sd_config_t *cfg)
 	float dt = 1.0f / cfg->fs_hz;
 	s->a_g_lp = 1.0f - expf(-dt / TAU_GRAVITY_S);
 	s->a_lf = 1.0f - expf(-dt / TAU_LF_S);
+	s->guard_ms = (uint32_t)(GUARD_SAMPLES * 1000.0f / cfg->fs_hz);
 	s->mode = SD_MODE_IDLE;
 }
 
@@ -106,9 +107,8 @@ int sd_process(sd_state_t *s, const int16_t xyz_mg[3], uint32_t t_ms, sd_event_t
 	/* Motion bookkeeping, delayed by GUARD_SAMPLES so that the onset of a
 	 * shot never counts as "moving before the shot". */
 	float m = norm3(x[0] - s->g_lp[0], x[1] - s->g_lp[1], x[2] - s->g_lp[2]);
-	uint32_t guard_ms = (uint32_t)(GUARD_SAMPLES * 1000.0f / c->fs_hz);
 	if (s->move_hist & (1u << (GUARD_SAMPLES - 1))) {
-		s->last_move_ms = t_ms - guard_ms;
+		s->last_move_ms = t_ms - s->guard_ms;
 	}
 	s->move_hist = (s->move_hist << 1) | (m > c->move_mg ? 1u : 0u);
 
