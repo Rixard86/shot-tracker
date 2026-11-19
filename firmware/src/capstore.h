@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "protocol.h"
+
 #define CAPSTORE_MAX_RECORDS 256u
 #define CAPSTORE_WORD_BYTES 4u
 #define CAPSTORE_ERR_LAYOUT (-1)
@@ -31,7 +33,12 @@ typedef struct {
 	uint32_t sector_size;
 } capstore_flash_t;
 
-enum { CAPSTORE_FORMAT_FULL, CAPSTORE_FORMAT_AIM_AVERAGED };
+enum {
+	CAPSTORE_FORMAT_FULL = SP_CAPFMT_FULL,
+	CAPSTORE_FORMAT_AIM_AVERAGED = SP_CAPFMT_EXTENDED,
+	CAPSTORE_FORMAT_ULTRA = SP_CAPFMT_ULTRA,
+	CAPSTORE_FORMATS
+};
 
 typedef struct {
 	uint32_t seq;
@@ -53,6 +60,11 @@ typedef struct {
 	const uint8_t *data;
 	uint32_t len;
 } capstore_chunk_t;
+
+typedef struct {
+	uint32_t seq;
+	uint32_t check;
+} capstore_check_t;
 
 typedef struct {
 	const capstore_flash_t *flash;
@@ -79,6 +91,7 @@ int capstore_commit(capstore_t *store);
 int capstore_abort(capstore_t *store);
 const capstore_entry_t *capstore_find(const capstore_t *store, uint32_t seq);
 int capstore_read(const capstore_t *store, const capstore_read_t *req);
+int capstore_read_check(const capstore_t *store, capstore_check_t *req);
 uint32_t capstore_count(const capstore_t *store);
 
 #endif

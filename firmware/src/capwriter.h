@@ -33,6 +33,7 @@ typedef struct {
 	bool active;
 	capw_request_t current;
 	cap_window_t window;
+	uint32_t slow_end;
 	uint32_t aim_end;
 	uint32_t next;
 	capenc_t enc;

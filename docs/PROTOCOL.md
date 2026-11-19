@@ -1,5 +1,11 @@
 # ShotPuck BLE protocol (v3)
 
+Firmware 0.3.12 (still v3):
+- **Ultra capture mode** (CONFIG `capture_mode` 2): from 30 s before to 2 s after the trigger. The window start is rounded down to a group of 8 samples, so `n_samples` is 15,360–15,367 and `trigger_index` 14,400–14,407. The part until 6 s before the trigger is stored as means of 8 samples (60 Hz), 6 s to 1 s as means of 4 (120 Hz, as in extended), and the last second plus everything after it bit-exact. About 38 ultra captures fit in 660 KB (23 in 408 KB), estimated from real captures. Firmware 0.3.11 and older refuse mode 2.
+- **CAPREC characteristic** (`…000A…`, notify): a capture as the puck stores it, compressed, for the app to decode: 2 (standard) to 10 (ultra) times fewer bytes than CAPTURE. An app opts in by subscribing to CAPREC instead of CAPTURE; an app that only subscribes to CAPTURE gets the same packets as before (ultra captures rebuilt at 480 Hz there too). See *CAPREC* below.
+- **Fewer movement checks during long rests:** 20 minutes after the puck goes to sleep it checks for movement 1.875 times a second instead of 15 (about 3 µA less while asleep). Slow lifts now wake it more reliably; the first lift after a long rest can wake it up to about 0.5 s later. Every wake returns to the 15 Hz checks, so shooting and the breaks between ends are unchanged.
+- No other layout or command changes.
+
 Firmware 0.3.11 (still v3):
 - **Extended captures hold about 40 % more shots:** in extended mode the puck stores the aiming part of each shot's capture (from the start of the window until 1 s before the trigger) as means of 4 samples (120 Hz), rounded to nearest. The last second before the trigger and everything after it stay bit-exact. When it sends the capture, the puck repeats each mean 4 times, so the CAPTURE header and packets are exactly as before: 3840 samples at `odr_hz` 480, `trigger_index` 2880. The aiming part therefore holds no detail above 60 Hz, and each group of 4 samples there has the same value. On 37 real captures, about 68 now fit in 660 KB (48 before) and 42 in 408 KB (29 before).
 - Standard mode and RECORD captures are unchanged. Captures stored by older firmware still transfer exactly as they were stored.
@@ -113,8 +119,9 @@ Ask the user to keep the charger in until the phone has paired: unplugging close
 | `…0007…` | CAPTURE | notify | capture packets (header + data), below |
 | `…0008…` | DIAG | read | `sp_diag_t` (8 B), below (firmware 0.3.1) |
 | `…0009…` | STREAM | notify | live IMU samples for the dev page (firmware 0.3.9), see *STREAM* below |
+| `…000A…` | CAPREC | notify | captures as stored, compressed (firmware 0.3.12), see *CAPREC* below |
 
-All seven require a paired (encrypted) link.
+All of them require a paired (encrypted) link.
 
 ### EVENT: every candidate, accepted or not
 
@@ -156,12 +163,12 @@ Events are sent live as they happen, and again on REPLAY. Replayed and live even
 | `0x03` REPLAY | u32 from_seq | Re-sends stored events with seq ≥ from_seq: accepted shots from flash (not deleted ones), then rejected candidates from RAM, batched on EVENT |
 | `0x04` FACTORY_CFG | – | Restores default thresholds |
 | `0x05` LED_BLINK | – | 5 blinks (find the puck) |
-| `0x06` GET_CAPTURE | u32 seq | Re-sends the capture of shot `seq` from flash on CAPTURE (header with `n_samples = 0` if it is no longer stored) |
+| `0x06` GET_CAPTURE | u32 seq | Re-sends the capture of shot `seq` from flash, on CAPREC when it is subscribed (0.3.12), else on CAPTURE (header with `n_samples = 0` if it is no longer stored) |
 | `0x07` FORGET_BONDS | – | Removes all pairings (see *Pairing*) |
 | `0x08` DELETE_SHOT | u32 seq | Removes accepted shot `seq` from the shot log (0.3.6): REPLAY skips it, `total` drops by one if the shot is newer than the last RESET_COUNT (COUNT notified), the capture stays; no undo, unknown seq ignored |
 | `0x09` FACTORY_RESET | 4 bytes `WIPE` (`57 49 50 45`) | Erases settings, pairings, count, shot log and captures, then reboots (0.3.7). Only with the charger attached: refused with ATT 0x13 for a wrong code and ATT 0xFC without the charger |
 | `0x0A` REG0_MODE | u8 mode (0 DC/DC, 1 LDO) | Dev page (0.3.9): switches REG0, not saved (a reboot returns to DC/DC); STATUS bit 5 shows LDO. Other values: ATT 0x13 |
-| `0x0B` RECORD | u8 seconds (1–10) | Dev page (0.3.9): records the IMU for that long as a capture that is not a shot (EVENT reason 3, then CAPTURE). Other values: ATT 0x13 |
+| `0x0B` RECORD | u8 seconds (1–10) | Dev page (0.3.9): records the IMU for that long as a capture that is not a shot (EVENT reason 3, then the capture on CAPTURE or CAPREC). Other values: ATT 0x13 |
 | `0x0C` STREAM | u8 divider (0 stop, 1–8) | Dev page (0.3.9): live IMU stream on STREAM at 480 Hz / divider, see *STREAM*. Not subscribed: ATT 0xFC; divider above 8: ATT 0x13 |
 
 The puck queues up to 4 commands. A CONTROL write that arrives while 4 are still waiting fails with ATT error 0x11 (insufficient resources) and is not run: wait about 100 ms and write it again (firmware 0.3.1; 0.3.0 accepted the write and dropped the command).
@@ -176,18 +183,20 @@ For every **accepted** shot the puck records the raw accelerometer and gyroscope
 |---|---|---|---|
 | 0 standard (default) | 1.0 s before to 0.5 s after the trigger | 720 | 480 |
 | 1 extended | 6 s before to 2 s after the trigger | 3840 | 2880 |
+| 2 ultra (0.3.12) | 30 s before (rounded down to a group of 8 samples) to 2 s after the trigger | 15,360–15,367 | 14,400–14,407 |
 
 If the puck woke up less than the pre-trigger time before the shot, the capture starts at the wake: `n_samples` and `trigger_index` are smaller by the missing part.
 
-Each capture is compressed into a 408 KB flash area as soon as its window is complete; the newest captures push out the oldest. From 0.3.8 the area also takes in the second firmware slot while no update is in progress, about 660 KB in all. Standard captures are lossless. From 0.3.11 an extended capture keeps only the means of 4 samples (120 Hz, rounded to nearest) from the start of the window until 1 s before the trigger, and sends each mean 4 times: that part holds no detail above 60 Hz. The last second before the trigger and everything after it stay lossless. After a recent wake, the averaged part is shorter; if the trigger came 1 s or less after the wake, nothing is averaged. How many captures fit depends on how well the motion compresses:
+Each capture is compressed into a 408 KB flash area as soon as its window is complete; the newest captures push out the oldest. From 0.3.8 the area also takes in the second firmware slot while no update is in progress, about 660 KB in all. Standard captures are lossless. From 0.3.11 an extended capture keeps only the means of 4 samples (120 Hz, rounded to nearest) from the start of the window until 1 s before the trigger, and sends each mean 4 times: that part holds no detail above 60 Hz. The last second before the trigger and everything after it stay lossless. After a recent wake, the averaged part is shorter; if the trigger came 1 s or less after the wake, nothing is averaged. An ultra capture (0.3.12) adds means of 8 samples (60 Hz, no detail above 30 Hz) from the start of its window until 6 s before the trigger; the 60 Hz groups start at the window start, which is always a multiple of 8 samples after the wake. If the trigger came 6 s or less after the wake, an ultra capture is stored like an extended one. How many captures fit depends on how well the motion compresses:
 
 | Mode | No compression, 408 KB | Compressed, 408 KB | No compression, 660 KB (0.3.8) | Compressed, 660 KB (0.3.8) |
 |---|---|---|---|---|
 | standard | 47 | about 90–150 (expected, 2–4×) | about 75 | about 145–240 (expected, 2–4×) |
 | extended, 0.3.10 and older | 8 | 29 (measured) | about 12 | 48 (measured) |
 | extended, 0.3.11 | 8 | 42 (measured) | about 12 | 68 (measured) |
+| ultra, 0.3.12 | 2 | about 23 (estimated) | 3 | about 38 (estimated) |
 
-The measured counts come from 37 real extended captures (2026-11-12 to 2026-11-15) run through the firmware's own encoder and store.
+The measured counts come from 37 real extended captures (2026-11-12 to 2026-11-15) run through the firmware's own encoder and store. The ultra estimate joins the same 37 captures into one stream, so each 30 s window holds three or four other shots: real ultra captures with calmer history may be a little smaller.
 
 The 660 KB area shrinks back to 408 KB when a firmware update starts (the captures stored in the second slot are lost then) and while a just-updated firmware is on trial; it grows again once the new firmware has confirmed itself. Fetch the captures you want to keep before starting an update.
 
@@ -219,12 +228,47 @@ Byte 0 of every packet is the packet type.
 Convert with `acc_mg = raw × acc_ug_per_lsb / 1000` and `gyro_dps = raw × gyro_mdps_per_lsb / 1000`. Sample `i` is at `(i − trigger_index) / odr_hz` seconds from the trigger, so the EVENT's `t_unix_ms` lines up with index `trigger_index`.
 
 - **Axes** are the LSM6DSV32X's own axes. +Z points out of the cap (it reads about +1000 mg with the puck lying cap-up). The X/Y mapping to the bow is fixed by the mounting and must be confirmed once on hardware (VALIDATION.md §2).
-- A transfer takes about 1–3 s (standard) or 6–12 s (extended) at MTU 247. Packets arrive in order. If a `first` is missing (disconnect), discard the capture and request it again with GET_CAPTURE.
+- A transfer takes about 1–3 s (standard), 6–12 s (extended) or 25–50 s (ultra) at MTU 247. CAPREC sends the same captures in about 1, 2 and 3–6 s. Packets arrive in order. If a `first` is missing (disconnect), discard the capture and request it again with GET_CAPTURE.
 - The IMU needs a few tens of ms after a wake before the gyroscope delivers data (datasheet turn-on time 35 ms), so a capture that starts at the wake can have zero gyro values in its first samples.
+
+### CAPREC: captures as stored (firmware 0.3.12)
+
+Subscribe to CAPREC (`…000A…`) instead of CAPTURE and the puck sends each capture as the compressed record it keeps in flash: about 4 KB for a standard capture, 10 KB extended and 18 KB ultra, against 8.6, 46 and 184 KB on CAPTURE. The app decodes it. Everything else works as on CAPTURE: the capture is sent automatically after the shot while subscribed, GET_CAPTURE sends it again, and it waits while STREAM runs. With both subscribed, the puck uses CAPREC. Like EVENT, it needs an ATT MTU of at least 27.
+
+**Header** (`sp_caprec_header_t`, 24 B):
+
+| Offset | Type | Field | Notes |
+|---|---|---|---|
+| 0 | u8 | type | `0x03` |
+| 1 | u32 | seq | Same `seq` as the shot's EVENT |
+| 5 | u16 | n_samples | As in the CAPTURE header; **0 if the capture is not available** (then `payload_len` is 0 and no data follows) |
+| 7 | u16 | trigger_index | As in the CAPTURE header |
+| 9 | u8 | format | 0 full rate (standard and RECORD), 1 extended (0.3.11), 2 ultra (0.3.12). Captures stored by 0.3.10 and older are format 0 |
+| 10 | u32 | payload_len | Bytes of compressed data that follow |
+| 14 | u32 | check | CRC-32 of the record, see below |
+| 18 | u16 | odr_hz | 480 |
+| 20 | u16 | acc_ug_per_lsb | 976 |
+| 22 | u16 | gyro_mdps_per_lsb | 70 |
+
+**Data** (`sp_caprec_data_t`, 9 B, then bytes): `u8 type` = `0x04`, `u32 seq`, `u32 offset` (byte offset of the first byte in this packet), then up to MTU − 12 payload bytes. Packets arrive in order. If `offset` does not continue where the last packet ended, discard the capture and GET_CAPTURE it again.
+
+**Check:** the standard CRC-32 (as zlib's `crc32`: reflected polynomial 0xEDB88320, start 0xFFFFFFFF, final XOR 0xFFFFFFFF) over the payload followed by 12 bytes, little-endian: `u32 seq`, `u16 n_samples`, `u16 trigger_index`, `u32 payload_len`. It must equal `check`.
+
+**Decoding** (n = `n_samples`, t = `trigger_index`):
+
+1. Parts of the window. A (samples before the full-rate part) = t − 480 if `format` is 1 or 2 and t > 480, else 0. L (samples in the 60 Hz part) = ⌊(t − 2880) / 8⌋ × 8 if `format` is 2 and t > 2880, else 0. The record holds S = L / 8 + ⌈(A − L) / 4⌉ + (n − A) stored samples.
+2. The payload is a bit stream, most significant bit of each byte first, holding the S stored samples in blocks of 32 (the last block is shorter when S is not a multiple of 32). Each block holds the six axes one after another, in the order ax, ay, az, gx, gy, gz. For each axis:
+   - 2 bits mode: 0 delta, 1 slope, 2 raw (3 never occurs).
+   - Raw: one 16-bit two's complement value per sample of the block.
+   - Delta or slope: 5 bits k (0–17), then one Rice code per sample. Count 1 bits until a 0 bit: q ones give the value (q << k) | the next k bits. After 24 ones in a row no 0 bit follows, and the value is the next 18 bits. The residual is value / 2 for an even value and −(value + 1) / 2 for an odd one. The prediction is `last` for delta and 2 × `last` − `before_last` for slope; the sample is prediction + residual.
+   - Each axis keeps its own `last` and `before_last`, both 0 at the start of the record and carried across blocks; every sample, raw ones too, moves them on (`before_last` = `last`, `last` = sample). Every sample lies within the int16 range.
+3. Rebuild 480 Hz (n samples) from the stored samples in order. The first L / 8 each stand for 8 samples (indices 0 to L − 1). The next ones cover L to A − 1 in groups counted back from A: the first group has (A − L) mod 4 samples if that is not 0, then groups of 4, each stored sample standing for its group. The rest map one to one to A to n − 1. The puck's CAPTURE path repeats each stored sample over its group; an app may also interpolate for plots, but each group's sum must stay equal to its size × the stored sample (repeating does that exactly).
+
+**Test vectors and a reference decoder:** shot-tracker `firmware/sim/vectors/caprec-vectors.json` holds 9 records written by the firmware's own capture code (standard, a recording, extended, ultra, captures shortened by a wake, and two stress signals that use raw blocks, slope blocks and the 24-ones escape). Each has the header fields, the payload as hex, every stored sample and the CRC-32 of the rebuilt 480 Hz samples (each sample 6 × int16 little-endian, ax to gz). `firmware/sim/caprec_decode.py` decodes and checks them all: `python firmware/sim/caprec_decode.py firmware/sim/vectors/caprec-vectors.json`.
 
 ### CONFIG (`sp_config_t`, 20 B)
 
-`u8 version(=3)`, then u16 each: `trig_hf_mg` (1000–30000, default 6000), `move_mg` (50–2000, 300), `pre_still_min_ms` (0–10000, 500), `post_start_ms` (100), `post_end_ms` (≤1500, 600; must be greater than start), `post_lf_min_mg` (0–5000, 250), `refractory_ms` (200–10000, 1500), `wake_mg` (16–2000, 90; high-pass filtered from 0.3.10), `idle_timeout_s` (5–3600, 30), then `u8 capture_mode` (0 standard, 1 extended; default 0).
+`u8 version(=3)`, then u16 each: `trig_hf_mg` (1000–30000, default 6000), `move_mg` (50–2000, 300), `pre_still_min_ms` (0–10000, 500), `post_start_ms` (100), `post_end_ms` (≤1500, 600; must be greater than start), `post_lf_min_mg` (0–5000, 250), `refractory_ms` (200–10000, 1500), `wake_mg` (16–2000, 90; high-pass filtered from 0.3.10), `idle_timeout_s` (5–3600, 30), then `u8 capture_mode` (0 standard, 1 extended, 2 ultra from 0.3.12; default 0).
 
 A 19-byte write with `version = 2` (no `capture_mode`) is still accepted and keeps the current mode. Reads always return the 20-byte v3 layout. FACTORY_CFG restores the thresholds but keeps the capture mode.
 
@@ -257,12 +301,12 @@ Subscribe to STREAM, then write CONTROL `0C` + divider: the puck streams every d
 ## Recommended app sync (PowerSync-friendly)
 
 1. Connect only to the user's own puck (its stored serial). The link encrypts automatically because the phone is paired.
-2. Request MTU 247 or more, and subscribe to COUNT, EVENT, STATUS and CAPTURE.
+2. Request MTU 247 or more, and subscribe to COUNT, EVENT, STATUS and, from firmware 0.3.12, CAPREC (CAPTURE on older firmware).
 3. Write SET_TIME.
 4. Read COUNT, then write `REPLAY(last_seq_seen_by_app + 1)`. The app owns this position; the puck keeps no per-phone sync state, so any number of phones can sync.
 5. Upsert events keyed by `(device_id, seq)`, with `device_id` = DIS serial number. seq is monotonic, so replays and duplicates are harmless.
-6. Stay connected during the end. Each shot arrives as an EVENT with `accepted = 1` about 0.6 s after release (the follow-through window), followed by its CAPTURE.
-7. Store captures keyed by `(device_id, seq)` as well. For accepted events without a complete capture, write `GET_CAPTURE(seq)`: the puck keeps the newest captures in flash (see *CAPTURE*), so this also works after a session offline.
+6. Stay connected during the end. Each shot arrives as an EVENT with `accepted = 1` about 0.6 s after release (the follow-through window), followed by its capture.
+7. Store captures keyed by `(device_id, seq)` as well. For accepted events without a complete capture, or a CAPREC capture that fails its check, write `GET_CAPTURE(seq)`: the puck keeps the newest captures in flash (see *CAPTURE*), so this also works after a session offline.
 
 Map shots to ends in the app: the puck has no notion of ends or arrows-per-end, and seq gaps are not errors.
 

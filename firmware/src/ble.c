@@ -36,6 +36,7 @@ static struct bt_uuid_128 uuid_status = BT_UUID_INIT_128(SP_UUID_STATUS);
 static struct bt_uuid_128 uuid_capture = BT_UUID_INIT_128(SP_UUID_CAPTURE);
 static struct bt_uuid_128 uuid_diag = BT_UUID_INIT_128(SP_UUID_DIAG);
 static struct bt_uuid_128 uuid_stream = BT_UUID_INIT_128(SP_UUID_STREAM);
+static struct bt_uuid_128 uuid_caprec = BT_UUID_INIT_128(SP_UUID_CAPREC);
 
 static sp_count_t v_count;
 static sp_status_t v_status;
@@ -51,7 +52,7 @@ static atomic_t link_secured;
 
 static struct bt_conn *cur_conn;
 static bool advertising;
-static bool notify_count, notify_event, notify_status, notify_capture, notify_stream;
+static bool notify_count, notify_event, notify_status, notify_capture, notify_stream, notify_caprec;
 static bool fast_link;
 static uint32_t bulk_seen_ms;
 
@@ -140,6 +141,11 @@ static void ccc_stream(const struct bt_gatt_attr *a, uint16_t v)
 	ARG_UNUSED(a);
 	notify_stream = v == BT_GATT_CCC_NOTIFY;
 }
+static void ccc_caprec(const struct bt_gatt_attr *a, uint16_t v)
+{
+	ARG_UNUSED(a);
+	notify_caprec = v == BT_GATT_CCC_NOTIFY;
+}
 
 BT_GATT_SERVICE_DEFINE(sp_svc,
 	BT_GATT_PRIMARY_SERVICE(&uuid_svc),
@@ -170,6 +176,9 @@ BT_GATT_SERVICE_DEFINE(sp_svc,
 	BT_GATT_CHARACTERISTIC(&uuid_stream.uuid, BT_GATT_CHRC_NOTIFY, BT_GATT_PERM_NONE,
 			       NULL, NULL, NULL),
 	BT_GATT_CCC(ccc_stream, ENCRYPTED_CCC),
+	BT_GATT_CHARACTERISTIC(&uuid_caprec.uuid, BT_GATT_CHRC_NOTIFY, BT_GATT_PERM_NONE,
+			       NULL, NULL, NULL),
+	BT_GATT_CCC(ccc_caprec, ENCRYPTED_CCC),
 );
 
 #define ATTR_COUNT (&sp_svc.attrs[1])
@@ -177,6 +186,7 @@ BT_GATT_SERVICE_DEFINE(sp_svc,
 #define ATTR_STATUS (&sp_svc.attrs[11])
 #define ATTR_CAPTURE (&sp_svc.attrs[14])
 #define ATTR_STREAM (&sp_svc.attrs[19])
+#define ATTR_CAPREC (&sp_svc.attrs[22])
 
 enum { AD_FLAGS, AD_SERVICE, AD_PAIRING, AD_FIELDS };
 
@@ -189,7 +199,7 @@ static const struct bt_data ad[AD_FIELDS] = {
 
 static bool pairing_open;
 
-/* 500-525 ms advertising interval: ~10 uA average while advertising */
+/* 500-525 ms advertising interval: ~20-26 uA average while advertising (Nordic profiler, unmeasured) */
 static const struct bt_le_adv_param adv_param =
 	BT_LE_ADV_PARAM_INIT(BT_LE_ADV_OPT_CONN, 0x0320, 0x0348, NULL);
 
@@ -221,7 +231,7 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 		bt_conn_unref(cur_conn);
 		cur_conn = NULL;
 	}
-	notify_count = notify_event = notify_status = notify_capture = notify_stream = false;
+	notify_count = notify_event = notify_status = notify_capture = notify_stream = notify_caprec = false;
 	fast_link = false;
 	on_conn(false); /* main decides whether to re-advertise */
 }
@@ -381,6 +391,11 @@ uint16_t ble_capture_room(void)
 	return room_if(notify_capture);
 }
 
+uint16_t ble_caprec_room(void)
+{
+	return room_if(notify_caprec);
+}
+
 uint16_t ble_event_room(void)
 {
 	return room_if(notify_event);
@@ -442,6 +457,20 @@ int ble_send_stream(const uint8_t *data, uint16_t len)
 	};
 
 	if (!cur_conn || !notify_stream) {
+		return -ENOTCONN;
+	}
+	return send_paced(&params);
+}
+
+int ble_send_caprec(const uint8_t *data, uint16_t len)
+{
+	struct bt_gatt_notify_params params = {
+		.attr = ATTR_CAPREC,
+		.data = data,
+		.len = len,
+	};
+
+	if (!cur_conn || !notify_caprec) {
 		return -ENOTCONN;
 	}
 	return send_paced(&params);

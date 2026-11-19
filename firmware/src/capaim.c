@@ -4,18 +4,29 @@
 
 uint32_t capaim_aim_samples(const capaim_shape_t *shape)
 {
-	if (!shape->averaged || shape->trigger_index <= CAPAIM_FULL_RATE_PRE) {
+	if (shape->format == SP_CAPFMT_FULL || shape->trigger_index <= CAPAIM_FULL_RATE_PRE) {
 		return 0u;
 	}
 	return shape->trigger_index - CAPAIM_FULL_RATE_PRE;
 }
 
+uint32_t capaim_slow_samples(const capaim_shape_t *shape)
+{
+	if (shape->format != SP_CAPFMT_ULTRA || shape->trigger_index <= CAPAIM_MEDIUM_RATE_PRE) {
+		return 0u;
+	}
+	uint32_t span = shape->trigger_index - CAPAIM_MEDIUM_RATE_PRE;
+
+	return span - span % CAPAIM_SLOW_GROUP_SAMPLES;
+}
+
 uint32_t capaim_stored(const capaim_shape_t *shape)
 {
 	uint32_t aim = capaim_aim_samples(shape);
-	uint32_t means = (aim + CAPAIM_GROUP_SAMPLES - 1u) / CAPAIM_GROUP_SAMPLES;
+	uint32_t slow = capaim_slow_samples(shape);
+	uint32_t means = (aim - slow + CAPAIM_GROUP_SAMPLES - 1u) / CAPAIM_GROUP_SAMPLES;
 
-	return means + shape->n_samples - aim;
+	return slow / CAPAIM_SLOW_GROUP_SAMPLES + means + shape->n_samples - aim;
 }
 
 uint32_t capaim_group(uint32_t aim_left)
@@ -62,6 +73,7 @@ sp_cap_sample_t capaim_mean(const sp_cap_sample_t *group, uint32_t count)
 void capaim_open(capaim_reader_t *reader, const capaim_shape_t *shape)
 {
 	reader->aim_left = capaim_aim_samples(shape);
+	reader->slow_left = capaim_slow_samples(shape);
 	reader->repeat_left = 0u;
 	capdec_init(reader->dec, capaim_stored(shape));
 }
@@ -76,10 +88,13 @@ int capaim_next(capaim_reader_t *reader, sp_cap_sample_t *sample)
 		if (got != 1) {
 			return got;
 		}
-		reader->repeat_left = capaim_group(reader->aim_left);
+		reader->repeat_left = reader->slow_left > 0u ? CAPAIM_SLOW_GROUP_SAMPLES : capaim_group(reader->aim_left);
 	}
 	reader->repeat_left--;
 	reader->aim_left--;
+	if (reader->slow_left > 0u) {
+		reader->slow_left--;
+	}
 	*sample = reader->mean;
 	return 1;
 }

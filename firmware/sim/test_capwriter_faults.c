@@ -50,6 +50,7 @@ static flash_ops_t ops;
 static flash_ops_t fault_phase;
 static flash_ops_t baseline;
 static cap_t cap;
+static sp_cap_sample_t history[CAP_HISTORY_SAMPLES];
 static capstore_t store;
 static capw_t writer;
 static int failures;
@@ -158,7 +159,7 @@ static bool recovers(uint32_t trigger, fault_plan_t faults)
 	shot_t faulty = {FAULTY_SEQ, trigger};
 
 	memset(flash, ERASED, sizeof(flash));
-	cap_init(&cap);
+	cap_init(&cap, history);
 	check(capstore_init(&store, &dev) == 0, "store init");
 	capw_init(&writer, &deps);
 	ops = (flash_ops_t){0, 0};

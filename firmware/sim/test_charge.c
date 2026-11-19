@@ -155,6 +155,25 @@ static void test_unplug_resets(void)
 	check(!c.full && !c.charging && !charge_holds_off(&c), "unplug clears full");
 }
 
+static void test_inhibit_pin(void)
+{
+	charge_ctl_t c = fresh();
+	charge_sample_t cold = {.vbus = false, .paused = true, .mv = CC_MV};
+
+	step(&c, cold);
+	check(!charge_inhibit_pin(&c, &cold), "no inhibit current without a cable, even outside 0-45 C");
+	cold.vbus = true;
+	step(&c, cold);
+	check(charge_inhibit_pin(&c, &cold), "with a cable, the temperature pause drives the inhibit pin");
+	charge_sample_t warm = charging_at(CC_MV, 0u);
+	step(&c, warm);
+	check(!charge_inhibit_pin(&c, &warm), "charging allowed: inhibit pin low");
+	c.full = true;
+	check(charge_inhibit_pin(&c, &warm), "full holds the charger off with a cable");
+	warm.vbus = false;
+	check(!charge_inhibit_pin(&c, &warm), "nothing to hold off without a cable");
+}
+
 static void test_shown(void)
 {
 	charge_ctl_t c = fresh();
@@ -180,6 +199,7 @@ int main(void)
 	test_topup_after_timed_full();
 	test_pause_restarts_cycle();
 	test_unplug_resets();
+	test_inhibit_pin();
 	test_shown();
 	printf("CHARGE TESTS: %s\n", failures ? "FAIL" : "PASS");
 	return failures ? 1 : 0;

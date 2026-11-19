@@ -217,6 +217,20 @@ int capstore_read(const capstore_t *store, const capstore_read_t *req)
 	return capstore_read_usable(store, &span);
 }
 
+int capstore_read_check(const capstore_t *store, capstore_check_t *req)
+{
+	const capstore_entry_t *e = capstore_find(store, req->seq);
+
+	if (!e) {
+		return CAPSTORE_ERR_MISSING;
+	}
+	capstore_at_t at = {.pos = e->start};
+	int err = capstore_read_at(store, &at);
+
+	req->check = at.header.check;
+	return err;
+}
+
 uint32_t capstore_count(const capstore_t *store)
 {
 	return store->count;

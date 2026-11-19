@@ -7,6 +7,7 @@
 #include "protocol.h"
 
 typedef enum { ACCEL_OFF, ACCEL_IDLE, ACCEL_ACTIVE } accel_mode_t;
+typedef enum { ACCEL_IDLE_FAST, ACCEL_IDLE_SLOW } accel_idle_rate_t;
 
 typedef void (*accel_irq_handler_t)(void);
 
@@ -17,7 +18,7 @@ typedef struct {
 } accel_fifo_t;
 
 int accel_init(accel_irq_handler_t handler);
-int accel_set_idle(uint16_t wake_mg);
+int accel_set_idle(uint16_t wake_mg, accel_idle_rate_t rate);
 int accel_set_active(void);
 int accel_off(void);
 accel_mode_t accel_mode(void);

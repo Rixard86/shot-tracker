@@ -5,22 +5,37 @@
 
 #define CRC_CHUNK_BYTES 64u
 
+static const uint32_t record_magic[CAPSTORE_FORMATS] = {
+	[CAPSTORE_FORMAT_FULL] = CAPSTORE_RECORD_MAGIC,
+	[CAPSTORE_FORMAT_AIM_AVERAGED] = CAPSTORE_AIM_AVERAGED_MAGIC,
+	[CAPSTORE_FORMAT_ULTRA] = CAPSTORE_ULTRA_MAGIC,
+};
+
+static uint8_t format_of(uint32_t magic)
+{
+	for (uint8_t format = 0; format < CAPSTORE_FORMATS; format++) {
+		if (record_magic[format] == magic) {
+			return format;
+		}
+	}
+	return CAPSTORE_FORMATS;
+}
+
 uint32_t capstore_magic(uint8_t format)
 {
-	return format == CAPSTORE_FORMAT_AIM_AVERAGED ? CAPSTORE_AIM_AVERAGED_MAGIC : CAPSTORE_RECORD_MAGIC;
+	return record_magic[format];
 }
 
 bool capstore_is_record(uint32_t magic)
 {
-	return magic == CAPSTORE_RECORD_MAGIC || magic == CAPSTORE_AIM_AVERAGED_MAGIC;
+	return format_of(magic) < CAPSTORE_FORMATS;
 }
 
 capstore_entry_t capstore_entry_at(const capstore_at_t *at)
 {
 	const capstore_header_t *h = &at->header;
-	uint8_t format = h->magic == CAPSTORE_AIM_AVERAGED_MAGIC ? CAPSTORE_FORMAT_AIM_AVERAGED : CAPSTORE_FORMAT_FULL;
 
-	return (capstore_entry_t){h->seq, at->pos, h->payload_len, h->n_samples, h->trigger_index, format};
+	return (capstore_entry_t){h->seq, at->pos, h->payload_len, h->n_samples, h->trigger_index, format_of(h->magic)};
 }
 
 uint32_t capstore_crc(uint32_t crc, const capstore_chunk_t *chunk)

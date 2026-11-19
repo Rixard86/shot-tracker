@@ -63,6 +63,7 @@ LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 #define SENSOR_RETRY_MS 5000
 #define SENSOR_STALL_MS 5000
 #define NO_SENSOR_POLL_MS 1000
+#define SLOW_IDLE_AFTER_MS (20u * 60u * 1000u)
 
 static K_SEM_DEFINE(wake_sem, 0, 1);
 static atomic_t accel_pending;
@@ -89,6 +90,7 @@ static wire_clock_t wall_clock;
 static uint32_t active_start_ms;
 static uint32_t sample_idx;
 static uint32_t idle_since_ms;
+static bool idle_slow;
 static uint32_t last_batch_ms;
 
 /* ---------------------------------------------------------------- utils */
@@ -199,6 +201,7 @@ static void begin_stream(uint32_t now)
 
 static void go_active(void)
 {
+	(void)supply_history_ram_on();
 	accel_set_active();
 	begin_stream(k_uptime_get_32());
 	last_batch_ms = active_start_ms;
@@ -208,8 +211,12 @@ static void go_active(void)
 
 static void go_idle(void)
 {
-	accel_set_idle((uint16_t)st.cfg.wake_mg);
+	accel_set_idle((uint16_t)st.cfg.wake_mg, ACCEL_IDLE_FAST);
+	idle_slow = false;
 	det.mode = SD_MODE_IDLE;
+	if (!capw_busy(&capw)) {
+		supply_history_ram_off();
+	}
 	idle_since_ms = k_uptime_get_32();
 	store_save_counts(&st);
 	LOG_INF("IDLE");
@@ -500,8 +507,19 @@ static void check_sensor(void)
 	if (det.mode == SD_MODE_ACTIVE) {
 		go_active();
 	} else {
-		accel_set_idle((uint16_t)st.cfg.wake_mg);
+		accel_set_idle((uint16_t)st.cfg.wake_mg, idle_slow ? ACCEL_IDLE_SLOW : ACCEL_IDLE_FAST);
 	}
+}
+
+static void slow_down_idle(uint32_t now)
+{
+	if (det.mode != SD_MODE_IDLE || idle_slow || accel_mode() != ACCEL_IDLE ||
+	    now - idle_since_ms < SLOW_IDLE_AFTER_MS) {
+		return;
+	}
+	accel_set_idle((uint16_t)st.cfg.wake_mg, ACCEL_IDLE_SLOW);
+	idle_slow = true;
+	LOG_INF("IDLE at 1.875 Hz");
 }
 
 static void apply_config(void)
@@ -663,7 +681,7 @@ int main(void)
 	lifetime_init(st.seq);
 	st.cfg.fs_hz = (float)CAP_ODR_HZ;
 	sd_init(&det, &st.cfg);
-	cap_init(&cap);
+	cap_init(&cap, supply_history_ram_on());
 	captures_ok = capflash_open(&capstore, ota_spare_allowed()) == 0;
 	if (!captures_ok) {
 		LOG_ERR("capture store unavailable");
@@ -722,6 +740,7 @@ int main(void)
 		apply_config();
 
 		uint32_t now = k_uptime_get_32();
+		slow_down_idle(now);
 		bool in_linger = det.mode == SD_MODE_ACTIVE || (now - idle_since_ms) < ADV_LINGER_MS ||
 				 claim_is_open();
 		if (atomic_cas(&conn_event, 1, 0) || !ble_is_advertising()) {

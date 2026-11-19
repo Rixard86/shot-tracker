@@ -59,9 +59,17 @@ static int store_words(capw_t *w)
 static cap_request_t window_request(const capw_request_t *req)
 {
 	if (req->samples > 0u) {
-		return (cap_request_t){req->trigger, 0u, req->samples};
+		return (cap_request_t){req->trigger, 0u, req->samples, false};
 	}
 	return cap_mode_request(req->mode, req->trigger);
+}
+
+static uint8_t record_format(uint8_t mode)
+{
+	if (mode == SP_CAPTURE_ULTRA) {
+		return SP_CAPFMT_ULTRA;
+	}
+	return mode == SP_CAPTURE_EXTENDED ? SP_CAPFMT_EXTENDED : SP_CAPFMT_FULL;
 }
 
 static bool start(capw_t *w, const capw_request_t *req)
@@ -78,19 +86,20 @@ static bool start(capw_t *w, const capw_request_t *req)
 	capaim_shape_t shape = {
 		.n_samples = (uint16_t)(w->window.end - w->window.first),
 		.trigger_index = (uint16_t)(w->window.trigger - w->window.first),
-		.averaged = req->mode == SP_CAPTURE_EXTENDED,
+		.format = record_format(req->mode),
 	};
 	capstore_entry_t header = {
 		.seq = req->seq,
 		.n_samples = shape.n_samples,
 		.trigger_index = shape.trigger_index,
-		.format = shape.averaged ? CAPSTORE_FORMAT_AIM_AVERAGED : CAPSTORE_FORMAT_FULL,
+		.format = shape.format,
 	};
 	if (capstore_begin(w->deps.store, &header) != 0) {
 		return false;
 	}
 	capenc_init(&w->enc);
 	w->current = *req;
+	w->slow_end = w->window.first + capaim_slow_samples(&shape);
 	w->aim_end = w->window.first + capaim_aim_samples(&shape);
 	w->next = w->window.first;
 	w->active = true;
@@ -113,6 +122,9 @@ static bool start_next(capw_t *w)
 
 static uint32_t group_at(const capw_t *w, uint32_t index)
 {
+	if (index < w->slow_end) {
+		return CAPAIM_SLOW_GROUP_SAMPLES;
+	}
 	return index < w->aim_end ? capaim_group(w->aim_end - index) : 1u;
 }
 
@@ -131,6 +143,9 @@ static uint32_t block_end(const capw_t *w, uint32_t *count)
 
 static sp_cap_sample_t stored_sample(const capw_t *w, uint32_t index)
 {
+	if (index < w->slow_end) {
+		return *cap_history_sample(w->deps.cap, index);
+	}
 	sp_cap_sample_t group[CAPAIM_GROUP_SAMPLES];
 	uint32_t count = group_at(w, index);
 
@@ -138,6 +153,16 @@ static sp_cap_sample_t stored_sample(const capw_t *w, uint32_t index)
 		group[i] = *cap_sample(w->deps.cap, index + i);
 	}
 	return capaim_mean(group, count);
+}
+
+static bool block_held(const capw_t *w, uint32_t end)
+{
+	const cap_t *cap = w->deps.cap;
+
+	if (w->next >= w->slow_end) {
+		return cap_holds(cap, w->next);
+	}
+	return cap_history_holds(cap, w->next) && (end <= w->slow_end || cap_holds(cap, w->slow_end));
 }
 
 static step_t encode_block(capw_t *w)
@@ -153,7 +178,7 @@ static step_t encode_block(capw_t *w)
 	if (cap->count < end) {
 		return STEP_WAIT;
 	}
-	if (!cap_holds(cap, w->next)) {
+	if (!block_held(w, end)) {
 		return STEP_LOST;
 	}
 	uint32_t at = w->next;

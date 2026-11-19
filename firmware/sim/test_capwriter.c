@@ -42,6 +42,7 @@ static uint32_t writes;
 static uint32_t triggers[MAX_SHOTS];
 static uint32_t shots;
 static cap_t cap;
+static sp_cap_sample_t history[CAP_HISTORY_SAMPLES];
 static capstore_t store;
 static capw_t writer;
 static uint32_t seq;
@@ -166,7 +167,7 @@ static void setup(void)
 	capw_deps_t deps = {&cap, &store};
 
 	memset(flash, ERASED, sizeof(flash));
-	cap_init(&cap);
+	cap_init(&cap, history);
 	shots = 0;
 	seq = 0;
 	check(capstore_init(&store, &dev) == 0, "store init");

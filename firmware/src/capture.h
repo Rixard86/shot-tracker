@@ -13,11 +13,16 @@
 #define CAP_STANDARD_POST 240u
 #define CAP_EXTENDED_PRE 2880u
 #define CAP_EXTENDED_POST 960u
+#define CAP_ULTRA_PRE 14400u
+#define CAP_ULTRA_POST 960u
+#define CAP_HISTORY_GROUP 8u
+#define CAP_HISTORY_SAMPLES 2048u
 #define CAP_ACC_UG_PER_LSB 976u
 #define CAP_GYRO_MDPS_PER_LSB 70u
 
 typedef struct {
 	sp_cap_sample_t ring[CAP_RING_SAMPLES];
+	sp_cap_sample_t *history;
 	uint32_t count;
 	uint32_t epoch;
 } cap_t;
@@ -26,6 +31,7 @@ typedef struct {
 	uint32_t trigger;
 	uint32_t pre;
 	uint32_t post;
+	bool history;
 } cap_request_t;
 
 typedef struct {
@@ -48,15 +54,33 @@ typedef struct {
 } cap_data_info_t;
 
 typedef struct {
+	uint32_t seq;
+	uint16_t n_samples;
+	uint16_t trigger_index;
+	uint8_t format;
+	uint32_t payload_len;
+	uint32_t check;
+} cap_rec_info_t;
+
+typedef struct {
+	uint32_t seq;
+	uint32_t offset;
+	const uint8_t *bytes;
+	uint32_t len;
+} cap_rec_data_t;
+
+typedef struct {
 	uint8_t *buf;
 	size_t capacity;
 } cap_buf_t;
 
-void cap_init(cap_t *cap);
+void cap_init(cap_t *cap, sp_cap_sample_t *history);
 void cap_reset(cap_t *cap);
 void cap_push(cap_t *cap, const sp_cap_sample_t *sample);
 bool cap_holds(const cap_t *cap, uint32_t index);
 const sp_cap_sample_t *cap_sample(const cap_t *cap, uint32_t index);
+bool cap_history_holds(const cap_t *cap, uint32_t index);
+const sp_cap_sample_t *cap_history_sample(const cap_t *cap, uint32_t index);
 cap_window_t cap_window(const cap_t *cap, const cap_request_t *req);
 cap_request_t cap_mode_request(uint8_t mode, uint32_t trigger);
 uint32_t cap_index_to_ms(uint32_t index);
@@ -64,5 +88,8 @@ uint32_t cap_ms_to_index(uint32_t ms);
 uint32_t cap_data_fit(size_t capacity);
 size_t cap_pack_header(const cap_header_info_t *info, const cap_buf_t *out);
 size_t cap_pack_data(const cap_data_info_t *data, const cap_buf_t *out);
+uint32_t cap_rec_data_fit(size_t capacity);
+size_t cap_pack_rec_header(const cap_rec_info_t *info, const cap_buf_t *out);
+size_t cap_pack_rec_data(const cap_rec_data_t *data, const cap_buf_t *out);
 
 #endif

@@ -22,10 +22,17 @@
 #define VALUE_SPAN 601u
 #define VALUE_CENTER 300
 #define ODD_AIM_TRIGGER (CAP_EXTENDED_PRE + 3u)
+#define SLOW CAPAIM_SLOW_GROUP_SAMPLES
+#define ULTRA_SAMPLES (CAP_ULTRA_PRE + CAP_ULTRA_POST)
+#define ULTRA_SLOW (CAP_ULTRA_PRE - CAP_EXTENDED_PRE)
+#define ULTRA_STORED (ULTRA_SLOW / SLOW + EXTENDED_AIM / GROUP + FULL_RATE + CAP_ULTRA_POST)
+#define ULTRA_ODD_TRIGGER 9003u
+#define ULTRA_ODD_SLOW 6120u
+#define ULTRA_SHORT_TRIGGER 2001u
 
 static uint8_t stream[STREAM_BYTES];
 static uint32_t stream_len;
-static sp_cap_sample_t stored[CAP_RING_SAMPLES];
+static sp_cap_sample_t stored[ULTRA_SAMPLES];
 static int failures;
 
 static void check(int ok, const char *what)
@@ -38,10 +45,10 @@ static void check(int ok, const char *what)
 
 static void test_shape(void)
 {
-	capaim_shape_t ext = {EXTENDED_SAMPLES, CAP_EXTENDED_PRE, true};
-	capaim_shape_t full = {EXTENDED_SAMPLES, CAP_EXTENDED_PRE, false};
-	capaim_shape_t one = {FULL_RATE + 1u + CAP_EXTENDED_POST, FULL_RATE + 1u, true};
-	capaim_shape_t none = {FULL_RATE + CAP_EXTENDED_POST, FULL_RATE, true};
+	capaim_shape_t ext = {EXTENDED_SAMPLES, CAP_EXTENDED_PRE, SP_CAPFMT_EXTENDED};
+	capaim_shape_t full = {EXTENDED_SAMPLES, CAP_EXTENDED_PRE, SP_CAPFMT_FULL};
+	capaim_shape_t one = {FULL_RATE + 1u + CAP_EXTENDED_POST, FULL_RATE + 1u, SP_CAPFMT_EXTENDED};
+	capaim_shape_t none = {FULL_RATE + CAP_EXTENDED_POST, FULL_RATE, SP_CAPFMT_EXTENDED};
 
 	check(capaim_aim_samples(&ext) == EXTENDED_AIM && capaim_stored(&ext) == EXTENDED_STORED,
 	      "extended capture keeps 600 aiming means and 1440 full-rate samples");
@@ -50,6 +57,13 @@ static void test_shape(void)
 	check(capaim_aim_samples(&one) == 1u && capaim_stored(&one) == one.n_samples, "one aiming sample is its own mean");
 	check(capaim_aim_samples(&none) == 0u && capaim_stored(&none) == none.n_samples,
 	      "no aiming part when the trigger is 1 s into the capture or less");
+	capaim_shape_t ultra = {ULTRA_SAMPLES, CAP_ULTRA_PRE, SP_CAPFMT_ULTRA};
+	capaim_shape_t odd = {ULTRA_ODD_TRIGGER + CAP_ULTRA_POST, ULTRA_ODD_TRIGGER, SP_CAPFMT_ULTRA};
+	capaim_shape_t brief = {ULTRA_SHORT_TRIGGER + CAP_ULTRA_POST, ULTRA_SHORT_TRIGGER, SP_CAPFMT_ULTRA};
+	check(capaim_slow_samples(&ultra) == ULTRA_SLOW && capaim_stored(&ultra) == ULTRA_STORED,
+	      "ultra keeps 1440 means of 8, 600 means of 4 and 1440 full-rate samples");
+	check(capaim_slow_samples(&odd) == ULTRA_ODD_SLOW && capaim_slow_samples(&ext) == 0u &&
+	      capaim_slow_samples(&brief) == 0u, "the 60 Hz part ends at a group of 8, at most 6 s before the trigger");
 	check(capaim_group(EXTENDED_AIM) == GROUP && capaim_group(EXTENDED_AIM + 1u) == 1u &&
 	      capaim_group(EXTENDED_AIM + GROUP - 1u) == GROUP - 1u, "only the first group can be partial");
 }
@@ -145,8 +159,12 @@ static int refill(capdec_t *dec)
 static uint32_t stored_index(const capaim_shape_t *shape, uint32_t k)
 {
 	uint32_t aim = capaim_aim_samples(shape);
-	uint32_t means = (aim + GROUP - 1u) / GROUP;
+	uint32_t slow = capaim_slow_samples(shape);
+	uint32_t means = slow / SLOW + (aim - slow + GROUP - 1u) / GROUP;
 
+	if (k < slow) {
+		return k / SLOW;
+	}
 	if (k >= aim) {
 		return means + k - aim;
 	}
@@ -185,11 +203,11 @@ static int reads_back(const capaim_shape_t *shape)
 
 static void test_reader(void)
 {
-	capaim_shape_t ext = {EXTENDED_SAMPLES, CAP_EXTENDED_PRE, true};
-	capaim_shape_t odd = {ODD_AIM_TRIGGER + CAP_EXTENDED_POST, ODD_AIM_TRIGGER, true};
-	capaim_shape_t one = {FULL_RATE + 1u + CAP_EXTENDED_POST, FULL_RATE + 1u, true};
-	capaim_shape_t none = {FULL_RATE + CAP_EXTENDED_POST, FULL_RATE, true};
-	capaim_shape_t full = {EXTENDED_SAMPLES, CAP_EXTENDED_PRE, false};
+	capaim_shape_t ext = {EXTENDED_SAMPLES, CAP_EXTENDED_PRE, SP_CAPFMT_EXTENDED};
+	capaim_shape_t odd = {ODD_AIM_TRIGGER + CAP_EXTENDED_POST, ODD_AIM_TRIGGER, SP_CAPFMT_EXTENDED};
+	capaim_shape_t one = {FULL_RATE + 1u + CAP_EXTENDED_POST, FULL_RATE + 1u, SP_CAPFMT_EXTENDED};
+	capaim_shape_t none = {FULL_RATE + CAP_EXTENDED_POST, FULL_RATE, SP_CAPFMT_EXTENDED};
+	capaim_shape_t full = {EXTENDED_SAMPLES, CAP_EXTENDED_PRE, SP_CAPFMT_FULL};
 
 	check(reads_back(&ext), "reader repeats each mean 4 times, then passes the full-rate part through");
 	check(reads_back(&odd), "reader starts with the partial group when the aiming part is not a multiple of 4");
@@ -198,6 +216,11 @@ static void test_reader(void)
 	check(reads_back(&full), "reader passes a full-rate record through");
 	abandon_after_one(&ext);
 	check(reads_back(&odd), "a transfer cut off inside a group leaves nothing behind for the next one");
+	capaim_shape_t ultra = {ULTRA_SAMPLES, CAP_ULTRA_PRE, SP_CAPFMT_ULTRA};
+	capaim_shape_t ultra_odd = {ULTRA_ODD_TRIGGER + CAP_ULTRA_POST, ULTRA_ODD_TRIGGER, SP_CAPFMT_ULTRA};
+	check(reads_back(&ultra), "reader repeats 60 Hz means 8 times, then 120 Hz means 4 times");
+	abandon_after_one(&ultra);
+	check(reads_back(&ultra_odd), "ultra after a wake, read after a transfer cut off inside a 60 Hz group");
 }
 
 int main(void)

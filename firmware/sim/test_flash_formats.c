@@ -24,6 +24,7 @@
 #define CAPTURE_CHECK_0_3_8 0x50085E05u
 #define RECORD_MAGIC_0_3_8 0x53504352u
 #define AVERAGED_MAGIC_0_3_11 0x53504341u
+#define ULTRA_MAGIC_0_3_12 0x53504355u
 
 static uint8_t log_flash[LOG_BYTES];
 static uint8_t store_flash[STORE_BYTES];
@@ -130,10 +131,10 @@ static void test_capture_record(void)
 	check(header.check == CAPTURE_CHECK_0_3_8, "capture check word is the one firmware 0.3.8 writes");
 }
 
-static void test_averaged_record(void)
+static void check_format_record(uint8_t format, uint32_t magic)
 {
 	capstore_entry_t entry = {.seq = CAPTURE_SEQ, .n_samples = CAPTURE_SAMPLES, .trigger_index = CAPTURE_TRIGGER,
-				  .format = CAPSTORE_FORMAT_AIM_AVERAGED};
+				  .format = format};
 	uint8_t payload[PAYLOAD_BYTES];
 	capstore_chunk_t chunk = {payload, sizeof(payload)};
 	capstore_header_t header;
@@ -145,19 +146,27 @@ static void test_averaged_record(void)
 	check(capstore_init(&store, &store_dev) == 0 && capstore_begin(&store, &entry) == 0 &&
 	      capstore_write(&store, &chunk) == 0 && capstore_commit(&store) == 0, "averaged capture stored");
 	memcpy(&header, &store_flash[CAPSTORE_SECTOR_HEADER_BYTES], sizeof(header));
-	check(CAPSTORE_RECORD_MAGIC == RECORD_MAGIC_0_3_8, "full-rate captures keep the record magic 0.3.8 writes");
-	check(header.magic == AVERAGED_MAGIC_0_3_11 && header.check == CAPTURE_CHECK_0_3_8,
+	check(header.magic == magic && header.check == CAPTURE_CHECK_0_3_8,
 	      "an averaged capture differs only in its record magic");
+	capstore_check_t stored_check = {.seq = CAPTURE_SEQ};
 	check(capstore_init(&store, &store_dev) == 0 && capstore_find(&store, CAPTURE_SEQ) &&
-	      capstore_find(&store, CAPTURE_SEQ)->format == CAPSTORE_FORMAT_AIM_AVERAGED,
-	      "the boot scan reads the format back from the magic");
+	      capstore_find(&store, CAPTURE_SEQ)->format == format &&
+	      capstore_read_check(&store, &stored_check) == 0 && stored_check.check == CAPTURE_CHECK_0_3_8,
+	      "the boot scan reads the format back from the magic, and the check word is readable");
+}
+
+static void test_averaged_records(void)
+{
+	check(CAPSTORE_RECORD_MAGIC == RECORD_MAGIC_0_3_8, "full-rate captures keep the record magic 0.3.8 writes");
+	check_format_record(CAPSTORE_FORMAT_AIM_AVERAGED, AVERAGED_MAGIC_0_3_11);
+	check_format_record(CAPSTORE_FORMAT_ULTRA, ULTRA_MAGIC_0_3_12);
 }
 
 int main(void)
 {
 	test_event_record();
 	test_capture_record();
-	test_averaged_record();
+	test_averaged_records();
 	printf("FLASH FORMAT TESTS: %s\n", failures ? "FAIL" : "PASS");
 	return failures ? 1 : 0;
 }

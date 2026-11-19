@@ -35,6 +35,7 @@ typedef struct {
 void charge_init(charge_ctl_t *c);
 void charge_step(charge_ctl_t *c, const charge_sample_t *s);
 bool charge_holds_off(const charge_ctl_t *c);
+bool charge_inhibit_pin(const charge_ctl_t *c, const charge_sample_t *s);
 uint16_t charge_cell_mv(const charge_ctl_t *c, uint16_t mv);
 uint8_t charge_shown_pct(const charge_ctl_t *c, uint8_t pct);
 

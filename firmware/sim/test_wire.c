@@ -97,7 +97,9 @@ static void test_bounds(void)
 	window.capture_mode = SP_CAPTURE_EXTENDED;
 	window.post_start_ms = (uint16_t)(window.post_end_ms - 1u);
 	check(wire_config_valid(&window), "extended mode, shortest post window");
-	window.capture_mode = SP_CAPTURE_EXTENDED + 1u;
+	window.capture_mode = SP_CAPTURE_ULTRA;
+	check(wire_config_valid(&window), "ultra mode accepted");
+	window.capture_mode = SP_CAPTURE_ULTRA + 1u;
 	check(!wire_config_valid(&window), "unknown capture mode");
 }
 
@@ -180,7 +182,7 @@ static void test_normalize(void)
 	s.cfg.trig_hf_mg = (float)(WIRE_TRIG_MIN_MG - 1u);
 	check(!wire_config_normalize(&s), "stored out-of-range trigger is refused");
 	s = default_store();
-	s.capture_mode = SP_CAPTURE_EXTENDED + 1u;
+	s.capture_mode = SP_CAPTURE_ULTRA + 1u;
 	check(!wire_config_normalize(&s), "stored unknown capture mode is refused");
 }
 

@@ -61,7 +61,7 @@ bool wire_config_valid(const sp_config_t *w)
 	       w->post_lf_min_mg <= WIRE_POST_LF_MAX_MG &&
 	       in_range(w->refractory_ms, &refractory_range) &&
 	       in_range(w->wake_mg, &wake_range) && in_range(w->idle_timeout_s, &idle_range) &&
-	       w->capture_mode <= SP_CAPTURE_EXTENDED;
+	       w->capture_mode <= SP_CAPTURE_ULTRA;
 }
 
 wire_cfg_result_t wire_config_parse(sp_config_t *cfg, const wire_bytes_t *in)

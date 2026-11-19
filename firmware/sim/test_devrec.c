@@ -21,6 +21,7 @@
 
 static uint8_t flash[FLASH_BYTES];
 static cap_t cap;
+static sp_cap_sample_t history[CAP_HISTORY_SAMPLES];
 static capstore_t store;
 static capw_t writer;
 static devrec_t rec;
@@ -94,7 +95,7 @@ static void setup(void)
 
 	memset(flash, ERASED, sizeof(flash));
 	memset(&rec, 0, sizeof(rec));
-	cap_init(&cap);
+	cap_init(&cap, history);
 	check(capstore_init(&store, &dev) == 0, "store init");
 	capw_init(&writer, &deps);
 	while (cap.count < WARM_UP) {

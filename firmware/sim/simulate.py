@@ -393,7 +393,7 @@ def margins(res):
 CAPSTORE = ["capstore.c", "capstore_layout.c", "capstore_scan.c", "crc32.c"]
 CODEC = ["capcodec.c", "capdec.c", "capaim.c"]
 EVLOG = ["evlog.c", "crc32.c"]
-UNIT_TESTS = [("test_capture.c", ["capture.c"]), ("test_evlog.c", EVLOG), ("test_chg_led.c", ["chg_led.c"]),
+UNIT_TESTS = [("test_capture.c", ["capture.c"] + CODEC), ("test_evlog.c", EVLOG), ("test_chg_led.c", ["chg_led.c"]),
               ("test_recovery.c", ["recovery.c"]), ("test_capcodec.c", CODEC), ("test_capstore.c", CAPSTORE),
               ("test_capwriter.c", ["capwriter.c", "capture.c"] + CODEC + CAPSTORE),
               ("test_capwriter_faults.c", ["capwriter.c", "capture.c"] + CODEC + CAPSTORE),
@@ -405,7 +405,7 @@ UNIT_TESTS = [("test_capture.c", ["capture.c"]), ("test_evlog.c", EVLOG), ("test
               ("test_devrec.c", ["devrec.c", "capwriter.c", "capture.c"] + CODEC + CAPSTORE),
               ("test_capstore_wrap.c", CAPSTORE), ("test_devstream.c", ["devstream.c"]),
               ("test_capaim.c", CODEC),
-              ("test_capaim_store.c", ["capwriter.c", "capture.c"] + CODEC + CAPSTORE)]
+              ("test_capaim_store.c", ["../sim/cap_harness.c", "../sim/cap_model.c", "capwriter.c", "capture.c"] + CODEC + CAPSTORE)]
 
 
 def unit_test_passes(pair):
@@ -418,6 +418,23 @@ def unit_test_passes(pair):
 
 def unit_tests_pass():
     return all([unit_test_passes(pair) for pair in UNIT_TESTS])
+
+
+VECTOR_SOURCES = ["../sim/capvectors.c", "../sim/cap_harness.c", "capwriter.c", "capture.c"] + CODEC + CAPSTORE
+VECTOR_FILE = os.path.join(HERE, "vectors", "caprec-vectors.json")
+
+
+def vectors_pass():
+    exe = os.path.join(tempfile.mkdtemp(), "capvectors.exe")
+    subprocess.check_call([CC] + CFLAGS + ["-o", exe] + [os.path.join(SRC, m) for m in VECTOR_SOURCES] + ["-lm"])
+    produced = subprocess.run([exe], capture_output=True, text=True, check=True).stdout
+    with open(VECTOR_FILE, encoding="utf-8") as f:
+        committed = f.read()
+    same = produced == committed
+    decoded = subprocess.run([sys.executable, os.path.join(HERE, "caprec_decode.py"), VECTOR_FILE]).returncode == 0
+    print(f"CAPREC VECTOR TESTS: {'PASS' if same and decoded else 'FAIL'}"
+          f"{'' if same else ' (the firmware no longer writes caprec-vectors.json: codec or format changed)'}")
+    return same and decoded
 
 
 def main():
@@ -435,6 +452,7 @@ def main():
           f"[{cfg.post_start_ms}-{cfg.post_end_ms} ms], fs={cfg.fs_hz:.0f} Hz")
 
     ok = unit_tests_pass()
+    ok &= vectors_pass()
     r = run_set(lib, cfg, "nominal", args.sessions, args.seed, drop_frac=0.1)
     margins(r)
     ok &= r["recall"] >= 0.99 and r["precision"] >= 0.99

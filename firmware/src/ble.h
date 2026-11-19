@@ -27,6 +27,8 @@ void ble_update_config(const sp_config_t *c);
 void ble_update_diag(const sp_diag_t *d);
 void ble_set_tx_done_cb(ble_tx_done_cb_t cb);
 uint16_t ble_capture_room(void);
+uint16_t ble_caprec_room(void);
+int ble_send_caprec(const uint8_t *data, uint16_t len);
 uint16_t ble_event_room(void);
 int ble_send_events(const uint8_t *data, uint16_t len);
 int ble_send_capture(const uint8_t *data, uint16_t len);

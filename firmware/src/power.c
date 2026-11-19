@@ -191,7 +191,7 @@ static void update_charge_control(void)
 	charge_step(&charge, &s);
 	st.full = charge.full;
 	st.battery_pct = charge_shown_pct(&charge, mv_to_pct(charge_cell_mv(&charge, st.battery_mv)));
-	gpio_pin_set_dt(&chg_inhibit, (st.chg_inhibit || charge_holds_off(&charge)) ? 1 : 0);
+	gpio_pin_set_dt(&chg_inhibit, charge_inhibit_pin(&charge, &s) ? 1 : 0);
 }
 
 const power_state_t *power_update(void)

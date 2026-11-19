@@ -21,6 +21,7 @@ LOG_MODULE_REGISTER(accel, LOG_LEVEL_INF);
 #define AXIS_BYTES 2
 #define RESET_WAIT_MS 5
 #define IDLE_SETTLE_MS 200
+#define SLOW_IDLE_SETTLE_MS 1600
 #define UG_PER_MG 1000
 
 static const struct device *const i2c = DEVICE_DT_GET(DT_NODELABEL(i2c0));
@@ -29,6 +30,7 @@ static const struct gpio_dt_spec int1 =
 static struct gpio_callback int1_cb;
 static accel_irq_handler_t user_handler;
 static accel_mode_t cur_mode = ACCEL_OFF;
+static uint8_t idle_ctrl1 = OP_MODE_XL_LOW_POWER_2_AVG | ODR_15HZ;
 static int16_t last_gyro[AXES];
 
 static int wr(uint8_t reg, uint8_t val)
@@ -110,22 +112,24 @@ void accel_irq_rearm(void)
 	gpio_pin_interrupt_configure_dt(&int1, GPIO_INT_LEVEL_ACTIVE);
 }
 
-int accel_set_idle(uint16_t wake_mg)
+int accel_set_idle(uint16_t wake_mg, accel_idle_rate_t rate)
 {
 	uint8_t dummy;
+	bool slow = rate == ACCEL_IDLE_SLOW;
 
+	idle_ctrl1 = OP_MODE_XL_LOW_POWER_2_AVG | (slow ? ODR_1_875HZ : ODR_15HZ);
 	irq_pause();
 	wr(REG_MD1_CFG, REG_OFF);
 	wr(REG_INT1_CTRL, REG_OFF);
 	wr(REG_FIFO_CTRL4, FIFO_MODE_BYPASS);
 	wr(REG_CTRL2, REG_OFF);
 	wr(REG_CTRL1, REG_OFF);
-	wr(REG_CTRL1, OP_MODE_XL_LOW_POWER_2_AVG | ODR_15HZ);
+	wr(REG_CTRL1, idle_ctrl1);
 	wr(REG_TAP_CFG0, TAP_CFG0_LATCHED | TAP_CFG0_WAKE_HPF);
 	wr(REG_FUNCTIONS_ENABLE, FUNCTIONS_INTERRUPTS_ENABLE);
 	wr(REG_INACTIVITY_DUR, WAKE_THS_WEIGHT_31MG | INACT_ODR_DEFAULT);
 	wr(REG_WAKE_UP_THS, sd_wake_ths_lsb((float)wake_mg));
-	k_msleep(IDLE_SETTLE_MS);
+	k_msleep(slow ? SLOW_IDLE_SETTLE_MS : IDLE_SETTLE_MS);
 	rd(REG_WAKE_UP_SRC, &dummy);
 	wr(REG_MD1_CFG, MD1_INT1_WU);
 	cur_mode = ACCEL_IDLE;
@@ -179,7 +183,7 @@ bool accel_idle_ok(void)
 	if (rd(REG_CTRL1, &ctrl1) || rd(REG_MD1_CFG, &md1)) {
 		return false;
 	}
-	return ctrl1 == (OP_MODE_XL_LOW_POWER_2_AVG | ODR_15HZ) && md1 == MD1_INT1_WU;
+	return ctrl1 == idle_ctrl1 && md1 == MD1_INT1_WU;
 }
 
 int accel_clear_wake(void)

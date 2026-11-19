@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "../src/capaim.h"
 #include "../src/capture.h"
 
 #define ROUND_TRIP_SAMPLES 100000u
@@ -14,8 +15,20 @@
 #define MTU_PAYLOAD 244u
 #define TINY_PAYLOAD 10u
 #define AXIS_STRIDE 6u
+#define GROUP8 CAP_HISTORY_GROUP
+#define HISTORY_SPAN (CAP_HISTORY_SAMPLES * CAP_HISTORY_GROUP)
+#define ULTRA_TRIGGER 20003u
+#define ULTRA_WAKE_TRIGGER 9003u
+#define LATE_BY 4000u
+#define DROPPED_GROUPS 5u
+#define REC_HEADER_WIRE_BYTES 24u
+#define REC_DATA_WIRE_BYTES 9u
+#define REC_PAYLOAD_LEN 9912u
+#define REC_CHECK 0x50085E05u
+#define REC_OFFSET 470u
 
 static cap_t cap;
+static sp_cap_sample_t history[CAP_HISTORY_SAMPLES];
 static int failures;
 
 static void check(int ok, const char *what)
@@ -78,7 +91,7 @@ static void test_windows(void)
 	cap_request_t standard = cap_mode_request(SP_CAPTURE_STANDARD, trigger);
 	cap_request_t extended = cap_mode_request(SP_CAPTURE_EXTENDED, trigger);
 
-	cap_init(&cap);
+	cap_init(&cap, history);
 	push_until(trigger + 1u);
 	cap_window_t w = cap_window(&cap, &standard);
 	cap_window_t want_std = {trigger - CAP_STANDARD_PRE, trigger, trigger + CAP_STANDARD_POST};
@@ -91,7 +104,7 @@ static void test_windows(void)
 
 static void test_short_and_missing(void)
 {
-	cap_init(&cap);
+	cap_init(&cap, history);
 	push_until(WAKE_TRIGGER + 1u);
 	cap_request_t early = cap_mode_request(SP_CAPTURE_EXTENDED, WAKE_TRIGGER);
 	cap_window_t w = cap_window(&cap, &early);
@@ -143,6 +156,73 @@ static void test_packing(void)
 	check(cap_pack_header(&info, &tiny) == 0 && cap_data_fit(TINY_PAYLOAD) == 0, "tiny MTU sends nothing");
 }
 
+static void test_history(void)
+{
+	sp_cap_sample_t group[GROUP8];
+
+	cap_init(&cap, history);
+	push_until(GROUP8 * 3u - 1u);
+	check(cap_history_holds(&cap, 0u) && cap_history_holds(&cap, GROUP8 * 2u - 1u) &&
+	      !cap_history_holds(&cap, GROUP8 * 2u), "history holds complete groups of 8 only");
+	for (uint32_t i = 0; i < GROUP8; i++) {
+		group[i] = sample_for(GROUP8 + i);
+	}
+	sp_cap_sample_t want = capaim_mean(group, GROUP8);
+	check(memcmp(cap_history_sample(&cap, GROUP8 + 3u), &want, sizeof(want)) == 0,
+	      "history keeps the rounded mean of each group of 8");
+	push_until(HISTORY_SPAN + DROPPED_GROUPS * GROUP8);
+	check(!cap_history_holds(&cap, DROPPED_GROUPS * GROUP8 - 1u) && cap_history_holds(&cap, DROPPED_GROUPS * GROUP8),
+	      "history keeps the newest 2048 groups (34 s)");
+}
+
+static void test_ultra_window(void)
+{
+	cap_request_t req = cap_mode_request(SP_CAPTURE_ULTRA, ULTRA_TRIGGER);
+	cap_window_t want = {(ULTRA_TRIGGER - CAP_ULTRA_PRE) / GROUP8 * GROUP8, ULTRA_TRIGGER, ULTRA_TRIGGER + CAP_ULTRA_POST};
+
+	cap_init(&cap, history);
+	push_until(ULTRA_TRIGGER + CAP_ULTRA_POST);
+	cap_window_t w = cap_window(&cap, &req);
+	check(req.history && window_is(&w, &want), "ultra window: 30 s before, rounded down to a group of 8");
+	cap_init(&cap, history);
+	push_until(ULTRA_WAKE_TRIGGER + CAP_ULTRA_POST);
+	req = cap_mode_request(SP_CAPTURE_ULTRA, ULTRA_WAKE_TRIGGER);
+	w = cap_window(&cap, &req);
+	check(w.first == 0u && w.trigger == ULTRA_WAKE_TRIGGER, "ultra after a wake starts at the wake");
+	push_until(HISTORY_SPAN + CAP_ULTRA_PRE);
+	req = cap_mode_request(SP_CAPTURE_ULTRA, cap.count - LATE_BY);
+	w = cap_window(&cap, &req);
+	check(w.first == (cap.count / GROUP8 - CAP_HISTORY_SAMPLES) * GROUP8, "a late request starts at the oldest history group");
+}
+
+static void test_rec_packing(void)
+{
+	uint8_t buf[MTU_PAYLOAD];
+	uint8_t bytes[MTU_PAYLOAD];
+	cap_buf_t out = {buf, sizeof(buf)};
+	cap_rec_info_t info = {SHOT_SEQ, CAP_ULTRA_PRE + CAP_ULTRA_POST, CAP_ULTRA_PRE, SP_CAPFMT_ULTRA, REC_PAYLOAD_LEN, REC_CHECK};
+	sp_caprec_header_t h;
+	sp_caprec_data_t d;
+
+	check(sizeof(h) == REC_HEADER_WIRE_BYTES && sizeof(d) == REC_DATA_WIRE_BYTES, "record header 24 B, data head 9 B");
+	check(cap_pack_rec_header(&info, &out) == sizeof(h), "record header packed");
+	memcpy(&h, buf, sizeof(h));
+	check(h.type == SP_CAPREC_HEADER && h.seq == SHOT_SEQ && h.n_samples == info.n_samples &&
+	      h.trigger_index == CAP_ULTRA_PRE && h.format == SP_CAPFMT_ULTRA && h.payload_len == REC_PAYLOAD_LEN &&
+	      h.check == REC_CHECK && h.odr_hz == CAP_ODR_HZ, "record header fields");
+	uint32_t fit = cap_rec_data_fit(sizeof(buf));
+	for (uint32_t i = 0; i < fit; i++) {
+		bytes[i] = (uint8_t)(i * AXIS_STRIDE);
+	}
+	cap_rec_data_t data = {SHOT_SEQ, REC_OFFSET, bytes, fit};
+	check(fit == MTU_PAYLOAD - REC_DATA_WIRE_BYTES && cap_pack_rec_data(&data, &out) == MTU_PAYLOAD, "data fills the MTU");
+	memcpy(&d, buf, sizeof(d));
+	check(d.type == SP_CAPREC_DATA && d.seq == SHOT_SEQ && d.offset == REC_OFFSET &&
+	      memcmp(buf + sizeof(d), bytes, fit) == 0, "record data fields and bytes");
+	data.len = fit + 1u;
+	check(cap_pack_rec_data(&data, &out) == 0, "too many bytes rejected");
+}
+
 int main(void)
 {
 	test_round_trip();
@@ -151,6 +231,9 @@ int main(void)
 	test_short_and_missing();
 	test_reset();
 	test_packing();
+	test_history();
+	test_ultra_window();
+	test_rec_packing();
 	printf("CAPTURE TESTS: %s\n", failures ? "FAIL" : "PASS");
 	return failures ? 1 : 0;
 }

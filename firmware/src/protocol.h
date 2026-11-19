@@ -23,6 +23,7 @@
 #define SP_UUID_CAPTURE SP_UUID_BASE(0x07)
 #define SP_UUID_DIAG    SP_UUID_BASE(0x08)
 #define SP_UUID_STREAM  SP_UUID_BASE(0x09)
+#define SP_UUID_CAPREC  SP_UUID_BASE(0x0A)
 
 #define SP_ADV_COMPANY_ID 0xFFFFu
 
@@ -81,6 +82,14 @@ enum {
 enum {
 	SP_CAP_HEADER = 0x01,
 	SP_CAP_DATA = 0x02,
+	SP_CAPREC_HEADER = 0x03,
+	SP_CAPREC_DATA = 0x04,
+};
+
+enum {
+	SP_CAPFMT_FULL = 0,
+	SP_CAPFMT_EXTENDED = 1,
+	SP_CAPFMT_ULTRA = 2,
 };
 
 typedef struct __attribute__((packed)) {
@@ -98,6 +107,25 @@ typedef struct __attribute__((packed)) {
 	uint32_t seq;
 	uint16_t first;
 } sp_cap_data_t;
+
+typedef struct __attribute__((packed)) {
+	uint8_t type;
+	uint32_t seq;
+	uint16_t n_samples;
+	uint16_t trigger_index;
+	uint8_t format;
+	uint32_t payload_len;
+	uint32_t check;
+	uint16_t odr_hz;
+	uint16_t acc_ug_per_lsb;
+	uint16_t gyro_mdps_per_lsb;
+} sp_caprec_header_t;
+
+typedef struct __attribute__((packed)) {
+	uint8_t type;
+	uint32_t seq;
+	uint32_t offset;
+} sp_caprec_data_t;
 
 typedef struct __attribute__((packed)) {
 	int16_t acc[3];
@@ -128,6 +156,7 @@ typedef struct __attribute__((packed)) {
 enum {
 	SP_CAPTURE_STANDARD = 0,
 	SP_CAPTURE_EXTENDED = 1,
+	SP_CAPTURE_ULTRA = 2,
 };
 
 enum {

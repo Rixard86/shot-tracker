@@ -207,6 +207,7 @@ The last order package is `order/shotpuck-order-2026-10-26/` (rev 0B, PCB + asse
   4. Stand the Kapton-taped tube on the plate through the PCB hole. Stretch the 37 × 1.0 O-ring onto the cap's ledge, push the 4 M2×5 cheese head screws (nylon patch) down through the cap and put a 2 × 1.0 O-ring on each below its boss. Tilt cap, screws and O-rings on as one unit, port side first so the port's silicone ring goes into its hole in the wall, then lower the far side so the tube's top end goes into the lip (the band clears the board edge by only 0.1 mm per side: ease its inner face if it catches), and tighten until the cap's inner band seats on the plate. If the tube holds the cap up, face the tube shorter.
   5. On the bow: the button head bolt goes through the cap top, the sleeve and the weight into the riser.
 - **Programming:** SWD only (no reset pin), which is fine for the nRF52.
+- **After fitting or re-seating a cell, plug in USB-C for a second.** The BQ29700 protection IC may leave the board switched off when a cell is connected (TI datasheet §8.4.1) and releases it only when a charger is attached, so the puck does not boot until then (HANDOVER §8).
 
 ## Validation
 

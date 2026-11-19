@@ -59,6 +59,11 @@ bool charge_holds_off(const charge_ctl_t *c)
 	return c->full || c->timed_out;
 }
 
+bool charge_inhibit_pin(const charge_ctl_t *c, const charge_sample_t *s)
+{
+	return s->vbus && (s->paused || charge_holds_off(c));
+}
+
 uint16_t charge_cell_mv(const charge_ctl_t *c, uint16_t mv)
 {
 	if (!c->charging) {
