@@ -72,7 +72,7 @@ static int mark_first(capstore_t *store, uint32_t pos)
 int capstore_begin(capstore_t *store, const capstore_entry_t *header)
 {
 	uint32_t pos = capstore_fit_header(store, store->write_pos);
-	capstore_header_t h = {.magic = CAPSTORE_RECORD_MAGIC, .seq = header->seq,
+	capstore_header_t h = {.magic = capstore_magic(header->format), .seq = header->seq,
 			       .n_samples = header->n_samples, .trigger_index = header->trigger_index};
 	capstore_wspan_t open = {pos, (const uint8_t *)&h, CAPSTORE_OPEN_BYTES};
 

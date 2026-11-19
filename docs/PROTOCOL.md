@@ -1,5 +1,10 @@
 # ShotPuck BLE protocol (v3)
 
+Firmware 0.3.11 (still v3):
+- **Extended captures hold about 40 % more shots:** in extended mode the puck stores the aiming part of each shot's capture (from the start of the window until 1 s before the trigger) as means of 4 samples (120 Hz), rounded to nearest. The last second before the trigger and everything after it stay bit-exact. When it sends the capture, the puck repeats each mean 4 times, so the CAPTURE header and packets are exactly as before: 3840 samples at `odr_hz` 480, `trigger_index` 2880. The aiming part therefore holds no detail above 60 Hz, and each group of 4 samples there has the same value. On 37 real captures, about 68 now fit in 660 KB (48 before) and 42 in 408 KB (29 before).
+- Standard mode and RECORD captures are unchanged. Captures stored by older firmware still transfer exactly as they were stored.
+- No change to any layout or command.
+
 Firmware 0.3.10 (still v3):
 - **A sleeping puck wakes when the bow is lifted or drawn.** Before, the sensor woke on a sudden change: more than 312 mg on one axis between two 15 Hz samples. A smooth lift or draw never made one. None of 37 real shots (2026-11-15) did in the 6 s before release, and neither did a 100° lift. Now it wakes on high-pass filtered acceleration (cutoff 1/45 of the sample rate, 0.33 Hz), so tilting and steady motion count.
 - The CONFIG `wake_mg` default is now **90**; the sensor rounds it up to 93.75 mg. A saved config that still has the old default of 150 changes to 90 at boot; any other saved value is kept.
@@ -174,12 +179,15 @@ For every **accepted** shot the puck records the raw accelerometer and gyroscope
 
 If the puck woke up less than the pre-trigger time before the shot, the capture starts at the wake: `n_samples` and `trigger_index` are smaller by the missing part.
 
-Each capture is compressed (lossless) into a 408 KB flash area as soon as its window is complete; the newest captures push out the oldest. From 0.3.8 the area also takes in the second firmware slot while no update is in progress, about 660 KB in all. How many fit depends on how well the motion compresses:
+Each capture is compressed into a 408 KB flash area as soon as its window is complete; the newest captures push out the oldest. From 0.3.8 the area also takes in the second firmware slot while no update is in progress, about 660 KB in all. Standard captures are lossless. From 0.3.11 an extended capture keeps only the means of 4 samples (120 Hz, rounded to nearest) from the start of the window until 1 s before the trigger, and sends each mean 4 times: that part holds no detail above 60 Hz. The last second before the trigger and everything after it stay lossless. After a recent wake, the averaged part is shorter; if the trigger came 1 s or less after the wake, nothing is averaged. How many captures fit depends on how well the motion compresses:
 
-| Mode | No compression, 408 KB | Expected (2–4×), 408 KB | No compression, 660 KB (0.3.8) | Expected (2–4×), 660 KB (0.3.8) |
+| Mode | No compression, 408 KB | Compressed, 408 KB | No compression, 660 KB (0.3.8) | Compressed, 660 KB (0.3.8) |
 |---|---|---|---|---|
-| standard | 47 | about 90–150 | about 75 | about 145–240 |
-| extended | 8 | about 17–35 | about 12 | about 27–56 |
+| standard | 47 | about 90–150 (expected, 2–4×) | about 75 | about 145–240 (expected, 2–4×) |
+| extended, 0.3.10 and older | 8 | 29 (measured) | about 12 | 48 (measured) |
+| extended, 0.3.11 | 8 | 42 (measured) | about 12 | 68 (measured) |
+
+The measured counts come from 37 real extended captures (2026-11-12 to 2026-11-15) run through the firmware's own encoder and store.
 
 The 660 KB area shrinks back to 408 KB when a firmware update starts (the captures stored in the second slot are lost then) and while a just-updated firmware is on trial; it grows again once the new firmware has confirmed itself. Fetch the captures you want to keep before starting an update.
 

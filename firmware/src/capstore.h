@@ -31,12 +31,15 @@ typedef struct {
 	uint32_t sector_size;
 } capstore_flash_t;
 
+enum { CAPSTORE_FORMAT_FULL, CAPSTORE_FORMAT_AIM_AVERAGED };
+
 typedef struct {
 	uint32_t seq;
 	uint32_t start;
 	uint32_t payload_len;
 	uint16_t n_samples;
 	uint16_t trigger_index;
+	uint8_t format;
 } capstore_entry_t;
 
 typedef struct {

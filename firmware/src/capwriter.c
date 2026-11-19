@@ -2,6 +2,8 @@
 
 #include <string.h>
 
+#include "capaim.h"
+
 typedef enum { STEP_ENCODED, STEP_WAIT, STEP_FINISHED, STEP_LOST } step_t;
 
 void capw_init(capw_t *w, const capw_deps_t *deps)
@@ -73,16 +75,23 @@ static bool start(capw_t *w, const capw_request_t *req)
 	if (w->window.end == w->window.first) {
 		return false;
 	}
-	capstore_entry_t header = {
-		.seq = req->seq,
+	capaim_shape_t shape = {
 		.n_samples = (uint16_t)(w->window.end - w->window.first),
 		.trigger_index = (uint16_t)(w->window.trigger - w->window.first),
+		.averaged = req->mode == SP_CAPTURE_EXTENDED,
+	};
+	capstore_entry_t header = {
+		.seq = req->seq,
+		.n_samples = shape.n_samples,
+		.trigger_index = shape.trigger_index,
+		.format = shape.averaged ? CAPSTORE_FORMAT_AIM_AVERAGED : CAPSTORE_FORMAT_FULL,
 	};
 	if (capstore_begin(w->deps.store, &header) != 0) {
 		return false;
 	}
 	capenc_init(&w->enc);
 	w->current = *req;
+	w->aim_end = w->window.first + capaim_aim_samples(&shape);
 	w->next = w->window.first;
 	w->active = true;
 	return true;
@@ -102,30 +111,61 @@ static bool start_next(capw_t *w)
 	return false;
 }
 
+static uint32_t group_at(const capw_t *w, uint32_t index)
+{
+	return index < w->aim_end ? capaim_group(w->aim_end - index) : 1u;
+}
+
+static uint32_t block_end(const capw_t *w, uint32_t *count)
+{
+	uint32_t end = w->next;
+	uint32_t n = 0;
+
+	while (n < CODEC_BLOCK_SAMPLES && end < w->window.end) {
+		end += group_at(w, end);
+		n++;
+	}
+	*count = n;
+	return end;
+}
+
+static sp_cap_sample_t stored_sample(const capw_t *w, uint32_t index)
+{
+	sp_cap_sample_t group[CAPAIM_GROUP_SAMPLES];
+	uint32_t count = group_at(w, index);
+
+	for (uint32_t i = 0; i < count; i++) {
+		group[i] = *cap_sample(w->deps.cap, index + i);
+	}
+	return capaim_mean(group, count);
+}
+
 static step_t encode_block(capw_t *w)
 {
 	sp_cap_sample_t samples[CODEC_BLOCK_SAMPLES];
 	const cap_t *cap = w->deps.cap;
-	uint32_t left = w->window.end - w->next;
-	uint32_t n = left < CODEC_BLOCK_SAMPLES ? left : CODEC_BLOCK_SAMPLES;
+	uint32_t n;
+	uint32_t end = block_end(w, &n);
 
 	if (cap->epoch != w->current.epoch) {
 		return STEP_LOST;
 	}
-	if (cap->count < w->next + n) {
+	if (cap->count < end) {
 		return STEP_WAIT;
 	}
 	if (!cap_holds(cap, w->next)) {
 		return STEP_LOST;
 	}
+	uint32_t at = w->next;
 	for (uint32_t i = 0; i < n; i++) {
-		samples[i] = *cap_sample(cap, w->next + i);
+		samples[i] = stored_sample(w, at);
+		at += group_at(w, at);
 	}
 	codec_block_t block = {samples, n};
 	if (capenc_block(&w->enc, &block) != 0 || store_words(w) != 0) {
 		return STEP_LOST;
 	}
-	w->next += n;
+	w->next = end;
 	return w->next == w->window.end ? STEP_FINISHED : STEP_ENCODED;
 }
 

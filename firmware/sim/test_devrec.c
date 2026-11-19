@@ -179,7 +179,8 @@ static void test_lengths(void)
 	setup();
 	uint32_t first = record(FIRST_SEQ, SHORT_S);
 	const capstore_entry_t *e = capstore_find(&store, FIRST_SEQ);
-	check(e && e->n_samples == SHORT_S * CAP_ODR_HZ, "a 3 s recording holds 3 s of samples");
+	check(e && e->n_samples == SHORT_S * CAP_ODR_HZ && e->format == CAPSTORE_FORMAT_FULL,
+	      "a 3 s recording holds 3 s of samples, stored at full rate");
 	check(recording_matches(FIRST_SEQ, first), "it starts at the newest sample when asked");
 	first = record(SECOND_SEQ, SP_RECORD_MAX_S);
 	e = capstore_find(&store, SECOND_SEQ);

@@ -185,8 +185,10 @@ static void test_modes(void)
 	      "shot after wake keeps the samples since wake");
 	check(capture_matches(1, 0), "short capture decodes exactly");
 	check(capture_matches(2, SHOT_SPACING - CAP_STANDARD_PRE), "standard capture decodes exactly");
-	check(capture_matches(3, 2u * SHOT_SPACING - CAP_EXTENDED_PRE), "extended capture decodes exactly");
-	check(capstore_init(&store, &dev) == 0 && capture_matches(3, 2u * SHOT_SPACING - CAP_EXTENDED_PRE),
+	const capstore_entry_t *ext = capstore_find(&store, 3);
+	check(e && e->format == CAPSTORE_FORMAT_FULL && ext && ext->format == CAPSTORE_FORMAT_AIM_AVERAGED,
+	      "only the extended capture is stored with its aiming part averaged (test_capaim_store.c)");
+	check(capstore_init(&store, &dev) == 0 && capture_matches(2, SHOT_SPACING - CAP_STANDARD_PRE),
 	      "captures survive a reboot");
 }
 

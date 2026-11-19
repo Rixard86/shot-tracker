@@ -22,6 +22,8 @@
 #define PAYLOAD_BYTES 203u
 #define PAYLOAD_STRIDE 7u
 #define CAPTURE_CHECK_0_3_8 0x50085E05u
+#define RECORD_MAGIC_0_3_8 0x53504352u
+#define AVERAGED_MAGIC_0_3_11 0x53504341u
 
 static uint8_t log_flash[LOG_BYTES];
 static uint8_t store_flash[STORE_BYTES];
@@ -128,10 +130,34 @@ static void test_capture_record(void)
 	check(header.check == CAPTURE_CHECK_0_3_8, "capture check word is the one firmware 0.3.8 writes");
 }
 
+static void test_averaged_record(void)
+{
+	capstore_entry_t entry = {.seq = CAPTURE_SEQ, .n_samples = CAPTURE_SAMPLES, .trigger_index = CAPTURE_TRIGGER,
+				  .format = CAPSTORE_FORMAT_AIM_AVERAGED};
+	uint8_t payload[PAYLOAD_BYTES];
+	capstore_chunk_t chunk = {payload, sizeof(payload)};
+	capstore_header_t header;
+
+	for (uint32_t i = 0; i < sizeof(payload); i++) {
+		payload[i] = (uint8_t)(i * PAYLOAD_STRIDE);
+	}
+	memset(store_flash, ERASED, sizeof(store_flash));
+	check(capstore_init(&store, &store_dev) == 0 && capstore_begin(&store, &entry) == 0 &&
+	      capstore_write(&store, &chunk) == 0 && capstore_commit(&store) == 0, "averaged capture stored");
+	memcpy(&header, &store_flash[CAPSTORE_SECTOR_HEADER_BYTES], sizeof(header));
+	check(CAPSTORE_RECORD_MAGIC == RECORD_MAGIC_0_3_8, "full-rate captures keep the record magic 0.3.8 writes");
+	check(header.magic == AVERAGED_MAGIC_0_3_11 && header.check == CAPTURE_CHECK_0_3_8,
+	      "an averaged capture differs only in its record magic");
+	check(capstore_init(&store, &store_dev) == 0 && capstore_find(&store, CAPTURE_SEQ) &&
+	      capstore_find(&store, CAPTURE_SEQ)->format == CAPSTORE_FORMAT_AIM_AVERAGED,
+	      "the boot scan reads the format back from the magic");
+}
+
 int main(void)
 {
 	test_event_record();
 	test_capture_record();
+	test_averaged_record();
 	printf("FLASH FORMAT TESTS: %s\n", failures ? "FAIL" : "PASS");
 	return failures ? 1 : 0;
 }

@@ -5,6 +5,24 @@
 
 #define CRC_CHUNK_BYTES 64u
 
+uint32_t capstore_magic(uint8_t format)
+{
+	return format == CAPSTORE_FORMAT_AIM_AVERAGED ? CAPSTORE_AIM_AVERAGED_MAGIC : CAPSTORE_RECORD_MAGIC;
+}
+
+bool capstore_is_record(uint32_t magic)
+{
+	return magic == CAPSTORE_RECORD_MAGIC || magic == CAPSTORE_AIM_AVERAGED_MAGIC;
+}
+
+capstore_entry_t capstore_entry_at(const capstore_at_t *at)
+{
+	const capstore_header_t *h = &at->header;
+	uint8_t format = h->magic == CAPSTORE_AIM_AVERAGED_MAGIC ? CAPSTORE_FORMAT_AIM_AVERAGED : CAPSTORE_FORMAT_FULL;
+
+	return (capstore_entry_t){h->seq, at->pos, h->payload_len, h->n_samples, h->trigger_index, format};
+}
+
 uint32_t capstore_crc(uint32_t crc, const capstore_chunk_t *chunk)
 {
 	crc32_bytes_t bytes = {chunk->data, chunk->len};
@@ -110,10 +128,10 @@ static bool committed(const capstore_t *store, const capstore_header_t *h)
 int capstore_classify(const capstore_t *store, const capstore_at_t *at)
 {
 	const capstore_header_t *h = &at->header;
-	capstore_entry_t e = {h->seq, at->pos, h->payload_len, h->n_samples, h->trigger_index};
+	capstore_entry_t e = capstore_entry_at(at);
 	capstore_crc_job_t job = {.entry = &e};
 
-	if (h->magic != CAPSTORE_RECORD_MAGIC || !committed(store, h)) {
+	if (!capstore_is_record(h->magic) || !committed(store, h)) {
 		return CAPSTORE_RECORD_BAD;
 	}
 	int err = capstore_payload_crc(store, &job);

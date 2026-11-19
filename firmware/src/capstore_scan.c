@@ -54,7 +54,7 @@ static int read_anchor(const capstore_t *store, anchor_t *anchor)
 	}
 	anchor->at.pos = capstore_sector_start(store, anchor->sector) + info.first;
 	err = capstore_read_at(store, &anchor->at);
-	anchor->found = !err && anchor->at.header.magic == CAPSTORE_RECORD_MAGIC;
+	anchor->found = !err && capstore_is_record(anchor->at.header.magic);
 	return err;
 }
 
@@ -148,7 +148,7 @@ static int walk_step(capstore_t *store, walk_t *walk)
 	if (kind == CAPSTORE_RECORD_BAD) {
 		return rescan(store, walk);
 	}
-	capstore_entry_t e = {h->seq, walk->pos, h->payload_len, h->n_samples, h->trigger_index};
+	capstore_entry_t e = capstore_entry_at(&at);
 	if (kind == CAPSTORE_RECORD_KEPT) {
 		capstore_index_push(store, &e);
 	}

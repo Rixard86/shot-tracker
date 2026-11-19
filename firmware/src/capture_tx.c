@@ -5,7 +5,7 @@
 #include <zephyr/sys/util.h>
 
 #include "ble.h"
-#include "capcodec.h"
+#include "capaim.h"
 #include "capture.h"
 
 #define QUEUE_LEN 8u
@@ -17,6 +17,7 @@ typedef struct {
 	uint16_t n_samples;
 	uint16_t trigger_index;
 	uint32_t payload_len;
+	bool averaged;
 	uint16_t next;
 	uint16_t packet_samples;
 	size_t packet_len;
@@ -33,6 +34,7 @@ static bool sending;
 static bool held;
 static tx_job_t job;
 static capdec_t dec;
+static capaim_reader_t reader;
 static uint8_t payload[PAYLOAD_MAX];
 
 static int refill(capdec_t *d)
@@ -52,6 +54,7 @@ void cap_tx_init(const capstore_t *capture_store, const capw_t *capture_writer)
 	sending = false;
 	held = false;
 	dec.refill = refill;
+	reader.dec = &dec;
 }
 
 void cap_tx_queue(uint32_t seq)
@@ -87,8 +90,10 @@ static bool start_next(void)
 	job = (tx_job_t){.seq = seq,
 			  .n_samples = e ? e->n_samples : 0u,
 			  .trigger_index = e ? e->trigger_index : 0u,
-			  .payload_len = e ? e->payload_len : 0u};
-	capdec_init(&dec, job.n_samples);
+			  .payload_len = e ? e->payload_len : 0u,
+			  .averaged = e && e->format == CAPSTORE_FORMAT_AIM_AVERAGED};
+	capaim_shape_t shape = {job.n_samples, job.trigger_index, job.averaged};
+	capaim_open(&reader, &shape);
 	sending = true;
 	return true;
 }
@@ -112,7 +117,7 @@ static size_t build_packet(size_t capacity)
 	for (uint32_t i = 0; i < n; i++) {
 		sp_cap_sample_t sample;
 
-		if (capdec_next(&dec, &sample) != 1) {
+		if (capaim_next(&reader, &sample) != 1) {
 			return 0;
 		}
 		memcpy(&payload[sizeof(head) + i * sizeof(sample)], &sample, sizeof(sample));

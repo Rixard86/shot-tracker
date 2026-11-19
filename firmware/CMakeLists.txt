@@ -10,6 +10,7 @@ target_sources(app PRIVATE
   src/accel.c
   src/capture.c
   src/capture_tx.c
+  src/capaim.c
   src/capcodec.c
   src/capdec.c
   src/capflash.c

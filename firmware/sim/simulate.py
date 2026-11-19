@@ -391,7 +391,7 @@ def margins(res):
 
 
 CAPSTORE = ["capstore.c", "capstore_layout.c", "capstore_scan.c", "crc32.c"]
-CODEC = ["capcodec.c", "capdec.c"]
+CODEC = ["capcodec.c", "capdec.c", "capaim.c"]
 EVLOG = ["evlog.c", "crc32.c"]
 UNIT_TESTS = [("test_capture.c", ["capture.c"]), ("test_evlog.c", EVLOG), ("test_chg_led.c", ["chg_led.c"]),
               ("test_recovery.c", ["recovery.c"]), ("test_capcodec.c", CODEC), ("test_capstore.c", CAPSTORE),
@@ -403,7 +403,9 @@ UNIT_TESTS = [("test_capture.c", ["capture.c"]), ("test_evlog.c", EVLOG), ("test
               ("test_capjoin.c", ["capjoin.c"] + CAPSTORE), ("test_crc32.c", ["crc32.c"]),
               ("test_capcodec_choice.c", ["capcodec.c"]), ("test_flash_formats.c", ["evlog.c"] + CAPSTORE),
               ("test_devrec.c", ["devrec.c", "capwriter.c", "capture.c"] + CODEC + CAPSTORE),
-              ("test_capstore_wrap.c", CAPSTORE), ("test_devstream.c", ["devstream.c"])]
+              ("test_capstore_wrap.c", CAPSTORE), ("test_devstream.c", ["devstream.c"]),
+              ("test_capaim.c", CODEC),
+              ("test_capaim_store.c", ["capwriter.c", "capture.c"] + CODEC + CAPSTORE)]
 
 
 def unit_test_passes(pair):
