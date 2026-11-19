@@ -403,7 +403,7 @@ UNIT_TESTS = [("test_capture.c", ["capture.c"] + CODEC), ("test_evlog.c", EVLOG)
               ("test_capjoin.c", ["capjoin.c"] + CAPSTORE), ("test_crc32.c", ["crc32.c"]),
               ("test_capcodec_choice.c", ["capcodec.c"]), ("test_flash_formats.c", ["evlog.c"] + CAPSTORE),
               ("test_devrec.c", ["devrec.c", "capwriter.c", "capture.c"] + CODEC + CAPSTORE),
-              ("test_capstore_wrap.c", CAPSTORE), ("test_devstream.c", ["devstream.c"]),
+              ("test_capstore_wrap.c", CAPSTORE), ("test_devstream.c", ["devstream.c"]), ("test_wakestat.c", ["wakestat.c"]),
               ("test_capaim.c", CODEC),
               ("test_capaim_store.c", ["../sim/cap_harness.c", "../sim/cap_model.c", "capwriter.c", "capture.c"] + CODEC + CAPSTORE)]
 

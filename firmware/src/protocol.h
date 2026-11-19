@@ -195,6 +195,9 @@ typedef struct __attribute__((packed)) {
 	uint16_t crash_count;
 	uint16_t main_stack_free;
 	uint16_t workq_stack_free;
+	uint32_t motion_wakes;
+	uint32_t wakes_without_shot;
+	uint32_t uptime_s;
 } sp_diag_t;
 
 #endif /* PROTOCOL_H */

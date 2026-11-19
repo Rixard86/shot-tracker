@@ -7,6 +7,7 @@
 #define HISTORY_RAM_SECTION NRF_POWER_RAMPOWER_S2POWER_MASK
 #define HISTORY_RAM_ADDR 0x20020000u
 #define HISTORY_RAM_BYTES 0x8000u
+#define FPSCR_EXCEPTION_FLAGS 0x9Fu
 #define UNUSED_RAM_SECTIONS                                                                        \
 	(NRF_POWER_RAMPOWER_S3POWER_MASK | NRF_POWER_RAMPOWER_S4POWER_MASK | NRF_POWER_RAMPOWER_S5POWER_MASK)
 
@@ -28,6 +29,13 @@ void supply_history_ram_off(void)
 void supply_unused_ram_off(void)
 {
 	nrf_power_rampower_mask_off(NRF_POWER, UNUSED_RAM_BLOCK, UNUSED_RAM_SECTIONS);
+}
+
+void supply_clear_fpu_flags(void)
+{
+	__set_FPSCR(__get_FPSCR() & ~FPSCR_EXCEPTION_FLAGS);
+	(void)__get_FPSCR();
+	NVIC_ClearPendingIRQ(FPU_IRQn);
 }
 
 void supply_reg0_set_ldo(bool ldo)

@@ -79,7 +79,7 @@ static uint16_t stack_free(k_tid_t thread)
 	return unused > STACK_FREE_MAX ? STACK_FREE_MAX : (uint16_t)unused;
 }
 
-void diag_publish(const store_t *st)
+void diag_publish(const store_t *st, const wakestat_t *wakes)
 {
 	sp_diag_t d = {
 		.reset_cause = last_cause,
@@ -87,6 +87,9 @@ void diag_publish(const store_t *st)
 		.crash_count = st->crashes,
 		.main_stack_free = stack_free(k_current_get()),
 		.workq_stack_free = stack_free(&k_sys_work_q.thread),
+		.motion_wakes = wakes->motion_wakes,
+		.wakes_without_shot = wakes->wakes_without_shot,
+		.uptime_s = (uint32_t)(k_uptime_get() / MSEC_PER_SEC),
 	};
 
 	ble_update_diag(&d);

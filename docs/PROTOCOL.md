@@ -1,5 +1,10 @@
 # ShotPuck BLE protocol (v3)
 
+Firmware 0.3.13 (still v3):
+- **DIAG grows from 8 to 20 bytes** with a wake counter: `u32 motion_wakes` (how often a lift or other movement woke the sleeping puck since it started), `u32 wakes_without_shot` (of those, how many went back to sleep without an accepted shot: false wakes), `u32 uptime_s` (seconds since it started, to turn the counts into a rate). The counts start at 0 at every boot. An app that reads only the first 8 bytes keeps working.
+- Two safeguards with no visible change: the charger-status input is switched off while no cable is in (a floating input can draw current), and the floating-point status flags are cleared before the puck sleeps (nRF52840 erratum 87).
+- No other layout or command changes.
+
 Firmware 0.3.12 (still v3):
 - **Ultra capture mode** (CONFIG `capture_mode` 2): from 30 s before to 2 s after the trigger. The window start is rounded down to a group of 8 samples, so `n_samples` is 15,360–15,367 and `trigger_index` 14,400–14,407. The part until 6 s before the trigger is stored as means of 8 samples (60 Hz), 6 s to 1 s as means of 4 (120 Hz, as in extended), and the last second plus everything after it bit-exact. About 38 ultra captures fit in 660 KB (23 in 408 KB), estimated from real captures. Firmware 0.3.11 and older refuse mode 2.
 - **CAPREC characteristic** (`…000A…`, notify): a capture as the puck stores it, compressed, for the app to decode: 2 (standard) to 10 (ultra) times fewer bytes than CAPTURE. An app opts in by subscribing to CAPREC instead of CAPTURE; an app that only subscribes to CAPTURE gets the same packets as before (ultra captures rebuilt at 480 Hz there too). See *CAPREC* below.
@@ -117,7 +122,7 @@ Ask the user to keep the charger in until the phone has paired: unplugging close
 | `…0005…` | CONFIG | read, write | `sp_config_t` (19 B), below |
 | `…0006…` | STATUS | read, notify | `sp_status_t` (7 B), below |
 | `…0007…` | CAPTURE | notify | capture packets (header + data), below |
-| `…0008…` | DIAG | read | `sp_diag_t` (8 B), below (firmware 0.3.1) |
+| `…0008…` | DIAG | read | `sp_diag_t` (20 B since 0.3.13, 8 B in 0.3.1–0.3.12), below |
 | `…0009…` | STREAM | notify | live IMU samples for the dev page (firmware 0.3.9), see *STREAM* below |
 | `…000A…` | CAPREC | notify | captures as stored, compressed (firmware 0.3.12), see *CAPREC* below |
 
@@ -280,7 +285,7 @@ Out-of-range writes are rejected with ATT error 0x13 (value not allowed). Accept
 Flags: bit0 VBUS (cable present), bit1 CHARGING, bit2 CHG_INHIBIT (too cold or hot to charge), bit3 ACTIVE, bit4 TIME_SET, bit5 REG0_LDO (0.3.9, set while REG0 runs as LDO after REG0_MODE 1).
 `battery_pct` comes from the cell voltage through a table; from 0.3.5 it is at most 99 while CHARGING and 100 while the charge has ended with the cable still attached (see the 0.3.5 notes at the top). `battery_mv` is the raw reading.
 
-### DIAG (`sp_diag_t`, 8 B, firmware 0.3.1)
+### DIAG (`sp_diag_t`, 20 B; 8 B in firmware 0.3.1–0.3.12)
 
 Read-only diagnostics, so a crash in the field leaves a trace the app can show or log.
 
@@ -290,7 +295,10 @@ Read-only diagnostics, so a crash in the field leaves a trace the app can show o
 | 1 | u8 | crash_reason | Zephyr fatal error code when `reset_cause` = 4 (0 CPU exception, 1 spurious IRQ, 2 stack overflow, 3 kernel oops, 4 kernel panic), otherwise `0xFF` |
 | 2 | u16 | crash_count | Crash, watchdog and lockup restarts since the storage was last wiped (kept across updates and pad resets) |
 | 4 | u16 | main_stack_free | Fewest bytes the main thread's 3 KB stack has had free since boot |
-| 6 | u16 | workq_stack_free | The same for the 1 KB system work queue |
+| 6 | u16 | workq_stack_free | The same for the 2 KB system work queue |
+| 8 | u32 | motion_wakes | Since 0.3.13: how often movement woke the sleeping puck since it started (wakes for a recording, the live stream or a sensor restart are not counted) |
+| 12 | u32 | wakes_without_shot | Since 0.3.13: of those wakes, how many went back to sleep without an accepted shot (false wakes: a knock on the stand, the bag moving) |
+| 16 | u32 | uptime_s | Since 0.3.13: seconds since the puck started, so `wakes_without_shot / uptime_s` is a false-wake rate. The three counts start at 0 at every boot |
 
 On a fatal error the puck now reboots at once (0.3.0 halted until the 10 s watchdog fired). A crash still counts towards the boot-loop guard, and an unconfirmed update still rolls back. The values are refreshed at boot, on SET_TIME and every 10 s (60 s while idle); read DIAG when needed, there are no notifications. An app can log it once per connection and flag a growing `crash_count`.
 

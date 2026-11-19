@@ -7,7 +7,9 @@
  * Battery voltage: SAADC internal VDDH/5 input, no external divider.
  * Charger: MCP73831 (4.20 V). STAT is read through a diode (low = charging).
  *          The GPIO pull-up is only enabled while VBUS is present, so an
- *          unpowered charger can never leak pull-up current in standby.
+ *          unpowered charger can never leak pull-up current in standby;
+ *          without VBUS the input is disconnected, so the floating line
+ *          cannot draw input-buffer current either.
  *          CHG_INHIBIT high turns on Q2, which pulls Q1's gate low and opens
  *          the PROG resistor -> charger disabled. Default (pin low / MCU
  *          dead) = charging allowed, so a flat cell can always recover.
@@ -111,7 +113,7 @@ int power_init(void)
 	    !gpio_is_ready_dt(&chg_inhibit)) {
 		return -ENODEV;
 	}
-	gpio_pin_configure_dt(&chg_stat, GPIO_INPUT);
+	gpio_pin_configure_dt(&chg_stat, GPIO_DISCONNECTED);
 	gpio_pin_configure_dt(&chg_inhibit, GPIO_OUTPUT_INACTIVE);
 	return adc_channel_setup(adc, &vddh_ch);
 }
@@ -164,7 +166,7 @@ static void read_charger(void)
 		k_busy_wait(STAT_SETTLE_US);
 		st.charging = gpio_pin_get_dt(&chg_stat) == 1; /* active-low in DT */
 	} else {
-		gpio_pin_configure_dt(&chg_stat, GPIO_INPUT);
+		gpio_pin_configure_dt(&chg_stat, GPIO_DISCONNECTED);
 		st.charging = false;
 	}
 }

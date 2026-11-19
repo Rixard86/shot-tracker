@@ -39,6 +39,7 @@
 #include "shot_detect.h"
 #include "store.h"
 #include "supply.h"
+#include "wakestat.h"
 #include "wire.h"
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
@@ -91,6 +92,7 @@ static uint32_t active_start_ms;
 static uint32_t sample_idx;
 static uint32_t idle_since_ms;
 static bool idle_slow;
+static wakestat_t wakes;
 static uint32_t last_batch_ms;
 
 /* ---------------------------------------------------------------- utils */
@@ -122,7 +124,7 @@ static void publish_status(void)
 		.fw_minor = FW_MINOR,
 	};
 	ble_update_status(&s);
-	diag_publish(&st);
+	diag_publish(&st, &wakes);
 }
 
 /* ---------------------------------------------------------- callbacks */
@@ -213,6 +215,7 @@ static void go_idle(void)
 {
 	accel_set_idle((uint16_t)st.cfg.wake_mg, ACCEL_IDLE_FAST);
 	idle_slow = false;
+	wakestat_sleep(&wakes);
 	det.mode = SD_MODE_IDLE;
 	if (!capw_busy(&capw)) {
 		supply_history_ram_off();
@@ -257,6 +260,7 @@ static void handle_detection(const sd_event_t *e, int64_t uptime_ms)
 		lifetime_shot();
 		publish_count();
 		request_capture(e, w.seq);
+		wakestat_shot(&wakes);
 		led_play(LED_SHOT);
 		LOG_INF("SHOT #%u pk=%u still=%u lf=%u", st.total, e->peak_hf_mg,
 			e->pre_still_ms, e->post_lf_mg);
@@ -343,6 +347,7 @@ static void handle_accel(void)
 
 	if (accel_mode() == ACCEL_IDLE) {
 		if (accel_clear_wake() > 0) {
+			wakestat_wake(&wakes);
 			go_active();
 		} else {
 			accel_irq_rearm();
@@ -708,6 +713,7 @@ int main(void)
 		bool active = det.mode == SD_MODE_ACTIVE;
 		uint32_t hk_period = active ? HOUSEKEEP_ACTIVE_MS : HOUSEKEEP_IDLE_MS;
 
+		supply_clear_fpu_flags();
 		k_sem_take(&wake_sem, K_MSEC(poll_period(active)));
 		ota_feed();
 		ota_confirm_when_healthy(ble_link_secured());

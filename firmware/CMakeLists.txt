@@ -41,6 +41,7 @@ target_sources(app PRIVATE
   src/store.c
   src/supply.c
   src/ble.c
+  src/wakestat.c
   src/wire.c
 )
 
