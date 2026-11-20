@@ -5,7 +5,8 @@
  * BT callbacks only set flags / queue messages and give wake_sem.
  *
  *   IDLE   : LSM6DSV32X accelerometer at 15 Hz with wake interrupt, gyro
- *            off, CPU asleep. Advertising stops ADV_LINGER_MS after IDLE.
+ *            off, CPU asleep. Advertising stops ADV_LINGER_MS after IDLE,
+ *            or on unplugging USB if that comes later.
  *   ACTIVE : 480 Hz accel + gyro FIFO -> shot_detect.c and the capture
  *            ring; advertising / connected. Back to IDLE after
  *            cfg.idle_timeout_ms of stillness.
@@ -747,14 +748,14 @@ int main(void)
 
 		uint32_t now = k_uptime_get_32();
 		slow_down_idle(now);
-		bool in_linger = det.mode == SD_MODE_ACTIVE || (now - idle_since_ms) < ADV_LINGER_MS ||
-				 claim_is_open();
+		bool want_adv = det.mode == SD_MODE_ACTIVE || (now - idle_since_ms) < ADV_LINGER_MS ||
+				claim_is_open() || power_vbus_present();
 		if (atomic_cas(&conn_event, 1, 0) || !ble_is_advertising()) {
-			if (!ble_is_connected() && in_linger) {
+			if (!ble_is_connected() && want_adv) {
 				ble_adv_start();
 			}
 		}
-		if (!in_linger && ble_is_advertising()) {
+		if (!want_adv && ble_is_advertising()) {
 			ble_adv_stop();
 		}
 		if (now - last_hk >= hk_period) {

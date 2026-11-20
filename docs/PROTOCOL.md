@@ -1,5 +1,9 @@
 # ShotPuck BLE protocol (v3)
 
+Firmware 0.3.14 (still v3):
+- **Visible the whole time the charger is attached:** the puck keeps advertising while VBUS is present, also once it has gone IDLE, so the app can find it for an update or a sync without anyone moving it. After unplugging, the usual rule applies again: advertising stops at once if the puck has been IDLE for more than 120 s. The motion sensor still sleeps as before while charging.
+- No layout or command changes.
+
 Firmware 0.3.13 (still v3):
 - **DIAG grows from 8 to 20 bytes** with a wake counter: `u32 motion_wakes` (how often a lift or other movement woke the sleeping puck since it started), `u32 wakes_without_shot` (of those, how many went back to sleep without an accepted shot: false wakes), `u32 uptime_s` (seconds since it started, to turn the counts into a rate). The counts start at 0 at every boot. An app that reads only the first 8 bytes keeps working.
 - Two safeguards with no visible change: the charger-status input is switched off while no cable is in (a floating input can draw current), and the floating-point status flags are cleared before the puck sleeps (nRF52840 erratum 87).
@@ -85,7 +89,7 @@ Source of truth: `firmware/src/protocol.h`. All multi-byte values are **little-e
 - **Device Information Service** (0x180A), readable **without pairing**:
   - Serial Number String (0x2A25): 16 hex characters, the nRF52840's factory-unique device ID. **Use it as `device_id`** in the app and in PowerSync. It is identical on every phone; the iOS peripheral identifier is not.
   - Model Number String (0x2A24) `ShotPuck`, Firmware Revision String (0x2A26), e.g. `0.2.0+0` (from `firmware/VERSION`).
-- The puck advertises while it is **ACTIVE** (from motion wake until 30 s of stillness, plus a 120 s linger) and while its **pairing window** is open. A puck lying still in a bag is invisible, so pick up the bow to make it connectable.
+- The puck advertises while it is **ACTIVE** (from motion wake until 30 s of stillness, plus a 120 s linger), while its **pairing window** is open and, from firmware 0.3.14, whenever the **charger** is attached. A puck lying still in a bag is invisible, so pick up the bow to make it connectable.
 - **Pairing marker** (firmware 0.3.1): while the pairing window is open, the advertising data also carries manufacturer-specific data, company ID `0xFFFF` (`SP_ADV_COMPANY_ID`), payload one flags byte with bit 0 set (`SP_ADV_PAIRING_OPEN`). Outside the window the field is absent. The app matches it only on devices that also advertise the ShotPuck service UUID. `0xFFFF` is the Bluetooth SIG's ID for tests and prototypes; a product release needs an assigned company ID, and then both firmware and app change this constant together.
 - One connection at a time.
 - **Unencrypted links are dropped after 30 s** (firmware 0.3.1): a connection that has not reached an encrypted link 30 s after it was made is disconnected by the puck. Paired phones encrypt within a second or two (at their first subscribe, or by re-encrypting on connect). Tools such as nRF Connect can still read the open services; they are disconnected 30 s later unless they pair.
