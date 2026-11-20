@@ -743,7 +743,8 @@ int main(void)
 		if (cap_tx_busy()) {
 			cap_tx_pump();
 		}
-		ble_set_bulk(event_tx_busy() || cap_tx_busy() || ota_upload_active() || devstream_on(&live_stream));
+		ble_set_bulk(event_tx_busy() || cap_tx_busy() || ota_upload_active() ||
+			     devstream_on(&live_stream) || power_vbus_present());
 		apply_config();
 
 		uint32_t now = k_uptime_get_32();
