@@ -43,6 +43,7 @@ mechanical/puck.py          CadQuery model + mass/balance -> out/ (STEP, STL, ma
 mechanical/plate_drawing.py plate manufacturing drawing (hole table, M2 thread callout) -> out/plate_drawing.pdf;
                             5052 sheet-metal prototype variant -> out/plate_drawing_5052.pdf + out/plate_5052.step
 mechanical/plate_fdm.py     3D-printable (FDM) plate: locating lip instead of the O-ring, cell pocket and lip, tube lip (inner lips with 45° gussets), + sloped strip post with a strip slot through the cell lip down to the pocket floor -> out/plate_fdm.stl (arc and sector helpers in fdm_shapes.py)
+mechanical/spacer_fdm.py    5 round 0.6 mm printed spacers for the M2 screws in place of the clamp O-rings, Ø3.6 with a Ø2.1 hole that prints about Ø1.9 to grip the thread -> out/spacer_fdm.stl
 mechanical/viewer/          3D viewer of the rev 0A puck: assembled-to-exploded slider, cut view, cap seal band old/new
                             (three.js, one index.html with the meshes and the PCB embedded); also the private artifact claude.ai/artifact/EnhZPnRmLfCq5PVbHscZpo
 mechanical/blender/         Blender scene + exploded-view assembly animation -> out/shotpuck_assembly.mp4/.blend

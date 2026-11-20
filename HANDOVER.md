@@ -200,6 +200,7 @@ mechanical/geometry.py, puck_parts.py, puck_report.py   its heights and poses, p
 mechanical/plate_drawing.py  plate manufacturing drawing (hole table, M2 thread callout) → out/plate_drawing.pdf, plus the
                              5052 sheet-metal prototype variant → out/plate_drawing_5052.pdf + out/plate_5052.step
 mechanical/plate_fdm.py      3D-printable (FDM) prototype plate: locating lip instead of the O-ring, cell pocket and lip, tube lip (inner lips with 45° gussets), + sloped strip post with a strip slot through the cell lip down to the pocket floor → out/plate_fdm.stl (arc and sector helpers in fdm_shapes.py)
+mechanical/spacer_fdm.py     5 round printed spacers in place of the 2 × 1.0 clamp O-rings (2026-11-19, Richard): 0.6 thick (1.0 printed too thick, then 0.5 tried), Ø3.6 (0.2 mm inside the cap wall at r 16.5, ≥0.36 mm off every top-side courtyard), Ø2.1 hole (M2 2.0 − `SCREW_GRIP` 0.1 + the 0.2 FDM growth, so it prints about Ø1.9 and grips the thread; modelled Ø1.9 without the growth it printed too tight) → out/spacer_fdm.stl. As modelled the boss gap is 0.65, so a 0.6 spacer leaves 0.05 between it and the boss: it keeps the screw captive but does not clamp the board unless the real gap is smaller
 mechanical/blender/          render_assembly.py (entry) + parts/cellconn/shapes/stack/looks/motion: exploded-view animation → out/shotpuck_assembly.mp4
 docs/PROTOCOL.md             BLE protocol v3 + recommended app sync
 docs/VALIDATION.md           proven vs on-device checklist
