@@ -1,5 +1,6 @@
 #include "event_tx.h"
 
+#include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/storage/flash_map.h>
 
@@ -12,6 +13,7 @@ LOG_MODULE_REGISTER(event_tx, LOG_LEVEL_INF);
 
 
 static const struct flash_area *area;
+static const wire_clock_t *wall_clock;
 static evlog_t shots;
 static bool shots_ready;
 static evq_t queue;
@@ -44,10 +46,17 @@ static evlog_flash_t shots_flash = {
 	.sector_size = FLASH_SECTOR_BYTES,
 };
 
-int event_tx_init(void)
+static int64_t event_unix_ms(uint32_t uptime_ms)
 {
-	evq_deps_t deps = {.link = {.room = ble_event_room, .send = ble_send_events}};
+	return wire_clock_unix_ms(wall_clock, wire_uptime_unwrap(k_uptime_get(), uptime_ms));
+}
+
+int event_tx_init(const wire_clock_t *clock)
+{
+	evq_deps_t deps = {.link = {.room = ble_event_room, .send = ble_send_events}, .unix_ms = event_unix_ms};
 	int err = flash_area_open(FIXED_PARTITION_ID(eventlog_partition), &area);
+
+	wall_clock = clock;
 
 	if (!err) {
 		shots_flash.size = (uint32_t)area->fa_size;

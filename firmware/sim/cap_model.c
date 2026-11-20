@@ -56,8 +56,9 @@ static int refill(capdec_t *dec)
 {
 	const harness_want_t *want = dec->context;
 	const capstore_entry_t *e = capstore_find(harness_store(), want->seq);
-	uint32_t left = e ? e->payload_len - dec->source_offset : 0u;
-	capstore_read_t req = {want->seq, dec->source_offset, dec->in, left < CODEC_IN_BYTES ? left : CODEC_IN_BYTES};
+	uint32_t body = e ? capstore_body_start(e) : 0u;
+	uint32_t left = e ? e->payload_len - body - dec->source_offset : 0u;
+	capstore_read_t req = {want->seq, body + dec->source_offset, dec->in, left < CODEC_IN_BYTES ? left : CODEC_IN_BYTES};
 
 	dec->in_len = req.len;
 	dec->source_offset += req.len;

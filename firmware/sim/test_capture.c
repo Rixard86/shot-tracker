@@ -11,7 +11,8 @@
 #define SHOT_SEQ 42u
 #define WAKE_TRIGGER 100u
 #define LONG_RUN (CAP_RING_SAMPLES * 3u)
-#define HEADER_WIRE_BYTES 15u
+#define HEADER_WIRE_BYTES 23u
+#define HEADER_OFFSET_AT 15u
 #define MTU_PAYLOAD 244u
 #define TINY_PAYLOAD 10u
 #define AXIS_STRIDE 6u
@@ -21,7 +22,12 @@
 #define ULTRA_WAKE_TRIGGER 9003u
 #define LATE_BY 4000u
 #define DROPPED_GROUPS 5u
-#define REC_HEADER_WIRE_BYTES 24u
+#define REC_HEADER_WIRE_BYTES 32u
+#define REC_HEADER_OFFSET_AT 24u
+#define OFFSET_X_MDPS (-18)
+#define OFFSET_Y_MDPS (-181)
+#define OFFSET_Z_MDPS (-15)
+#define OFFSET_AGE_S 42u
 #define REC_DATA_WIRE_BYTES 9u
 #define REC_PAYLOAD_LEN 9912u
 #define REC_CHECK 0x50085E05u
@@ -130,19 +136,22 @@ static void test_reset(void)
 	check(cap.count == 0 && cap.epoch == epoch + 1u, "reset empties the ring and bumps the epoch");
 }
 
+static const sp_gyro_offset_t measured = {{OFFSET_X_MDPS, OFFSET_Y_MDPS, OFFSET_Z_MDPS}, OFFSET_AGE_S};
+
 static void test_packing(void)
 {
 	uint8_t buf[MTU_PAYLOAD];
 	cap_buf_t out = {buf, sizeof(buf)};
-	cap_header_info_t info = {SHOT_SEQ, CAP_STANDARD_PRE + CAP_STANDARD_POST, CAP_STANDARD_PRE};
+	cap_header_info_t info = {SHOT_SEQ, CAP_STANDARD_PRE + CAP_STANDARD_POST, CAP_STANDARD_PRE, measured};
 	sp_cap_header_t h;
 	sp_cap_sample_t samples[MTU_PAYLOAD / sizeof(sp_cap_sample_t)];
 
-	check(sizeof(h) == HEADER_WIRE_BYTES, "header is 15 bytes");
+	check(sizeof(h) == HEADER_WIRE_BYTES, "header is 23 bytes");
 	check(cap_pack_header(&info, &out) == sizeof(h), "header packed");
 	memcpy(&h, buf, sizeof(h));
 	check(h.type == SP_CAP_HEADER && h.seq == SHOT_SEQ && h.n_samples == info.n_samples &&
 	      h.trigger_index == CAP_STANDARD_PRE && h.odr_hz == CAP_ODR_HZ, "header fields");
+	check(memcmp(buf + HEADER_OFFSET_AT, &measured, sizeof(measured)) == 0, "gyro offset at byte 15");
 	uint32_t fit = cap_data_fit(sizeof(buf));
 	for (uint32_t i = 0; i < fit; i++) {
 		samples[i] = sample_for(i);
@@ -200,16 +209,17 @@ static void test_rec_packing(void)
 	uint8_t buf[MTU_PAYLOAD];
 	uint8_t bytes[MTU_PAYLOAD];
 	cap_buf_t out = {buf, sizeof(buf)};
-	cap_rec_info_t info = {SHOT_SEQ, CAP_ULTRA_PRE + CAP_ULTRA_POST, CAP_ULTRA_PRE, SP_CAPFMT_ULTRA, REC_PAYLOAD_LEN, REC_CHECK};
+	cap_rec_info_t info = {SHOT_SEQ, CAP_ULTRA_PRE + CAP_ULTRA_POST, CAP_ULTRA_PRE, SP_CAPFMT_ULTRA, REC_PAYLOAD_LEN, REC_CHECK, measured};
 	sp_caprec_header_t h;
 	sp_caprec_data_t d;
 
-	check(sizeof(h) == REC_HEADER_WIRE_BYTES && sizeof(d) == REC_DATA_WIRE_BYTES, "record header 24 B, data head 9 B");
+	check(sizeof(h) == REC_HEADER_WIRE_BYTES && sizeof(d) == REC_DATA_WIRE_BYTES, "record header 32 B, data head 9 B");
 	check(cap_pack_rec_header(&info, &out) == sizeof(h), "record header packed");
 	memcpy(&h, buf, sizeof(h));
 	check(h.type == SP_CAPREC_HEADER && h.seq == SHOT_SEQ && h.n_samples == info.n_samples &&
 	      h.trigger_index == CAP_ULTRA_PRE && h.format == SP_CAPFMT_ULTRA && h.payload_len == REC_PAYLOAD_LEN &&
 	      h.check == REC_CHECK && h.odr_hz == CAP_ODR_HZ, "record header fields");
+	check(memcmp(buf + REC_HEADER_OFFSET_AT, &measured, sizeof(measured)) == 0, "record gyro offset at byte 24");
 	uint32_t fit = cap_rec_data_fit(sizeof(buf));
 	for (uint32_t i = 0; i < fit; i++) {
 		bytes[i] = (uint8_t)(i * AXIS_STRIDE);

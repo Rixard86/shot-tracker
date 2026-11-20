@@ -93,8 +93,15 @@ static bool start(capw_t *w, const capw_request_t *req)
 		.n_samples = shape.n_samples,
 		.trigger_index = shape.trigger_index,
 		.format = shape.format,
+		.gyro_offset = true,
 	};
+	capstore_chunk_t prefix = {(const uint8_t *)&req->gyro_offset, CAPSTORE_OFFSET_BYTES};
+
 	if (capstore_begin(w->deps.store, &header) != 0) {
+		return false;
+	}
+	if (capstore_write(w->deps.store, &prefix) != 0) {
+		capstore_abort(w->deps.store);
 		return false;
 	}
 	capenc_init(&w->enc);

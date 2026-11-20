@@ -9,6 +9,7 @@
 #define LATER_MS 1000LL
 #define LONG_UPTIME_MS 5000000000LL
 #define RESYNC_SHIFT_MS 250LL
+#define EVENT_AGE_MS 3000LL
 #define V3_BYTES ((uint16_t)sizeof(sp_config_t))
 
 typedef struct {
@@ -204,6 +205,17 @@ static void test_clock(void)
 	      "a later SET_TIME moves the clock");
 }
 
+static void test_unwrap(void)
+{
+	int64_t event_ms = LONG_UPTIME_MS - EVENT_AGE_MS;
+
+	check(wire_uptime_unwrap(LONG_UPTIME_MS, (uint32_t)event_ms) == event_ms,
+	      "a 32-bit event uptime unwraps against the 64-bit uptime");
+	check(wire_uptime_unwrap(SET_TIME_UPTIME_MS, (uint32_t)(SET_TIME_UPTIME_MS - LATER_MS)) ==
+		      SET_TIME_UPTIME_MS - LATER_MS,
+	      "unwrap is plain before the first wrap");
+}
+
 int main(void)
 {
 	test_bounds();
@@ -212,6 +224,7 @@ int main(void)
 	test_parse_rejects();
 	test_normalize();
 	test_clock();
+	test_unwrap();
 	printf("WIRE TESTS: %s\n", failures ? "FAIL" : "PASS");
 	return failures ? 1 : 0;
 }

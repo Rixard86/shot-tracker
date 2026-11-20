@@ -5,8 +5,9 @@
 #include <stdint.h>
 
 #include "protocol.h"
+#include "wire.h"
 
-int event_tx_init(void);
+int event_tx_init(const wire_clock_t *clock);
 void event_tx_record(const sp_event_t *event);
 void event_tx_replay(uint32_t from_seq);
 int event_tx_delete(uint32_t seq);

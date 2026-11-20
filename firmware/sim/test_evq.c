@@ -167,7 +167,8 @@ static void test_empty_replay(void)
 	reset(true);
 	evq_replay(&queue, PAST_EVERYTHING);
 	evq_pump(&queue);
-	check(!evq_busy(&queue) && send_calls == 0u, "a replay with nothing to send ends at once");
+	check(!evq_busy(&queue) && send_calls == 1u && end_count == 1u && end_from == PAST_EVERYTHING,
+	      "a replay with nothing to send ends at once, with only the end marker");
 }
 
 static void test_shot_log(void)

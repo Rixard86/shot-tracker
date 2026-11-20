@@ -51,6 +51,10 @@ typedef struct __attribute__((packed)) {
 } sp_event_t;              /* 24 bytes: needs ATT MTU >= 27. The device     */
                            /* requests MTU 247 on connect.                  */
 
+typedef struct __attribute__((packed)) {
+	uint32_t from_seq;
+} sp_replay_end_t;
+
 enum {
 	SP_CTRL_SET_TIME = 0x01,    /* + int64 unix_ms                          */
 	SP_CTRL_RESET_COUNT = 0x02, /* no payload                               */
@@ -92,6 +96,14 @@ enum {
 	SP_CAPFMT_ULTRA = 2,
 };
 
+#define SP_GYRO_OFFSET_UNKNOWN 0xFFFFu
+#define SP_GYRO_OFFSET_AGE_MAX_S 0xFFFEu
+
+typedef struct __attribute__((packed)) {
+	int16_t mdps[3];
+	uint16_t age_s;
+} sp_gyro_offset_t;
+
 typedef struct __attribute__((packed)) {
 	uint8_t type;
 	uint32_t seq;
@@ -100,6 +112,7 @@ typedef struct __attribute__((packed)) {
 	uint16_t odr_hz;
 	uint16_t acc_ug_per_lsb;
 	uint16_t gyro_mdps_per_lsb;
+	sp_gyro_offset_t gyro_offset;
 } sp_cap_header_t;
 
 typedef struct __attribute__((packed)) {
@@ -119,6 +132,7 @@ typedef struct __attribute__((packed)) {
 	uint16_t odr_hz;
 	uint16_t acc_ug_per_lsb;
 	uint16_t gyro_mdps_per_lsb;
+	sp_gyro_offset_t gyro_offset;
 } sp_caprec_header_t;
 
 typedef struct __attribute__((packed)) {

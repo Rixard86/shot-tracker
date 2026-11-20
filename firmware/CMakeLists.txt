@@ -43,6 +43,7 @@ target_sources(app PRIVATE
   src/ble.c
   src/wakestat.c
   src/wire.c
+  src/zerorate.c
 )
 
 zephyr_linker_sources(SECTIONS ram_limit.ld)

@@ -17,6 +17,8 @@ typedef struct {
 	uint16_t n_samples;
 	uint16_t trigger_index;
 	uint32_t payload_len;
+	uint32_t body;
+	sp_gyro_offset_t gyro_offset;
 	uint8_t format;
 	bool compact;
 	uint32_t next;
@@ -41,7 +43,7 @@ static uint8_t chunk[PAYLOAD_MAX];
 
 static int refill(capdec_t *d)
 {
-	capstore_read_t req = {job.seq, d->source_offset, d->in,
+	capstore_read_t req = {job.seq, job.body + d->source_offset, d->in,
 			       MIN(job.payload_len - d->source_offset, CODEC_IN_BYTES)};
 	d->in_len = req.len;
 	d->source_offset += req.len;
@@ -79,6 +81,15 @@ bool cap_tx_busy(void)
 	return sending || (queue_len > 0 && !held);
 }
 
+static sp_gyro_offset_t stored_offset(const capstore_entry_t *e)
+{
+	sp_gyro_offset_t unknown = {.age_s = SP_GYRO_OFFSET_UNKNOWN};
+	sp_gyro_offset_t offset;
+	capstore_read_t req = {e ? e->seq : 0u, 0u, (uint8_t *)&offset, CAPSTORE_OFFSET_BYTES};
+
+	return e && e->gyro_offset && capstore_read(store, &req) == 0 ? offset : unknown;
+}
+
 static bool start_next(void)
 {
 	uint32_t seq = queue[queue_head];
@@ -89,10 +100,13 @@ static bool start_next(void)
 	queue_head = (queue_head + 1u) % QUEUE_LEN;
 	queue_len--;
 	const capstore_entry_t *e = capstore_find(store, seq);
+	uint32_t body = e ? capstore_body_start(e) : 0u;
 	job = (tx_job_t){.seq = seq,
 			  .n_samples = e ? e->n_samples : 0u,
 			  .trigger_index = e ? e->trigger_index : 0u,
-			  .payload_len = e ? e->payload_len : 0u,
+			  .payload_len = e ? e->payload_len - body : 0u,
+			  .body = body,
+			  .gyro_offset = stored_offset(e),
 			  .format = e ? e->format : SP_CAPFMT_FULL,
 			  .compact = ble_caprec_room() > 0u};
 	if (!job.compact) {
@@ -109,12 +123,13 @@ static size_t build_rec_packet(size_t capacity)
 
 	if (!job.header_sent) {
 		capstore_check_t check = {.seq = job.seq};
-		(void)capstore_read_check(store, &check);
-		cap_rec_info_t info = {job.seq, job.n_samples, job.trigger_index, job.format, job.payload_len, check.check};
+		(void)capstore_body_check(store, &check);
+		cap_rec_info_t info = {job.seq, job.n_samples, job.trigger_index, job.format,
+				       job.payload_len, check.check, job.gyro_offset};
 		return cap_pack_rec_header(&info, &out);
 	}
 	uint32_t n = MIN(cap_rec_data_fit(capacity), job.payload_len - job.next);
-	capstore_read_t req = {job.seq, job.next, chunk, n};
+	capstore_read_t req = {job.seq, job.body + job.next, chunk, n};
 
 	if (n == 0u || capstore_read(store, &req) != 0) {
 		return 0;
@@ -129,7 +144,7 @@ static size_t build_sample_packet(size_t capacity)
 	cap_buf_t out = {payload, capacity};
 
 	if (!job.header_sent) {
-		cap_header_info_t info = {job.seq, job.n_samples, job.trigger_index};
+		cap_header_info_t info = {job.seq, job.n_samples, job.trigger_index, job.gyro_offset};
 		return cap_pack_header(&info, &out);
 	}
 	uint32_t fit = MIN(cap_data_fit(capacity), FIT_MAX);

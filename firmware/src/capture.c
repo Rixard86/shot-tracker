@@ -119,6 +119,7 @@ size_t cap_pack_header(const cap_header_info_t *info, const cap_buf_t *out)
 		.odr_hz = CAP_ODR_HZ,
 		.acc_ug_per_lsb = CAP_ACC_UG_PER_LSB,
 		.gyro_mdps_per_lsb = CAP_GYRO_MDPS_PER_LSB,
+		.gyro_offset = info->gyro_offset,
 	};
 
 	if (out->capacity < sizeof(h)) {
@@ -159,6 +160,7 @@ size_t cap_pack_rec_header(const cap_rec_info_t *info, const cap_buf_t *out)
 		.odr_hz = CAP_ODR_HZ,
 		.acc_ug_per_lsb = CAP_ACC_UG_PER_LSB,
 		.gyro_mdps_per_lsb = CAP_GYRO_MDPS_PER_LSB,
+		.gyro_offset = info->gyro_offset,
 	};
 
 	if (out->capacity < sizeof(h)) {

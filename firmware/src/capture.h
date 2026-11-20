@@ -44,6 +44,7 @@ typedef struct {
 	uint32_t seq;
 	uint16_t n_samples;
 	uint16_t trigger_index;
+	sp_gyro_offset_t gyro_offset;
 } cap_header_info_t;
 
 typedef struct {
@@ -60,6 +61,7 @@ typedef struct {
 	uint8_t format;
 	uint32_t payload_len;
 	uint32_t check;
+	sp_gyro_offset_t gyro_offset;
 } cap_rec_info_t;
 
 typedef struct {

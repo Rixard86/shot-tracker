@@ -50,5 +50,6 @@ bool wire_config_normalize(store_t *s);
 
 void wire_clock_set(wire_clock_t *clock, const wire_time_t *now);
 int64_t wire_clock_unix_ms(const wire_clock_t *clock, int64_t uptime_ms);
+int64_t wire_uptime_unwrap(int64_t now_ms, uint32_t at_ms);
 
 #endif

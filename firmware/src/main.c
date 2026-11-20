@@ -42,6 +42,7 @@
 #include "supply.h"
 #include "wakestat.h"
 #include "wire.h"
+#include "zerorate.h"
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 
@@ -94,6 +95,7 @@ static uint32_t sample_idx;
 static uint32_t idle_since_ms;
 static bool idle_slow;
 static wakestat_t wakes;
+static zr_t zero_rate;
 static uint32_t last_batch_ms;
 
 /* ---------------------------------------------------------------- utils */
@@ -199,6 +201,7 @@ static void begin_stream(uint32_t now)
 	active_start_ms = now;
 	sample_idx = 0;
 	cap_reset(&cap);
+	zr_restart(&zero_rate);
 	sd_start_active(&det, now);
 }
 
@@ -235,6 +238,7 @@ static void request_capture(const sd_event_t *e, uint32_t seq)
 		.trigger = cap_ms_to_index(e->t_ms - active_start_ms),
 		.epoch = cap.epoch,
 		.mode = st.capture_mode,
+		.gyro_offset = zr_offset_at(&zero_rate, e->t_ms),
 	};
 
 	if (captures_ok) {
@@ -302,9 +306,11 @@ static void process_batch(const accel_fifo_t *fifo, uint32_t n)
 	for (uint32_t i = 0; i < n; i++) {
 		int16_t mg[3];
 		sd_event_t e;
+		zr_input_t still = {&fifo->samples[i], sample_ms(sample_idx)};
 
 		cap_push(&cap, &fifo->samples[i]);
 		live_stream_sample(&fifo->samples[i]);
+		zr_push(&zero_rate, &still);
 		accel_to_mg(&fifo->samples[i], mg);
 		if (sd_process(&det, mg, sample_ms(sample_idx++), &e)) {
 			handle_detection(&e, now - (t_last - e.t_ms));
@@ -334,6 +340,8 @@ static void issue_recording(void)
 	};
 	devrec_at_t at = {w.seq, sample_idx, cap.epoch};
 	capw_request_t req = devrec_take(&rec, &at);
+
+	req.gyro_offset = zr_offset_at(&zero_rate, sample_ms(sample_idx));
 
 	event_tx_record(&w);
 	if (captures_ok) {
@@ -680,7 +688,7 @@ int main(void)
 		sd_default_config(&st.cfg);
 		st.capture_mode = SP_CAPTURE_STANDARD;
 	}
-	if (event_tx_init()) {
+	if (event_tx_init(&wall_clock)) {
 		LOG_ERR("shot log unavailable");
 	}
 	resume_seq();

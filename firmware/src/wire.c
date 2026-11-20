@@ -106,3 +106,8 @@ int64_t wire_clock_unix_ms(const wire_clock_t *clock, int64_t uptime_ms)
 {
 	return clock->set ? clock->offset_ms + uptime_ms : 0;
 }
+
+int64_t wire_uptime_unwrap(int64_t now_ms, uint32_t at_ms)
+{
+	return now_ms - (uint32_t)((uint32_t)now_ms - at_ms);
+}

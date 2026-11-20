@@ -114,8 +114,9 @@ static int refill(capdec_t *dec)
 {
 	const source_t *src = dec->context;
 	const capstore_entry_t *e = capstore_find(src->store, src->seq);
-	uint32_t left = e ? e->payload_len - dec->source_offset : 0u;
-	capstore_read_t req = {src->seq, dec->source_offset, dec->in, left < CODEC_IN_BYTES ? left : CODEC_IN_BYTES};
+	uint32_t body = e ? capstore_body_start(e) : 0u;
+	uint32_t left = e ? e->payload_len - body - dec->source_offset : 0u;
+	capstore_read_t req = {src->seq, body + dec->source_offset, dec->in, left < CODEC_IN_BYTES ? left : CODEC_IN_BYTES};
 
 	dec->in_len = req.len;
 	dec->source_offset += req.len;
@@ -158,7 +159,7 @@ static void shoot(uint32_t trigger, uint8_t mode)
 {
 	triggers[shots++] = trigger;
 	run_to(trigger + DETECT_DELAY);
-	capw_request_t req = {++seq, trigger, cap.epoch, mode, 0u};
+	capw_request_t req = {++seq, trigger, cap.epoch, mode, 0u, {{0, 0, 0}, SP_GYRO_OFFSET_UNKNOWN}};
 	capw_request(&writer, &req);
 }
 

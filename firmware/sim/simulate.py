@@ -398,12 +398,16 @@ UNIT_TESTS = [("test_capture.c", ["capture.c"] + CODEC), ("test_evlog.c", EVLOG)
               ("test_capwriter.c", ["capwriter.c", "capture.c"] + CODEC + CAPSTORE),
               ("test_capwriter_faults.c", ["capwriter.c", "capture.c"] + CODEC + CAPSTORE),
               ("test_led_seq.c", ["led_seq.c"]), ("test_wire.c", ["wire.c", "shot_detect.c"]),
-              ("test_evq.c", ["evq.c", "../sim/evq_harness.c"] + EVLOG), ("test_charge.c", ["charge.c"]),
+              ("test_evq.c", ["evq.c", "../sim/evq_harness.c"] + EVLOG),
+              ("test_evq_time.c", ["evq.c", "../sim/evq_harness.c"] + EVLOG),
+              ("test_evq_end.c", ["evq.c", "../sim/evq_harness.c"] + EVLOG), ("test_charge.c", ["charge.c"]),
               ("test_evlog_delete.c", EVLOG), ("test_lifecount.c", ["lifecount.c"]),
               ("test_capjoin.c", ["capjoin.c"] + CAPSTORE), ("test_crc32.c", ["crc32.c"]),
               ("test_capcodec_choice.c", ["capcodec.c"]), ("test_flash_formats.c", ["evlog.c"] + CAPSTORE),
               ("test_devrec.c", ["devrec.c", "capwriter.c", "capture.c"] + CODEC + CAPSTORE),
               ("test_capstore_wrap.c", CAPSTORE), ("test_devstream.c", ["devstream.c"]), ("test_wakestat.c", ["wakestat.c"]),
+              ("test_zerorate.c", ["zerorate.c"]),
+              ("test_capoffset.c", ["../sim/cap_harness.c", "../sim/cap_model.c", "capwriter.c", "capture.c"] + CODEC + CAPSTORE),
               ("test_capaim.c", CODEC),
               ("test_capaim_store.c", ["../sim/cap_harness.c", "../sim/cap_model.c", "capwriter.c", "capture.c"] + CODEC + CAPSTORE)]
 

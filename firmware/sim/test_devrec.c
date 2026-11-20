@@ -106,8 +106,9 @@ static void setup(void)
 static int refill(capdec_t *dec)
 {
 	const capstore_entry_t *e = capstore_find(&store, decoding_seq);
-	uint32_t left = e ? e->payload_len - dec->source_offset : 0u;
-	capstore_read_t req = {decoding_seq, dec->source_offset, dec->in, left < CODEC_IN_BYTES ? left : CODEC_IN_BYTES};
+	uint32_t body = e ? capstore_body_start(e) : 0u;
+	uint32_t left = e ? e->payload_len - body - dec->source_offset : 0u;
+	capstore_read_t req = {decoding_seq, body + dec->source_offset, dec->in, left < CODEC_IN_BYTES ? left : CODEC_IN_BYTES};
 
 	dec->in_len = req.len;
 	dec->source_offset += req.len;

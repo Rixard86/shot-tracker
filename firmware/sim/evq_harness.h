@@ -19,8 +19,15 @@ extern uint32_t sent_count;
 extern uint32_t send_calls;
 extern uint32_t batch_sizes[MAX_SENT];
 extern uint32_t sends_left;
+extern int64_t sent_time[MAX_SENT];
+extern int64_t clock_offset_ms;
+extern bool clock_set;
+extern uint32_t end_count;
+extern uint32_t end_from;
+extern uint32_t end_after;
 
 void reset(bool with_log);
+void reboot(void);
 sp_event_t event(uint32_t seq, bool accepted);
 void pump_all(void);
 bool sent_in_order(uint32_t first, uint32_t count);

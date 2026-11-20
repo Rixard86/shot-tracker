@@ -18,6 +18,12 @@ uint32_t sent_count;
 uint32_t send_calls;
 uint32_t batch_sizes[MAX_SENT];
 uint32_t sends_left;
+int64_t sent_time[MAX_SENT];
+int64_t clock_offset_ms;
+bool clock_set;
+uint32_t end_count;
+uint32_t end_from;
+uint32_t end_after;
 
 static int fake_read(uint32_t offset, evlog_record_t *rec)
 {
@@ -61,22 +67,51 @@ static int fake_send(const uint8_t *data, uint16_t len)
 	}
 	sends_left--;
 	batch_sizes[send_calls - 1u] = len / sizeof(sp_event_t);
+	if (len == sizeof(sp_replay_end_t)) {
+		memcpy(&end_from, data, sizeof(end_from));
+		end_after = sent_count;
+		end_count++;
+	}
 	for (uint16_t off = 0; off + sizeof(sp_event_t) <= len; off += sizeof(sp_event_t)) {
-		memcpy(&sent[sent_count++], &data[off], sizeof(uint32_t));
+		sp_event_t e;
+
+		memcpy(&e, &data[off], sizeof(e));
+		sent_time[sent_count] = e.t_unix_ms;
+		sent[sent_count++] = e.seq;
 	}
 	return 0;
 }
 
-void reset(bool with_log)
+static int64_t fake_clock(uint32_t uptime_ms)
 {
-	evq_deps_t deps = {.shots = with_log ? &shots : NULL, .link = {fake_room, fake_send}};
+	return clock_set ? clock_offset_ms + uptime_ms : 0;
+}
 
-	memset(flash, ERASED, sizeof(flash));
+static void start_queue(bool with_log)
+{
+	evq_deps_t deps = {.shots = with_log ? &shots : NULL, .link = {fake_room, fake_send}, .unix_ms = fake_clock};
+
 	evlog_init(&shots, &dev);
 	evq_init(&queue, &deps);
+}
+
+void reset(bool with_log)
+{
+	memset(flash, ERASED, sizeof(flash));
+	start_queue(with_log);
+	clock_set = false;
+	end_count = 0;
 	room_now = ROOM_MTU_247;
 	send_result = 0;
 	sends_left = SENDS_UNLIMITED;
+	sent_count = 0;
+	send_calls = 0;
+}
+
+void reboot(void)
+{
+	start_queue(true);
+	clock_set = false;
 	sent_count = 0;
 	send_calls = 0;
 }

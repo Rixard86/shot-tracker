@@ -38,8 +38,9 @@ static const capstore_entry_t *current;
 
 static int refill(capdec_t *dec)
 {
-	uint32_t left = current->payload_len - dec->source_offset;
-	capstore_read_t req = {current->seq, dec->source_offset, dec->in, left < CODEC_IN_BYTES ? left : CODEC_IN_BYTES};
+	uint32_t body = capstore_body_start(current);
+	uint32_t left = current->payload_len - body - dec->source_offset;
+	capstore_read_t req = {current->seq, body + dec->source_offset, dec->in, left < CODEC_IN_BYTES ? left : CODEC_IN_BYTES};
 
 	dec->in_len = req.len;
 	dec->source_offset += req.len;
@@ -84,16 +85,18 @@ static uint32_t rebuilt_crc(const capstore_entry_t *e)
 
 static void print_vector(const recipe_t *r, const capstore_entry_t *e)
 {
-	capstore_read_t req = {e->seq, 0u, payload, e->payload_len};
+	uint32_t body = capstore_body_start(e);
+	uint32_t sent_len = e->payload_len - body;
+	capstore_read_t req = {e->seq, body, payload, sent_len};
 	capstore_check_t check = {.seq = e->seq};
 
 	current = e;
 	capstore_read(harness_store(), &req);
-	capstore_read_check(harness_store(), &check);
+	capstore_body_check(harness_store(), &check);
 	printf("    {\n      \"name\": \"%s\",\n      \"seq\": %u,\n      \"n_samples\": %u,\n", r->name, e->seq, e->n_samples);
 	printf("      \"trigger_index\": %u,\n      \"format\": %u,\n", e->trigger_index, e->format);
-	printf("      \"payload_len\": %u,\n      \"check\": %u,\n      \"payload_hex\": \"", e->payload_len, check.check);
-	for (uint32_t i = 0; i < e->payload_len; i++) {
+	printf("      \"payload_len\": %u,\n      \"check\": %u,\n      \"payload_hex\": \"", sent_len, check.check);
+	for (uint32_t i = 0; i < sent_len; i++) {
 		printf("%02x", payload[i]);
 	}
 	printf("\",\n");

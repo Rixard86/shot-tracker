@@ -16,9 +16,12 @@ typedef struct {
 	int (*send)(const uint8_t *data, uint16_t len);
 } evq_link_t;
 
+typedef int64_t (*evq_clock_t)(uint32_t uptime_ms);
+
 typedef struct {
 	evlog_t *shots;
 	evq_link_t link;
+	evq_clock_t unix_ms;
 } evq_deps_t;
 
 typedef struct {
@@ -26,12 +29,14 @@ typedef struct {
 	uint32_t live_len;
 	bool replaying;
 	bool flash_done;
+	bool end_due;
 	evlog_cursor_t cursor;
 	uint32_t reject_next;
 } evq_state_t;
 
 typedef struct {
 	evq_deps_t deps;
+	uint32_t boot_seq;
 	sp_event_t rejects[EVQ_REJECT_LOG_LEN];
 	uint32_t rejects_written;
 	sp_event_t live[EVQ_LIVE_QUEUE_LEN];

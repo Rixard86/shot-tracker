@@ -12,6 +12,7 @@
 #define CAPSTORE_ERR_STATE (-2)
 #define CAPSTORE_ERR_MISSING (-3)
 #define CAPSTORE_ERR_RANGE (-4)
+#define CAPSTORE_OFFSET_BYTES ((uint32_t)sizeof(sp_gyro_offset_t))
 
 typedef struct {
 	uint32_t offset;
@@ -47,6 +48,7 @@ typedef struct {
 	uint16_t n_samples;
 	uint16_t trigger_index;
 	uint8_t format;
+	bool gyro_offset;
 } capstore_entry_t;
 
 typedef struct {
@@ -92,6 +94,8 @@ int capstore_abort(capstore_t *store);
 const capstore_entry_t *capstore_find(const capstore_t *store, uint32_t seq);
 int capstore_read(const capstore_t *store, const capstore_read_t *req);
 int capstore_read_check(const capstore_t *store, capstore_check_t *req);
+uint32_t capstore_body_start(const capstore_entry_t *entry);
+int capstore_body_check(const capstore_t *store, capstore_check_t *req);
 uint32_t capstore_count(const capstore_t *store);
 
 #endif

@@ -5,37 +5,62 @@
 
 #define CRC_CHUNK_BYTES 64u
 
-static const uint32_t record_magic[CAPSTORE_FORMATS] = {
-	[CAPSTORE_FORMAT_FULL] = CAPSTORE_RECORD_MAGIC,
-	[CAPSTORE_FORMAT_AIM_AVERAGED] = CAPSTORE_AIM_AVERAGED_MAGIC,
-	[CAPSTORE_FORMAT_ULTRA] = CAPSTORE_ULTRA_MAGIC,
+typedef struct {
+	uint32_t magic;
+	uint8_t format;
+	bool gyro_offset;
+} record_kind_t;
+
+static const record_kind_t record_kinds[] = {
+	{CAPSTORE_RECORD_MAGIC, CAPSTORE_FORMAT_FULL, false},
+	{CAPSTORE_AIM_AVERAGED_MAGIC, CAPSTORE_FORMAT_AIM_AVERAGED, false},
+	{CAPSTORE_ULTRA_MAGIC, CAPSTORE_FORMAT_ULTRA, false},
+	{CAPSTORE_OFFSET_RECORD_MAGIC, CAPSTORE_FORMAT_FULL, true},
+	{CAPSTORE_OFFSET_AIM_AVERAGED_MAGIC, CAPSTORE_FORMAT_AIM_AVERAGED, true},
+	{CAPSTORE_OFFSET_ULTRA_MAGIC, CAPSTORE_FORMAT_ULTRA, true},
 };
 
-static uint8_t format_of(uint32_t magic)
+#define RECORD_KINDS (sizeof(record_kinds) / sizeof(record_kinds[0]))
+
+static const record_kind_t *kind_of(uint32_t magic)
 {
-	for (uint8_t format = 0; format < CAPSTORE_FORMATS; format++) {
-		if (record_magic[format] == magic) {
-			return format;
+	for (uint32_t i = 0; i < RECORD_KINDS; i++) {
+		if (record_kinds[i].magic == magic) {
+			return &record_kinds[i];
 		}
 	}
-	return CAPSTORE_FORMATS;
+	return NULL;
 }
 
-uint32_t capstore_magic(uint8_t format)
+uint32_t capstore_magic(const capstore_entry_t *entry)
 {
-	return record_magic[format];
+	for (uint32_t i = 0; i < RECORD_KINDS; i++) {
+		const record_kind_t *k = &record_kinds[i];
+
+		if (k->format == entry->format && k->gyro_offset == entry->gyro_offset) {
+			return k->magic;
+		}
+	}
+	return CAPSTORE_ERASED_WORD;
 }
 
 bool capstore_is_record(uint32_t magic)
 {
-	return format_of(magic) < CAPSTORE_FORMATS;
+	return kind_of(magic) != NULL;
 }
 
 capstore_entry_t capstore_entry_at(const capstore_at_t *at)
 {
 	const capstore_header_t *h = &at->header;
+	const record_kind_t *k = kind_of(h->magic);
 
-	return (capstore_entry_t){h->seq, at->pos, h->payload_len, h->n_samples, h->trigger_index, format_of(h->magic)};
+	return (capstore_entry_t){h->seq, at->pos, h->payload_len, h->n_samples, h->trigger_index,
+				  k ? k->format : CAPSTORE_FORMATS, k && k->gyro_offset};
+}
+
+uint32_t capstore_body_start(const capstore_entry_t *entry)
+{
+	return entry->gyro_offset ? CAPSTORE_OFFSET_BYTES : 0u;
 }
 
 uint32_t capstore_crc(uint32_t crc, const capstore_chunk_t *chunk)
@@ -132,6 +157,25 @@ int capstore_payload_crc(const capstore_t *store, capstore_crc_job_t *job)
 		job->crc = capstore_crc(job->crc, &chunk);
 	}
 	return 0;
+}
+
+int capstore_body_check(const capstore_t *store, capstore_check_t *req)
+{
+	const capstore_entry_t *e = capstore_find(store, req->seq);
+
+	if (!e || !e->gyro_offset) {
+		return capstore_read_check(store, req);
+	}
+	capstore_entry_t body = *e;
+	body.start = e->start + CAPSTORE_OFFSET_BYTES;
+	body.payload_len = e->payload_len - CAPSTORE_OFFSET_BYTES;
+	capstore_crc_job_t job = {.entry = &body};
+	int err = capstore_payload_crc(store, &job);
+	capstore_header_t h = {.seq = e->seq, .n_samples = e->n_samples, .trigger_index = e->trigger_index,
+			       .payload_len = body.payload_len};
+
+	req->check = capstore_check(&h, job.crc);
+	return err;
 }
 
 static bool committed(const capstore_t *store, const capstore_header_t *h)

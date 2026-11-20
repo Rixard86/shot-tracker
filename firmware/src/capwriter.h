@@ -18,6 +18,7 @@ typedef struct {
 	uint32_t epoch;
 	uint8_t mode;
 	uint32_t samples;
+	sp_gyro_offset_t gyro_offset;
 } capw_request_t;
 
 typedef struct {

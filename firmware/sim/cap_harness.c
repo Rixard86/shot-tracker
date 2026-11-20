@@ -111,7 +111,7 @@ void harness_push(uint32_t samples)
 
 void harness_request(uint32_t trigger, uint8_t mode)
 {
-	capw_request_t req = {++seq, trigger, cap.epoch, mode, 0u};
+	capw_request_t req = {++seq, trigger, cap.epoch, mode, 0u, HARNESS_OFFSET};
 
 	capw_request(&writer, &req);
 }
@@ -124,7 +124,7 @@ int harness_pump(void)
 const capstore_entry_t *harness_shoot(uint32_t trigger, uint8_t mode)
 {
 	harness_run_to(trigger + DETECT_DELAY);
-	capw_request_t req = {++seq, trigger, cap.epoch, mode, 0u};
+	capw_request_t req = {++seq, trigger, cap.epoch, mode, 0u, HARNESS_OFFSET};
 	capw_request(&writer, &req);
 	harness_run_to(trigger + HARNESS_SHOT_SPACING);
 	return capstore_find(&store, seq);
@@ -132,7 +132,7 @@ const capstore_entry_t *harness_shoot(uint32_t trigger, uint8_t mode)
 
 const capstore_entry_t *harness_record(uint32_t samples)
 {
-	capw_request_t req = {++seq, cap.count - 1u, cap.epoch, SP_CAPTURE_STANDARD, samples};
+	capw_request_t req = {++seq, cap.count - 1u, cap.epoch, SP_CAPTURE_STANDARD, samples, HARNESS_OFFSET};
 
 	capw_request(&writer, &req);
 	harness_run_to(cap.count + samples + HARNESS_SHOT_SPACING);

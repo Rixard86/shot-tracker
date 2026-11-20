@@ -7,6 +7,9 @@
 #define CAPSTORE_RECORD_MAGIC 0x53504352u
 #define CAPSTORE_AIM_AVERAGED_MAGIC 0x53504341u
 #define CAPSTORE_ULTRA_MAGIC 0x53504355u
+#define CAPSTORE_OFFSET_RECORD_MAGIC 0x53504752u
+#define CAPSTORE_OFFSET_AIM_AVERAGED_MAGIC 0x53504741u
+#define CAPSTORE_OFFSET_ULTRA_MAGIC 0x53504755u
 #define CAPSTORE_SECTOR_HEADER_BYTES 8u
 #define CAPSTORE_FIRST_WORD_OFFSET 4u
 #define CAPSTORE_ERASED_WORD 0xFFFFFFFFu
@@ -39,7 +42,7 @@ typedef struct {
 	uint32_t crc;
 } capstore_crc_job_t;
 
-uint32_t capstore_magic(uint8_t format);
+uint32_t capstore_magic(const capstore_entry_t *entry);
 bool capstore_is_record(uint32_t magic);
 capstore_entry_t capstore_entry_at(const capstore_at_t *at);
 uint32_t capstore_crc(uint32_t crc, const capstore_chunk_t *chunk);

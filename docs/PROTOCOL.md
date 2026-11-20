@@ -1,5 +1,11 @@
 # ShotPuck BLE protocol (v3)
 
+Firmware 0.3.16 (still v3):
+- **Shot times after a reboot:** an event recorded before any phone had sent SET_TIME since the puck started no longer stays at `t_unix_ms` 0. When the puck sends an event from the current boot after a SET_TIME, live or on REPLAY, it fills in the time from that boot's clock (uptime at the trigger plus the offset the last SET_TIME gave). The shot log keeps each record as it was written, so events from an earlier boot that never got the time still arrive with 0: nobody knows that boot's clock. A round shot after a reboot and synced in the same boot now arrives timed, even when nothing is logged after the sync.
+- **Gyroscope offset in every capture header:** while awake, the puck measures the gyroscope's zero-rate offset itself in every second it is truly still (the bow on its stand) and stores the latest value with each capture. The CAPTURE header grows from 15 to 23 bytes and the CAPREC header from 24 to 32: `i16 gyro_offset_mdps[3]` and `u16 gyro_offset_age_s`, see *Gyro offset* below. CAPREC `payload_len`, `check` and the data packets are unchanged, so an app that reads only the old header bytes keeps working. CAPREC now needs an ATT MTU of at least 35 (27 before).
+- **End of a replay:** after the last event of a REPLAY the puck sends one 4-byte EVENT notification, `u32 from_seq` of that REPLAY, see *EVENT*. An app that loops over EVENT in 24-byte steps ignores it.
+- No other layout or command changes.
+
 Firmware 0.3.15 (still v3):
 - **Fast connection interval the whole time the charger is attached:** while a phone is connected and the charger is in, the puck asks for the 15–30 ms interval with latency 0 and keeps it, not only while events, captures or upload chunks are flowing. An update needs the charger, so an upload now starts on the fast interval. Before, it started on 105–210 ms with latency 4 and the puck asked for the fast interval only at the first chunk. One phone took 3.6–6.7 s to switch, and Nordic's update library gives up when a chunk gets no answer within 2.5 s, so app updates from 0.3.13 to 0.3.14 failed after the first chunk. On a connection made with the charger in, the puck's first interval request (sent 5 s after connecting) is already the fast one. After unplugging, the puck goes back to 105–210 ms 5 s later unless data is still flowing.
 - The update to 0.3.15 itself still runs on the old firmware: a puck on 0.3.14 or older has the old behaviour (see *Firmware update*).
@@ -144,7 +150,7 @@ Each notification carries **one or more events back to back** (length = 24 × n,
 | Offset | Type | Field | Notes |
 |---|---|---|---|
 | 0 | u32 | seq | Monotonic across reboots and factory resets (not reset by RESET_COUNT); only a full-chip erase by cable starts it over |
-| 4 | i64 | t_unix_ms | 0 if the phone had not sent SET_TIME since the puck booted |
+| 4 | i64 | t_unix_ms | 0 if the phone had not sent SET_TIME since the puck booted. From 0.3.16 the puck fills it in when it sends an event of the current boot after a SET_TIME, so 0 only stays for events of an earlier boot that never got the time |
 | 12 | u32 | t_uptime_ms | Device uptime at the trigger |
 | 16 | u16 | peak_hf_mg | Release shock (saturates about 32 g) |
 | 18 | u16 | pre_still_ms | Stillness before the trigger |
@@ -157,6 +163,8 @@ Each notification carries **one or more events back to back** (length = 24 × n,
 Rejected events are sent on purpose. Log them in the app during tuning: they are the data you need to set thresholds (see VALIDATION.md).
 
 Events are sent live as they happen, and again on REPLAY. Replayed and live events can interleave and repeat, so order by `seq` and upsert.
+
+**End of a replay** (firmware 0.3.16): when a REPLAY has sent its last event (shots from flash, then rejects from RAM), the puck sends one EVENT notification of exactly 4 bytes: `u32 from_seq`, the value that REPLAY was written with. It comes after all of that replay's events; live events may follow it. A replay with nothing to send sends only this marker. There is no marker when the replay is cut off (disconnect, EVENT unsubscribed, a failed send) or when a newer REPLAY replaces it before it ends: then only the newer one ends with a marker. Wait for the marker with your REPLAY's `from_seq` instead of a quiet period, and keep a timeout for firmware 0.3.15 and older and for cut-off replays. An EVENT notification is either 4 bytes (this marker) or a multiple of 24 bytes (events).
 
 ### Storage on the puck
 
@@ -174,7 +182,7 @@ Events are sent live as they happen, and again on REPLAY. Replayed and live even
 |---|---|---|
 | `0x01` SET_TIME | i64 unix_ms | Sets the wall clock. Send on every connect. |
 | `0x02` RESET_COUNT | – | total = 0 (seq keeps counting); from 0.3.6 also remembers the seq at the reset for DELETE_SHOT |
-| `0x03` REPLAY | u32 from_seq | Re-sends stored events with seq ≥ from_seq: accepted shots from flash (not deleted ones), then rejected candidates from RAM, batched on EVENT |
+| `0x03` REPLAY | u32 from_seq | Re-sends stored events with seq ≥ from_seq: accepted shots from flash (not deleted ones), then rejected candidates from RAM, batched on EVENT; from 0.3.16 followed by a 4-byte end marker on EVENT (see *EVENT*) |
 | `0x04` FACTORY_CFG | – | Restores default thresholds |
 | `0x05` LED_BLINK | – | 5 blinks (find the puck) |
 | `0x06` GET_CAPTURE | u32 seq | Re-sends the capture of shot `seq` from flash, on CAPREC when it is subscribed (0.3.12), else on CAPTURE (header with `n_samples = 0` if it is no longer stored) |
@@ -218,7 +226,7 @@ The two modes share the area, so after a switch the new captures replace the old
 
 Byte 0 of every packet is the packet type.
 
-**Header** (`sp_cap_header_t`, 15 B):
+**Header** (`sp_cap_header_t`, 23 B; 15 B in firmware 0.3.15 and older):
 
 | Offset | Type | Field | Notes |
 |---|---|---|---|
@@ -229,6 +237,8 @@ Byte 0 of every packet is the packet type.
 | 9 | u16 | odr_hz | 480 |
 | 11 | u16 | acc_ug_per_lsb | 976 (±32 g) |
 | 13 | u16 | gyro_mdps_per_lsb | 70 (±2000 dps) |
+| 15 | i16 × 3 | gyro_offset_mdps | Gyroscope zero-rate offset x, y, z in mdps (0.3.16), see *Gyro offset* |
+| 21 | u16 | gyro_offset_age_s | Seconds from the still second it was measured in to the trigger; 65534 means that long or longer; **65535 = unknown** (offsets 0) |
 
 **Data** (`sp_cap_data_t`, 7 B, then samples):
 
@@ -245,11 +255,13 @@ Convert with `acc_mg = raw × acc_ug_per_lsb / 1000` and `gyro_dps = raw × gyro
 - A transfer takes about 1–3 s (standard), 6–12 s (extended) or 25–50 s (ultra) at MTU 247. CAPREC sends the same captures in about 1, 2 and 3–6 s. Packets arrive in order. If a `first` is missing (disconnect), discard the capture and request it again with GET_CAPTURE.
 - The IMU needs a few tens of ms after a wake before the gyroscope delivers data (datasheet turn-on time 35 ms), so a capture that starts at the wake can have zero gyro values in its first samples.
 
+**Gyro offset** (firmware 0.3.16): a gyroscope reads a small rate when it is not turning (LSM6DSV32X: ±1 dps typical, changing by about 0.006 dps per °C). Integrated over a second of aiming, that is an angle error of the same size in degrees. While awake, the puck checks every second of samples (480 samples; after a wake it first skips 48, which can hold the gyroscope's turn-on zeros). A second counts as still when, on every axis, the gyroscope's standard deviation is at most 0.25 dps, the accelerometer's at most 5 mg, and the mean rate at most 5 dps. Its mean rate becomes the offset. The puck keeps the newest one until it restarts, also while it sleeps, and puts it into each capture's header with its age at the trigger. In practice the still seconds come from the bow resting on its stand until the puck goes to sleep (`idle_timeout_s`); aiming is never that still. On real data, none of the 259 seconds in 37 shot captures (2026-11-12 to 15) counted as still, while every second of a puck lying still (2026-11-16) did, giving (−18, −181, −15) mdps within ±5 mdps. The median of each shot's mean rate in the last second of aiming gave (38, −19, 46) mdps on the same shots. Subtract `gyro_offset_mdps / 1000` from every `gyro_dps` sample before integrating. A large age means the temperature may have changed since. **Age 65535 means unknown:** no still second since the puck started, or a capture stored by 0.3.15 or older (CAPTURE and CAPREC send those as before, with this value). Then fall back to the app's own estimate.
+
 ### CAPREC: captures as stored (firmware 0.3.12)
 
-Subscribe to CAPREC (`…000A…`) instead of CAPTURE and the puck sends each capture as the compressed record it keeps in flash: about 4 KB for a standard capture, 10 KB extended and 18 KB ultra, against 8.6, 46 and 184 KB on CAPTURE. The app decodes it. Everything else works as on CAPTURE: the capture is sent automatically after the shot while subscribed, GET_CAPTURE sends it again, and it waits while STREAM runs. With both subscribed, the puck uses CAPREC. Like EVENT, it needs an ATT MTU of at least 27.
+Subscribe to CAPREC (`…000A…`) instead of CAPTURE and the puck sends each capture as the compressed record it keeps in flash: about 4 KB for a standard capture, 10 KB extended and 18 KB ultra, against 8.6, 46 and 184 KB on CAPTURE. The app decodes it. Everything else works as on CAPTURE: the capture is sent automatically after the shot while subscribed, GET_CAPTURE sends it again, and it waits while STREAM runs. With both subscribed, the puck uses CAPREC. Its header needs an ATT MTU of at least 35 from 0.3.16 (27 before). From 0.3.16 the puck stores the gyro offset in the first 8 bytes of each record and leaves them out of what it sends: `payload_len`, the data packets and `check` cover only the compressed samples, exactly as before.
 
-**Header** (`sp_caprec_header_t`, 24 B):
+**Header** (`sp_caprec_header_t`, 32 B; 24 B in firmware 0.3.12–0.3.15):
 
 | Offset | Type | Field | Notes |
 |---|---|---|---|
@@ -263,6 +275,8 @@ Subscribe to CAPREC (`…000A…`) instead of CAPTURE and the puck sends each ca
 | 18 | u16 | odr_hz | 480 |
 | 20 | u16 | acc_ug_per_lsb | 976 |
 | 22 | u16 | gyro_mdps_per_lsb | 70 |
+| 24 | i16 × 3 | gyro_offset_mdps | As in the CAPTURE header (0.3.16) |
+| 30 | u16 | gyro_offset_age_s | As in the CAPTURE header; 65535 = unknown |
 
 **Data** (`sp_caprec_data_t`, 9 B, then bytes): `u8 type` = `0x04`, `u32 seq`, `u32 offset` (byte offset of the first byte in this packet), then up to MTU − 12 payload bytes. Packets arrive in order. If `offset` does not continue where the last packet ended, discard the capture and GET_CAPTURE it again.
 
@@ -320,7 +334,7 @@ Subscribe to STREAM, then write CONTROL `0C` + divider: the puck streams every d
 1. Connect only to the user's own puck (its stored serial). The link encrypts automatically because the phone is paired.
 2. Request MTU 247 or more, and subscribe to COUNT, EVENT, STATUS and, from firmware 0.3.12, CAPREC (CAPTURE on older firmware).
 3. Write SET_TIME.
-4. Read COUNT, then write `REPLAY(last_seq_seen_by_app + 1)`. The app owns this position; the puck keeps no per-phone sync state, so any number of phones can sync.
+4. Read COUNT, then write `REPLAY(last_seq_seen_by_app + 1)`. The app owns this position; the puck keeps no per-phone sync state, so any number of phones can sync. From firmware 0.3.16 the replay ends with a 4-byte marker on EVENT holding that `from_seq`; older firmware sends none, so keep a timeout.
 5. Upsert events keyed by `(device_id, seq)`, with `device_id` = DIS serial number. seq is monotonic, so replays and duplicates are harmless.
 6. Stay connected during the end. Each shot arrives as an EVENT with `accepted = 1` about 0.6 s after release (the follow-through window), followed by its capture.
 7. Store captures keyed by `(device_id, seq)` as well. For accepted events without a complete capture, or a CAPREC capture that fails its check, write `GET_CAPTURE(seq)`: the puck keeps the newest captures in flash (see *CAPTURE*), so this also works after a session offline.

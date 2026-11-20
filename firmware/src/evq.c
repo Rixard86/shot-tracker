@@ -3,10 +3,13 @@
 #include <errno.h>
 #include <string.h>
 
+#define TIME_UNSET 0
+
 void evq_init(evq_t *q, const evq_deps_t *deps)
 {
 	memset(q, 0, sizeof(*q));
 	q->deps = *deps;
+	q->boot_seq = deps->shots ? deps->shots->newest_seq : 0u;
 }
 
 static uint32_t oldest_reject(const evq_t *q)
@@ -50,7 +53,7 @@ void evq_replay(evq_t *q, uint32_t from_seq)
 
 bool evq_busy(const evq_t *q)
 {
-	return q->state.live_len > 0 || q->state.replaying;
+	return q->state.live_len > 0 || q->state.replaying || q->state.end_due;
 }
 
 typedef struct {
@@ -85,6 +88,7 @@ static bool next_reject(batch_t *b, sp_event_t *out)
 		}
 	}
 	s->replaying = false;
+	s->end_due = true;
 	return false;
 }
 
@@ -101,6 +105,13 @@ static bool next_event(batch_t *b, sp_event_t *out)
 	return s->replaying && (next_flash(b, out) || next_reject(b, out));
 }
 
+static void stamp(const evq_t *q, sp_event_t *e)
+{
+	if (e->t_unix_ms == TIME_UNSET && e->seq > q->boot_seq) {
+		e->t_unix_ms = q->deps.unix_ms(e->t_uptime_ms);
+	}
+}
+
 static uint16_t fill_batch(batch_t *b, uint16_t room)
 {
 	uint32_t max = room / sizeof(sp_event_t);
@@ -111,6 +122,7 @@ static uint16_t fill_batch(batch_t *b, uint16_t room)
 		max = EVQ_BATCH_MAX;
 	}
 	while (n < max && next_event(b, &e)) {
+		stamp(b->q, &e);
 		memcpy(&b->q->payload[n * sizeof(e)], &e, sizeof(e));
 		n++;
 	}
@@ -121,6 +133,24 @@ static void drop_all(evq_state_t *s)
 {
 	s->live_len = 0;
 	s->replaying = false;
+	s->end_due = false;
+}
+
+static bool send_end(evq_t *q)
+{
+	sp_replay_end_t end = {q->state.cursor.from_seq};
+
+	memcpy(q->payload, &end, sizeof(end));
+	int err = q->deps.link.send(q->payload, sizeof(end));
+
+	if (err == -EAGAIN || err == -ENOMEM) {
+		return false;
+	}
+	q->state.end_due = false;
+	if (err) {
+		drop_all(&q->state);
+	}
+	return err == 0;
 }
 
 void evq_pump(evq_t *q)
@@ -137,7 +167,10 @@ void evq_pump(evq_t *q)
 
 		if (len == 0) {
 			q->state = trial.s;
-			return;
+			if (!q->state.end_due || !send_end(q)) {
+				return;
+			}
+			continue;
 		}
 		int err = q->deps.link.send(q->payload, len);
 
