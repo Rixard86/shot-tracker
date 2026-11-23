@@ -12,6 +12,9 @@
  *   3. POST-LF   low-frequency motion after release (bow jump / rotation
  *                into the sling): mean |a_lf - g_pre| over the post window
  *                >= post_lf_min_mg. Rejects knocks/taps on a resting bow.
+ *   4. RING      the bow keeps vibrating after release: mean HF jump over
+ *                30-150 ms >= ring_min_permille of the peak. Rejects drops,
+ *                set-downs and knock-overs, which die out within ~30 ms.
  *
  * A mode manager (IDLE <-> ACTIVE) is included so the firmware's low-power
  * behaviour is simulated too: IDLE samples slowly and wakes on motion,
@@ -38,12 +41,14 @@ typedef struct {
 	uint16_t refractory_ms;    /* no new trigger this long after a trigger   */
 	float wake_mg;             /* IDLE -> ACTIVE wake threshold (mg)         */
 	uint32_t idle_timeout_ms;  /* ACTIVE -> IDLE after this much stillness   */
+	uint16_t ring_min_permille;
 } sd_config_t;
 
 typedef enum {
 	SD_REJ_NONE = 0,       /* accepted as a shot                         */
 	SD_REJ_NOT_STILL = 1,  /* bow was moving before the trigger          */
 	SD_REJ_NO_FOLLOW = 2,  /* no post-release bow motion (knock/tap)     */
+	SD_REJ_NO_RING = 4,
 } sd_reason_t;
 
 typedef struct {
@@ -53,6 +58,7 @@ typedef struct {
 	uint16_t post_lf_mg;   /* mean LF deviation in post window            */
 	uint8_t accepted;      /* 1 = counted as shot                        */
 	uint8_t reason;        /* sd_reason_t                                */
+	uint16_t ring_mg;
 } sd_event_t;
 
 typedef enum { SD_MODE_IDLE = 0, SD_MODE_ACTIVE = 1 } sd_mode_t;
@@ -65,6 +71,7 @@ typedef struct {
 	float lf[3];               /* low-frequency acceleration (fast LP)       */
 	float prev[3];
 	uint8_t have_prev;
+	uint32_t now_ms;
 	uint32_t move_hist;        /* delayed motion flags (guard window)        */
 	uint32_t last_move_ms;
 	uint32_t last_trig_ms;
@@ -75,6 +82,8 @@ typedef struct {
 	float g_pre[3];
 	float post_sum;
 	uint32_t post_n;
+	float ring_sum;
+	uint32_t ring_n;
 	/* mode manager */
 	sd_mode_t mode;
 	float idle_ref[3];

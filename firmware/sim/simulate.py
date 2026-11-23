@@ -42,12 +42,13 @@ class SdConfig(C.Structure):
                 ("pre_still_min_ms", C.c_uint16), ("post_start_ms", C.c_uint16),
                 ("post_end_ms", C.c_uint16), ("post_lf_min_mg", C.c_float),
                 ("refractory_ms", C.c_uint16), ("wake_mg", C.c_float),
-                ("idle_timeout_ms", C.c_uint32)]
+                ("idle_timeout_ms", C.c_uint32), ("ring_min_permille", C.c_uint16)]
 
 
 class SdEvent(C.Structure):
     _fields_ = [("t_ms", C.c_uint32), ("peak_hf_mg", C.c_uint16), ("pre_still_ms", C.c_uint16),
-                ("post_lf_mg", C.c_uint16), ("accepted", C.c_uint8), ("reason", C.c_uint8)]
+                ("post_lf_mg", C.c_uint16), ("accepted", C.c_uint8), ("reason", C.c_uint8),
+                ("ring_mg", C.c_uint16)]
 
 
 class SimStats(C.Structure):
@@ -183,7 +184,7 @@ class Session:
             + fast_noise(self.rng, n, tremor_mg * 0.6, 1.0)
         self.add(acc)
 
-    def impact(self, peak_g, tau=(0.008, 0.04), f=(80, 900), lf_mg=0.0, kind=None, dur=0.3):
+    def impact(self, peak_g, tau=(0.004, 0.02), f=(80, 900), lf_mg=0.0, kind=None, dur=0.3):
         n = int(dur * FS)
         acc = self.grav(np.tile(self.g, (n, 1))) + ringdown(self.rng, n, peak_g, f[0], f[1], *tau)
         if lf_mg:
@@ -219,7 +220,7 @@ class Session:
         acc = self.grav(np.tile(self.g, (n, 1))) + fast_noise(self.rng, n, 250, 4.0)
         self.add(acc)
 
-    def shot(self, peak_g=(8, 40), rot_deg=(15, 80), tau=(0.02, 0.10), f=(40, 700),
+    def shot(self, peak_g=(8, 40), rot_deg=(15, 80), tau=(0.015, 0.15), f=(40, 700),
              modes=(3, 6), recoil_g=(1.0, 3.0)):
         rng = self.rng
         self.shots.append(self.t)
@@ -240,6 +241,20 @@ class Session:
         acc += fast_noise(rng, n, 150, 5.0)
         self.add(acc)
         self.g = g_after
+
+    def knock_over(self):
+        rng = self.rng
+        self.move_to(rand_dir(rng), rng.uniform(0.5, 1.5), 400)
+        self.rest(rng.uniform(1.0, 5.0))
+        n = int(0.6 * FS)
+        g_new = tilt(self.g, rng.uniform(30, 90), rng)
+        nr = int(rng.uniform(0.2, 0.5) * FS)
+        gd = np.vstack([slerp(self.g, g_new, nr), np.tile(g_new, (n - nr, 1))])
+        acc = self.grav(gd) + ringdown(rng, n, rng.uniform(8, 60), 80, 900, 0.004, 0.02)
+        self.nonshots.append((self.t, "knock_over"))
+        self.add(acc + fast_noise(rng, n, 150, 5.0))
+        self.g = g_new
+        self.rest(rng.uniform(3, 10))
 
     # ---- one end of arrows ----------------------------------------------
     def shoot_end(self, n_arrows, hard=False):
@@ -285,7 +300,7 @@ class Session:
             self.rest(2)
 
 
-def make_session(rng, hard=False, drop=False, shot_kw=None):
+def make_session(rng, hard=False, drop=False, shot_kw=None, knock=False):
     s = Session(rng)
     s.shot_kw = shot_kw or {}
     s.rest(rng.uniform(5, 45))            # long rest -> device goes IDLE
@@ -300,9 +315,11 @@ def make_session(rng, hard=False, drop=False, shot_kw=None):
         # bow dropped: free fall then hard impact
         n = int(rng.uniform(0.15, 0.35) * FS)
         s.add(fast_noise(rng, n, 40, 5.0))
-        s.impact(rng.uniform(20, 50), tau=(0.01, 0.05), kind="drop", dur=0.4)
+        s.impact(rng.uniform(20, 50), kind="drop", dur=0.4)
         s.g = rand_dir(rng)
         s.rest(5)
+    if knock:
+        s.knock_over()
     return s
 
 
@@ -331,7 +348,8 @@ def score(sess, events, tol=0.06):
     return tp, fps, fn_times
 
 
-def run_set(lib, cfg, name, n, seed, hard=False, drop_frac=0.0, shot_kw=None, verbose=True):
+def run_set(lib, cfg, name, n, seed, hard=False, drop_frac=0.0, shot_kw=None, verbose=True,
+            knock_frac=0.0):
     rng = np.random.default_rng(seed)
     tot_shots = tot_tp = 0
     fp_kinds = {}
@@ -341,7 +359,8 @@ def run_set(lib, cfg, name, n, seed, hard=False, drop_frac=0.0, shot_kw=None, ve
     ev_buf = (SdEvent * 4096)()
     feats = []
     for _ in range(n):
-        s = make_session(rng, hard=hard, drop=rng.random() < drop_frac, shot_kw=shot_kw)
+        s = make_session(rng, hard=hard, drop=rng.random() < drop_frac, shot_kw=shot_kw,
+                         knock=knock_frac > 0 and rng.random() < knock_frac)
         a = np.concatenate(s.chunks).astype(np.float32)
         st = SimStats()
         ne = lib.sim_run(np.ascontiguousarray(a[:, 0]), np.ascontiguousarray(a[:, 1]),
@@ -357,12 +376,13 @@ def run_set(lib, cfg, name, n, seed, hard=False, drop_frac=0.0, shot_kw=None, ve
         for tfn in fns:
             near = [e for e in evs if abs(e.t_ms / 1000 - tfn) < 0.06]
             r = ("missed_trigger" if not near else
-                 {1: "rej_not_still", 2: "rej_no_follow"}.get(near[0].reason, "?"))
+                 {1: "rej_not_still", 2: "rej_no_follow", 4: "rej_no_ring"}.get(near[0].reason, "?"))
             fn_reasons[r] = fn_reasons.get(r, 0) + 1
         for e in evs:
             t = e.t_ms / 1000
             is_shot = any(abs(t - x) <= 0.06 for x in s.shots)
-            feats.append((is_shot, e.peak_hf_mg, e.pre_still_ms, e.post_lf_mg))
+            feats.append((is_shot, e.peak_hf_mg, e.pre_still_ms, e.post_lf_mg,
+                          1000.0 * e.ring_mg / max(1, e.peak_hf_mg)))
         act += st.active_ms / 1000
         tot_t += len(a) / FS
         wakes += st.wakes
@@ -380,11 +400,11 @@ def run_set(lib, cfg, name, n, seed, hard=False, drop_frac=0.0, shot_kw=None, ve
 
 
 def margins(res):
-    f = np.array([(a, b, c, d) for a, b, c, d in res["feats"]], dtype=float)
+    f = np.array(res["feats"], dtype=float)
     shots = f[f[:, 0] == 1]
     non = f[f[:, 0] == 0]
     print("  feature ranges over triggered candidates (5th/50th/95th pct):")
-    for i, nm in [(1, "peak_hf_mg"), (2, "pre_still_ms"), (3, "post_lf_mg")]:
+    for i, nm in [(1, "peak_hf_mg"), (2, "pre_still_ms"), (3, "post_lf_mg"), (4, "ring_permille")]:
         ps = np.percentile(shots[:, i], [5, 50, 95]) if len(shots) else []
         pn = np.percentile(non[:, i], [5, 50, 95]) if len(non) else []
         print(f"    {nm:13s} shots {np.round(ps).astype(int)}   non-shots {np.round(pn).astype(int)}")
@@ -453,7 +473,8 @@ def main():
     lib.sd_default_config(C.byref(cfg))
     print(f"config: trig={cfg.trig_hf_mg:.0f} mg, move={cfg.move_mg:.0f} mg, "
           f"pre_still>={cfg.pre_still_min_ms} ms, post_lf>={cfg.post_lf_min_mg:.0f} mg "
-          f"[{cfg.post_start_ms}-{cfg.post_end_ms} ms], fs={cfg.fs_hz:.0f} Hz")
+          f"[{cfg.post_start_ms}-{cfg.post_end_ms} ms], ring>={cfg.ring_min_permille} permille of peak, "
+          f"fs={cfg.fs_hz:.0f} Hz")
 
     ok = unit_tests_pass()
     ok &= vectors_pass()
@@ -470,6 +491,9 @@ def main():
         r3 = run_set(lib, cfg, "weak-bow (info)", args.sessions // 2, args.seed + 200,
                      shot_kw=dict(peak_g=(4, 12), rot_deg=(5, 30), recoil_g=(0.4, 1.5)))
         margins(r3)
+        r4 = run_set(lib, cfg, "knock-over (info)", args.sessions // 2, args.seed + 300,
+                     knock_frac=1.0)
+        margins(r4)
     print("RESULT:", "PASS" if ok else "FAIL")
     sys.exit(0 if ok else 1)
 

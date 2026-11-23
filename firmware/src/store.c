@@ -10,13 +10,18 @@
 LOG_MODULE_REGISTER(store, LOG_LEVEL_INF);
 
 #define CFG_MAGIC_SLOPE_WAKE 0x53504331u /* "SPC1" */
-#define CFG_MAGIC 0x53504332u
+#define CFG_MAGIC_POST_LF_250 0x53504332u
+#define CFG_MAGIC 0x53504333u
 #define SLOPE_WAKE_DEFAULT_MG 150.0f
+#define OLD_POST_LF_DEFAULT_MG 250.0f
 
 struct cfg_blob {
 	uint32_t magic;
 	sd_config_t cfg;
 };
+
+#define CFG_BLOB_NO_RING_LEN \
+	(offsetof(struct cfg_blob, cfg) + offsetof(sd_config_t, ring_min_permille))
 
 typedef struct {
 	const char *key;
@@ -49,6 +54,19 @@ static sd_config_t migrate_slope_wake(const sd_config_t *old)
 	return cfg;
 }
 
+static sd_config_t migrate_post_lf(const sd_config_t *old)
+{
+	sd_config_t cfg = *old;
+
+	if (cfg.post_lf_min_mg == OLD_POST_LF_DEFAULT_MG) {
+		sd_config_t defaults;
+
+		sd_default_config(&defaults);
+		cfg.post_lf_min_mg = defaults.post_lf_min_mg;
+	}
+	return cfg;
+}
+
 static int set_cb(const char *key, size_t len, settings_read_cb read_cb, void *cb_arg)
 {
 	for (size_t i = 0; i < ARRAY_SIZE(fields); i++) {
@@ -56,15 +74,19 @@ static int set_cb(const char *key, size_t len, settings_read_cb read_cb, void *c
 			return read_cb(cb_arg, (uint8_t *)target + fields[i].offset, len) < 0 ? -EIO : 0;
 		}
 	}
-	if (!strcmp(key, "cfg") && len == sizeof(struct cfg_blob)) {
+	if (!strcmp(key, "cfg") && (len == sizeof(struct cfg_blob) || len == CFG_BLOB_NO_RING_LEN)) {
 		struct cfg_blob b;
+		sd_default_config(&b.cfg);
 		if (read_cb(cb_arg, &b, len) < 0) {
 			return -EIO;
 		}
 		if (b.magic == CFG_MAGIC) {
 			target->cfg = b.cfg;
+		} else if (b.magic == CFG_MAGIC_POST_LF_250) {
+			target->cfg = migrate_post_lf(&b.cfg);
 		} else if (b.magic == CFG_MAGIC_SLOPE_WAKE) {
-			target->cfg = migrate_slope_wake(&b.cfg);
+			sd_config_t woken = migrate_slope_wake(&b.cfg);
+			target->cfg = migrate_post_lf(&woken);
 		}
 		return 0;
 	}

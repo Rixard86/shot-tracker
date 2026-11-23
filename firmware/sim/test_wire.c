@@ -10,7 +10,8 @@
 #define LONG_UPTIME_MS 5000000000LL
 #define RESYNC_SHIFT_MS 250LL
 #define EVENT_AGE_MS 3000LL
-#define V3_BYTES ((uint16_t)sizeof(sp_config_t))
+#define V4_BYTES ((uint16_t)sizeof(sp_config_t))
+#define V3_BYTES ((uint16_t)SP_CONFIG_V3_BYTES)
 
 typedef struct {
 	const char *what;
@@ -44,6 +45,8 @@ static const bound_t bounds[] = {
 	{"idle below min", FIELD(idle_timeout_s), WIRE_IDLE_MIN_S - 1u, false},
 	{"idle at max", FIELD(idle_timeout_s), WIRE_IDLE_MAX_S, true},
 	{"idle above max", FIELD(idle_timeout_s), WIRE_IDLE_MAX_S + 1u, false},
+	{"ring at max", FIELD(ring_min_permille), WIRE_RING_MAX_PERMILLE, true},
+	{"ring above max", FIELD(ring_min_permille), WIRE_RING_MAX_PERMILLE + 1u, false},
 };
 
 static int failures;
@@ -113,6 +116,7 @@ static void test_round_trip(void)
 	w.trig_hf_mg = WIRE_TRIG_MAX_MG;
 	w.idle_timeout_s = WIRE_IDLE_MAX_S;
 	w.capture_mode = SP_CAPTURE_EXTENDED;
+	w.ring_min_permille = WIRE_RING_MAX_PERMILLE;
 	wire_config_in(&w, &s);
 	wire_config_out(&s, &back);
 	check(memcmp(&w, &back, sizeof(w)) == 0, "wire -> store -> wire keeps every field");
@@ -123,16 +127,25 @@ static void test_parse_versions(void)
 {
 	sp_config_t current = default_wire();
 	sp_config_t incoming = current;
+	wire_bytes_t v4 = {.data = &incoming, .len = V4_BYTES};
 	wire_bytes_t v3 = {.data = &incoming, .len = V3_BYTES};
 	wire_bytes_t v2 = {.data = &incoming, .len = SP_CONFIG_V2_BYTES};
 
 	current.capture_mode = SP_CAPTURE_EXTENDED;
 	incoming.capture_mode = SP_CAPTURE_STANDARD;
 	incoming.trig_hf_mg = WIRE_TRIG_MAX_MG;
+	incoming.ring_min_permille = WIRE_RING_MAX_PERMILLE;
 	sp_config_t cfg = current;
+	check(wire_config_parse(&cfg, &v4) == WIRE_CFG_OK, "v4 write accepted");
+	check(cfg.trig_hf_mg == WIRE_TRIG_MAX_MG && cfg.capture_mode == SP_CAPTURE_STANDARD &&
+		      cfg.ring_min_permille == WIRE_RING_MAX_PERMILLE, "v4 write sets every field");
+
+	incoming.version = PROTO_VERSION_V3;
+	cfg = current;
 	check(wire_config_parse(&cfg, &v3) == WIRE_CFG_OK, "v3 write accepted");
-	check(cfg.trig_hf_mg == WIRE_TRIG_MAX_MG && cfg.capture_mode == SP_CAPTURE_STANDARD,
-	      "v3 write sets every field");
+	check(cfg.version == PROTO_VERSION, "v3 write is stored as the current version");
+	check(cfg.capture_mode == SP_CAPTURE_STANDARD, "v3 write sets the capture mode");
+	check(cfg.ring_min_permille == current.ring_min_permille, "v3 write keeps the ring minimum");
 
 	incoming.version = PROTO_VERSION_V2;
 	cfg = current;
@@ -147,19 +160,23 @@ static void test_parse_rejects(void)
 	sp_config_t current = default_wire();
 	sp_config_t incoming = current;
 	sp_config_t cfg = current;
+	wire_bytes_t v4 = {.data = &incoming, .len = V4_BYTES};
 	wire_bytes_t v3 = {.data = &incoming, .len = V3_BYTES};
 	wire_bytes_t v2 = {.data = &incoming, .len = SP_CONFIG_V2_BYTES};
 	wire_bytes_t short_write = {.data = &incoming, .len = SP_CONFIG_V2_BYTES - 1u};
-	wire_bytes_t long_write = {.data = &incoming, .len = V3_BYTES + 1u};
+	wire_bytes_t between = {.data = &incoming, .len = V3_BYTES + 1u};
+	wire_bytes_t long_write = {.data = &incoming, .len = V4_BYTES + 1u};
 
 	incoming.version = PROTO_VERSION_V2;
 	check(wire_config_parse(&cfg, &v3) == WIRE_CFG_BAD_VALUE, "20 bytes must be v3");
+	check(wire_config_parse(&cfg, &v4) == WIRE_CFG_BAD_VALUE, "22 bytes must be v4");
+	check(wire_config_parse(&cfg, &between) == WIRE_CFG_BAD_LENGTH, "21 bytes");
 	incoming.version = PROTO_VERSION;
 	check(wire_config_parse(&cfg, &v2) == WIRE_CFG_BAD_VALUE, "19 bytes must be v2");
 	check(wire_config_parse(&cfg, &short_write) == WIRE_CFG_BAD_LENGTH, "too short");
 	check(wire_config_parse(&cfg, &long_write) == WIRE_CFG_BAD_LENGTH, "too long");
 	incoming.wake_mg = WIRE_WAKE_MAX_MG + 1u;
-	check(wire_config_parse(&cfg, &v3) == WIRE_CFG_BAD_VALUE, "out-of-range value");
+	check(wire_config_parse(&cfg, &v4) == WIRE_CFG_BAD_VALUE, "out-of-range value");
 	check(memcmp(&cfg, &current, sizeof(cfg)) == 0, "a refused write changes nothing");
 }
 

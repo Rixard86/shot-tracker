@@ -147,6 +147,7 @@ static void test_commands(void)
 	uint8_t record[CMD_BYTES] = {SP_CTRL_RECORD, SP_RECORD_MIN_S};
 	uint8_t reg0[CMD_BYTES] = {SP_CTRL_REG0_MODE, SP_REG0_LDO};
 	uint8_t stream[CMD_BYTES] = {SP_CTRL_STREAM, 1u};
+	uint8_t reject[CMD_BYTES] = {SP_CTRL_REJECT_CAPTURE, 1u};
 
 	check(command_ok(SP_CTRL_REG0_MODE, SP_REG0_DCDC) && command_ok(SP_CTRL_REG0_MODE, SP_REG0_LDO),
 	      "REG0 mode accepts DC/DC and LDO");
@@ -161,6 +162,10 @@ static void test_commands(void)
 	      "the live stream accepts stop and dividers up to 8");
 	check(!command_ok(SP_CTRL_STREAM, SP_STREAM_MAX_DIVIDER + 1u), "the live stream refuses divider 9");
 	check(!devcmd_valid(&(devcmd_req_t){stream, CMD_BYTES - 1u}), "a live stream command without its byte is refused");
+	check(command_ok(SP_CTRL_REJECT_CAPTURE, 0u) && command_ok(SP_CTRL_REJECT_CAPTURE, SP_REJECT_CAPTURE_MAX_G),
+	      "reject captures accept off and thresholds up to 65 g");
+	check(!command_ok(SP_CTRL_REJECT_CAPTURE, SP_REJECT_CAPTURE_MAX_G + 1u), "reject captures refuse 66 g");
+	check(!devcmd_valid(&(devcmd_req_t){reject, CMD_BYTES - 1u}), "a reject capture command without its byte is refused");
 	check(command_ok(OTHER_COMMAND, 0u), "other commands are left alone");
 }
 

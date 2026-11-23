@@ -1,4 +1,39 @@
-# ShotPuck BLE protocol (v3)
+# ShotPuck BLE protocol (v4)
+
+Firmware 0.3.22 (v4: CONFIG grows to 22 bytes):
+- **COUNT `last_seq` is the newest seq of any event.** Up to 0.3.21 the puck refreshed COUNT only for accepted shots, RESET_COUNT, DELETE_SHOT and at boot, so `last_seq` stayed at the last accepted shot although rejects and dev recordings (`reason` 3) take a seq too. Now COUNT is refreshed and notified after every event: accepted shot, reject or recording. An app that replays from its highest stored seq + 1, capped at `last_seq` (because a full-chip erase starts seq over), no longer asks again for the rejects after the last accepted shot on every reconnect. A pairing floor of `last_seq + 1` now also skips the rejects from before the pairing. Expect one more 12-byte COUNT notification per reject; `total` and `lifetime` still change only with accepted shots.
+- **Reject captures are a dev setting** (CONTROL `0x0D` REJECT_CAPTURE + u8 threshold in g, see *CONTROL opcodes*), no longer a separate firmware build. With a threshold set, a rejected candidate (`reason` 1, 2 or 4) whose `peak_hf_mg` reaches it is captured as 0.3.21-Debug did at 20 g: in the current `capture_mode`, under the reject's `seq`, sent after its EVENT on CAPREC or CAPTURE and kept for GET_CAPTURE. Nothing is counted and the LED does not flash. It starts off and is not saved: a reboot turns it off. STATUS flag bit 6 shows it is on, so an app that wants it should write it again when it sees the bit clear.
+- The puck reports 0.3.22 (image and DIS `0.3.22+0`), file `shotpuck-0.3.22.bin`.
+- **Follow-through default 200 mg** (CONFIG `post_lf_min_mg`, was 250). On 2026-11-23 F313 missed one of 120 arrows (seq 28180) with `post_lf_mg` 249; that day's arrows otherwise reached 297 and more, while knocks and string plucks on a still bow gave 42–191. A saved config that holds the old default 250 moves to 200 at boot; any other saved value is kept. An app that shows or writes CONFIG reads the new value back as usual.
+- **Ring check: drops and knock-overs are no longer shots.** After a release the bow keeps vibrating for a few hundred milliseconds; a puck or bow that hits a floor or table goes quiet within about 30 ms. The puck now averages the sample-to-sample jump from 30 to 150 ms after the trigger and rejects the candidate with the new `reason` **4** (no ring) when that average is below `ring_min_permille` thousandths of its `peak_hf_mg`. The check comes after stillness and follow-through, so reasons 1 and 2 keep their meaning. Default 40 (4 % of the peak); 0 turns the check off. On 2026-11-23 a dropped puck (ED45, seq 22694) was counted as a shot at 11 ‰, while 167 arrows from three bows rang at 113 ‰ or more, and a set-down rang at 5 ‰. String plucks ring like arrows (207 ‰), so they are still stopped by the stillness and follow-through checks. While REJECT_CAPTURE is set, a reason 4 reject above its threshold is captured, so the rule can be checked on new drops.
+- **CONFIG v4 (22 B)** appends `u16 ring_min_permille` at offset 20 (see *CONFIG*). Reads return 22 bytes with `version` 4. 20-byte v3 writes (as archesk's capture-mode change sends) and 19-byte v2 writes are still accepted and keep the current ring value. A saved config from an older firmware gets the default 40 at boot.
+- One new command (REJECT_CAPTURE), one new STATUS flag, one new CONFIG field and one new reject reason (4).
+
+Firmware 0.3.21-Debug (still v3), a diagnostic build for finding missed shots:
+- **Big rejects get a capture too.** A rejected candidate (`reason` 1 or 2) with `peak_hf_mg` of at least 20,000 (20 g) is captured like an accepted shot, in the current `capture_mode`, under the reject's `seq`. While the phone is subscribed, the capture follows the reject's EVENT on CAPREC or CAPTURE as a shot's does, and GET_CAPTURE returns it later. Nothing is counted: COUNT, `total`, lifetime and the shot log are untouched, and the LED does not flash. Real arrows peak at 40–65 g and handling bumps mostly below 20 g, so a missed arrow now comes with its raw motion and can be run through the detector again. The setting is `CONFIG_SHOTPUCK_REJECT_CAPTURE_MIN_MG` (`prj.conf`; 0 turns it off, the default).
+- **The puck reports 0.3.21.** The image header says 0.3.21+0 and DIS Firmware Revision `0.3.21+0`; "-Debug" is only in the file name (`shotpuck-0.3.21-Debug.bin`) and the build (`EXTRAVERSION = debug`), because apps parse plain `x.y.z` versions. An app updates over it like any newer version; the next normal release is 0.3.22.
+- Everything else as 0.3.20. No layout or command changes.
+
+Firmware 0.3.20 (still v3):
+- **The release may move the bow up to 60 ms before the trigger.** The stillness check (500 ms without movement over 300 mg) ignores the samples just before the trigger, because the release itself moves the bow. That window was 10 samples (21 ms); now it is 29 (60 ms). On 2026-11-22, 5 of F313's 21 arrows were rejected with `reason` 1 and `pre_still_ms` exactly 20: their release started moving the bow earlier than 21 ms before the trigger. The 19 shots F313 captured that day already moved 146–291 mg at the 21 ms mark, while none of 47 accepted captures moved more than 174 mg between 60 and 560 ms before the trigger. Accepted shots are unchanged. A rejected candidate that was moving right up to the window now reports `pre_still_ms` 60 instead of 20.
+- **Transmit power +8 dBm** (was 0 dBm), for advertising and connections. On 2026-11-22 the link dropped 7 times in 15 minutes with the phone in a trouser pocket, each time while the bow was raised, drawn or held: the archer's body was between the puck and the phone.
+- **Supervision timeout 8 s** (was 4 s) in both parameter sets (15–30 ms with latency 0, 105–210 ms with latency 4), so a link blocked for a few seconds at full draw survives. A phone that really leaves notices it 4 s later than before.
+- **Rejects shot while the link is down can still be missed by an app.** COUNT `last_seq` moves only on accepted shots, so an app that compares it with its highest received seq sees nothing to replay after a reconnect, although REPLAY would also send the rejects kept in RAM. To get them, write REPLAY from the next seq after every reconnect even when COUNT shows nothing new, as step 4 of *Recommended app sync* says; the end marker tells when it is done. The puck behaves as before here. From 0.3.22 `last_seq` follows every event (see 0.3.22 above).
+- No layout or command changes.
+
+Firmware 0.3.19 (still v3):
+- **No preferred connection parameters in the GAP service.** Up to 0.3.18 the GAP service had the Peripheral Preferred Connection Parameters characteristic (105–210 ms, latency 4). Android reads it once, in its own service discovery after pairing, keeps the values for that puck until the phone's Bluetooth restarts, and applies them about 1 s into every connection. A connection on the charger therefore went slow at 1 s and only became fast when the puck's own request (sent 5 s after connecting) took effect, about 8–10 s in. An app update that started in that window ran on the slow link and could hit Nordic's 2.5 s chunk timeout (ED45, 2026-11-20 15:35:40). Now the phone keeps its own default interval until the puck asks, 5 s after connecting: 15–30 ms with latency 0 on the charger, 105–210 ms with latency 4 off it.
+- **Handles move down by 2.** The GAP service is 2 attributes shorter, so every later attribute (Battery, Device Information, MCUmgr SMP and the whole ShotPuck service) has a handle 2 lower than in 0.3.18. Find characteristics by UUID after service discovery, as before. The puck has Service Changed and Database Hash: the first boot of 0.3.19 (or of the image MCUboot reverts to) indicates Service Changed for the whole database to every bonded phone, and Android reads the hash on each connection to a bonded puck and rediscovers before it uses its cache.
+- **A phone keeps the old values until its Bluetooth restarts.** A phone that paired with a puck since its Bluetooth last started still applies 105–210 ms / latency 4 to that puck after the update. Turning the phone's Bluetooth off and on clears them, and a pairing with 0.3.19 finds none to store.
+- No layout or command changes.
+
+Firmware 0.3.18 (still v3):
+- **No crash at the switch to the fast interval.** Since 0.3.15 a puck on the charger asks for the 15–30 ms interval about 5 s after a phone connects. At that switch the Bluetooth controller sometimes prepared one connection event late and asserted (`lll_peripheral.c`, `LL_ASSERT_OVERHEAD`, found with 0.3.17's DIAG `crash_pc`). The puck then restarted and the phone saw a supervision timeout 4 s after the switch: on F313 after every update, and on ED45 at 2 of 3 ordinary connections on the charger. The controller now skips such a late event and the link carries on (`CONFIG_BT_CTLR_ASSERT_OVERHEAD_START=n`). The update to 0.3.18 already runs 0.3.18's code after the swap, so it is the first update without that restart.
+- No layout or command changes.
+
+Firmware 0.3.17 (still v3):
+- **DIAG grows from 20 to 28 bytes** with where the last crash happened: `u32 crash_pc` and `u32 crash_lr`, the program counter and link register the fault handler saw. They are non-zero only when `reset_cause` is 4 (crash), for the boot right after it, like `crash_reason`. Looking them up in that firmware build's ELF gives the source line of the crash (for example the assert behind a kernel oops). An app that reads 20 bytes keeps working.
+- No other layout or command changes.
 
 Firmware 0.3.16 (still v3):
 - **Shot times after a reboot:** an event recorded before any phone had sent SET_TIME since the puck started no longer stays at `t_unix_ms` 0. When the puck sends an event from the current boot after a SET_TIME, live or on REPLAY, it fills in the time from that boot's clock (uptime at the trigger plus the offset the last SET_TIME gave). The shot log keeps each record as it was written, so events from an earlier boot that never got the time still arrive with 0: nobody knows that boot's clock. A round shot after a reboot and synced in the same boot now arrives timed, even when nothing is logged after the sync.
@@ -77,6 +112,10 @@ Firmware 0.3.1 (still v3; the existing layouts are unchanged):
 - New read-only **DIAG** characteristic (`…0008…`): why the puck last restarted, a crash count and stack headroom (see *DIAG*).
 - While events or captures are streaming, the puck asks for a 15–30 ms connection interval, and goes back to 105–210 ms 5 s after the transfer ends.
 
+v4 (compared with v3, firmware 0.3.22):
+- CONFIG gains `u16 ring_min_permille` and is 22 bytes. 20-byte v3 and 19-byte v2 writes are still accepted.
+- EVENT `reason` 4: no ring (the ring check).
+
 v3 (compared with v2, firmware 0.3.0):
 - Captures are stored compressed in flash and survive resets and updates. GET_CAPTURE works for any stored shot, not just the last 4.
 - CONFIG gains `capture_mode` (standard or extended) and is 20 bytes. 19-byte v2 writes are still accepted.
@@ -131,13 +170,13 @@ Ask the user to keep the charger in until the phone has paired: unplugging close
 
 | UUID (7a1e00XX-…) | Name | Props | Payload |
 |---|---|---|---|
-| `…0002…` | COUNT | read, notify | `uint32 total`, `uint32 last_seq`, from 0.3.8 `uint32 lifetime` (12 B; 8 B before 0.3.8) |
+| `…0002…` | COUNT | read, notify | `uint32 total`, `uint32 last_seq`, from 0.3.8 `uint32 lifetime` (12 B; 8 B before 0.3.8). `last_seq` is the newest event's seq (any event from 0.3.22, the last accepted shot before) |
 | `…0003…` | EVENT | notify | 1–10 × `sp_event_t` (24 B each), below |
 | `…0004…` | CONTROL | write | opcode + payload, below |
-| `…0005…` | CONFIG | read, write | `sp_config_t` (19 B), below |
+| `…0005…` | CONFIG | read, write | `sp_config_t` (22 B from 0.3.22, 20 B before), below |
 | `…0006…` | STATUS | read, notify | `sp_status_t` (7 B), below |
 | `…0007…` | CAPTURE | notify | capture packets (header + data), below |
-| `…0008…` | DIAG | read | `sp_diag_t` (20 B since 0.3.13, 8 B in 0.3.1–0.3.12), below |
+| `…0008…` | DIAG | read | `sp_diag_t` (28 B since 0.3.17, 20 B in 0.3.13–0.3.16, 8 B in 0.3.1–0.3.12), below |
 | `…0009…` | STREAM | notify | live IMU samples for the dev page (firmware 0.3.9), see *STREAM* below |
 | `…000A…` | CAPREC | notify | captures as stored, compressed (firmware 0.3.12), see *CAPREC* below |
 
@@ -156,7 +195,7 @@ Each notification carries **one or more events back to back** (length = 24 × n,
 | 18 | u16 | pre_still_ms | Stillness before the trigger |
 | 20 | u16 | post_lf_mg | Bow motion after release |
 | 22 | u8 | accepted | **1 = counted as a shot** |
-| 23 | u8 | reason | 0 ok, 1 not still before, 2 no follow-through, 3 dev recording (0.3.9, CONTROL RECORD; never a shot); 254 and 255 reserved for the app (below) |
+| 23 | u8 | reason | 0 ok, 1 not still before, 2 no follow-through, 3 dev recording (0.3.9, CONTROL RECORD; never a shot), 4 no ring (0.3.22: a drop, set-down or knock-over); 254 and 255 reserved for the app (below) |
 
 **Reserved reasons:** the firmware never sends `reason` 254 or 255; they belong to the app. archesk marks its stored shots with them: 254 = removed by the archer, the puck not told yet; 255 = removed and DELETE_SHOT sent. Value 3 is the dev recording (0.3.9); 4–253 are free for future firmware reasons. A new firmware reason must never use 254 or 255.
 
@@ -192,6 +231,7 @@ Events are sent live as they happen, and again on REPLAY. Replayed and live even
 | `0x0A` REG0_MODE | u8 mode (0 DC/DC, 1 LDO) | Dev page (0.3.9): switches REG0, not saved (a reboot returns to DC/DC); STATUS bit 5 shows LDO. Other values: ATT 0x13 |
 | `0x0B` RECORD | u8 seconds (1–10) | Dev page (0.3.9): records the IMU for that long as a capture that is not a shot (EVENT reason 3, then the capture on CAPTURE or CAPREC). Other values: ATT 0x13 |
 | `0x0C` STREAM | u8 divider (0 stop, 1–8) | Dev page (0.3.9): live IMU stream on STREAM at 480 Hz / divider, see *STREAM*. Not subscribed: ATT 0xFC; divider above 8: ATT 0x13 |
+| `0x0D` REJECT_CAPTURE | u8 threshold in g (0 off, 1–65) | Dev page (0.3.22): also capture every rejected candidate whose `peak_hf_mg` is at least threshold × 1000, as for a shot (see *CAPTURE*); 20 matches 0.3.21-Debug. Not saved (a reboot turns it off); STATUS bit 6 shows it is on. Above 65: ATT 0x13 |
 
 The puck queues up to 4 commands. A CONTROL write that arrives while 4 are still waiting fails with ATT error 0x11 (insufficient resources) and is not run: wait about 100 ms and write it again (firmware 0.3.1; 0.3.0 accepted the write and dropped the command).
 
@@ -199,7 +239,7 @@ A REPLAY of the whole flash log (about 1000 events) takes roughly 10–20 s at M
 
 ### CAPTURE: bow motion around each shot
 
-For every **accepted** shot the puck records the raw accelerometer and gyroscope around the release trigger at 480 Hz. CONFIG `capture_mode` picks the window:
+For every **accepted** shot (and every reject at or above the REJECT_CAPTURE threshold from 0.3.22, of 20 g or more in 0.3.21-Debug) the puck records the raw accelerometer and gyroscope around the release trigger at 480 Hz. CONFIG `capture_mode` picks the window:
 
 | Mode | Window | `n_samples` | `trigger_index` |
 |---|---|---|---|
@@ -222,7 +262,7 @@ The measured counts come from 37 real extended captures (2026-11-12 to 2026-11-1
 
 The 660 KB area shrinks back to 408 KB when a firmware update starts (the captures stored in the second slot are lost then) and while a just-updated firmware is on trial; it grows again once the new firmware has confirmed itself. Fetch the captures you want to keep before starting an update.
 
-The two modes share the area, so after a switch the new captures replace the old ones gradually. When the phone is subscribed to CAPTURE, the puck streams each capture automatically once it is stored (about 0.5 s after the EVENT in standard mode, 2 s in extended): one header packet, then data packets until all samples are sent. GET_CAPTURE fetches any stored capture again, also after a reset. Rejected candidates are not captured.
+The two modes share the area, so after a switch the new captures replace the old ones gradually. When the phone is subscribed to CAPTURE, the puck streams each capture automatically once it is stored (about 0.5 s after the EVENT in standard mode, 2 s in extended): one header packet, then data packets until all samples are sent. GET_CAPTURE fetches any stored capture again, also after a reset. Rejected candidates are not captured, except those at or above the REJECT_CAPTURE threshold (0.3.22, dev setting) and in 0.3.21-Debug those with a peak of 20 g or more.
 
 Byte 0 of every packet is the packet type.
 
@@ -294,21 +334,21 @@ Subscribe to CAPREC (`…000A…`) instead of CAPTURE and the puck sends each ca
 
 **Test vectors and a reference decoder:** shot-tracker `firmware/sim/vectors/caprec-vectors.json` holds 9 records written by the firmware's own capture code (standard, a recording, extended, ultra, captures shortened by a wake, and two stress signals that use raw blocks, slope blocks and the 24-ones escape). Each has the header fields, the payload as hex, every stored sample and the CRC-32 of the rebuilt 480 Hz samples (each sample 6 × int16 little-endian, ax to gz). `firmware/sim/caprec_decode.py` decodes and checks them all: `python firmware/sim/caprec_decode.py firmware/sim/vectors/caprec-vectors.json`.
 
-### CONFIG (`sp_config_t`, 20 B)
+### CONFIG (`sp_config_t`, 22 B)
 
-`u8 version(=3)`, then u16 each: `trig_hf_mg` (1000–30000, default 6000), `move_mg` (50–2000, 300), `pre_still_min_ms` (0–10000, 500), `post_start_ms` (100), `post_end_ms` (≤1500, 600; must be greater than start), `post_lf_min_mg` (0–5000, 250), `refractory_ms` (200–10000, 1500), `wake_mg` (16–2000, 90; high-pass filtered from 0.3.10), `idle_timeout_s` (5–3600, 30), then `u8 capture_mode` (0 standard, 1 extended, 2 ultra from 0.3.12; default 0).
+`u8 version(=4)`, then u16 each: `trig_hf_mg` (1000–30000, default 6000), `move_mg` (50–2000, 300), `pre_still_min_ms` (0–10000, 500), `post_start_ms` (100), `post_end_ms` (≤1500, 600; must be greater than start), `post_lf_min_mg` (0–5000, 200 from 0.3.22, 250 before), `refractory_ms` (200–10000, 1500), `wake_mg` (16–2000, 90; high-pass filtered from 0.3.10), `idle_timeout_s` (5–3600, 30), then `u8 capture_mode` (0 standard, 1 extended, 2 ultra from 0.3.12; default 0), then `u16 ring_min_permille` (0–1000, default 40; from 0.3.22): the ring check rejects a candidate (`reason` 4) whose mean sample-to-sample jump 30–150 ms after the trigger is below this many thousandths of its `peak_hf_mg`; 0 turns it off. With `post_end_ms` below 150 the ring window ends there, and below 30 the check is skipped.
 
-A 19-byte write with `version = 2` (no `capture_mode`) is still accepted and keeps the current mode. Reads always return the 20-byte v3 layout. FACTORY_CFG restores the thresholds but keeps the capture mode.
+A 20-byte write with `version = 3` (no `ring_min_permille`) and a 19-byte write with `version = 2` (no `capture_mode` either) are still accepted and keep the fields they lack. Reads always return the 22-byte v4 layout. FACTORY_CFG restores the thresholds, the ring minimum included, but keeps the capture mode.
 
 Out-of-range writes are rejected with ATT error 0x13 (value not allowed). Accepted values are persisted.
 
 ### STATUS (`sp_status_t`, 7 B)
 
 `u8 battery_pct`, `u16 battery_mv`, `i8 temp_c`, `u8 flags`, `u8 fw_major`, `u8 fw_minor`.
-Flags: bit0 VBUS (cable present), bit1 CHARGING, bit2 CHG_INHIBIT (too cold or hot to charge), bit3 ACTIVE, bit4 TIME_SET, bit5 REG0_LDO (0.3.9, set while REG0 runs as LDO after REG0_MODE 1).
+Flags: bit0 VBUS (cable present), bit1 CHARGING, bit2 CHG_INHIBIT (too cold or hot to charge), bit3 ACTIVE, bit4 TIME_SET, bit5 REG0_LDO (0.3.9, set while REG0 runs as LDO after REG0_MODE 1), bit6 REJECT_CAPTURE (0.3.22, set while a REJECT_CAPTURE threshold is on).
 `battery_pct` comes from the cell voltage through a table; from 0.3.5 it is at most 99 while CHARGING and 100 while the charge has ended with the cable still attached (see the 0.3.5 notes at the top). `battery_mv` is the raw reading.
 
-### DIAG (`sp_diag_t`, 20 B; 8 B in firmware 0.3.1–0.3.12)
+### DIAG (`sp_diag_t`, 28 B; 20 B in firmware 0.3.13–0.3.16, 8 B in 0.3.1–0.3.12)
 
 Read-only diagnostics, so a crash in the field leaves a trace the app can show or log.
 
@@ -322,6 +362,8 @@ Read-only diagnostics, so a crash in the field leaves a trace the app can show o
 | 8 | u32 | motion_wakes | Since 0.3.13: how often movement woke the sleeping puck since it started (wakes for a recording, the live stream or a sensor restart are not counted) |
 | 12 | u32 | wakes_without_shot | Since 0.3.13: of those wakes, how many went back to sleep without an accepted shot (false wakes: a knock on the stand, the bag moving) |
 | 16 | u32 | uptime_s | Since 0.3.13: seconds since the puck started, so `wakes_without_shot / uptime_s` is a false-wake rate. The three counts start at 0 at every boot |
+| 20 | u32 | crash_pc | Since 0.3.17: program counter at the fatal error when `reset_cause` = 4, otherwise 0. For a kernel oops (an assert) it points just after the assert's call. Look it up with `arm-zephyr-eabi-addr2line -f -i -e zephyr.elf` of the same build |
+| 24 | u32 | crash_lr | Since 0.3.17: link register at the fatal error when `reset_cause` = 4, otherwise 0 (odd: Thumb bit set). Usually the caller of the function that failed |
 
 On a fatal error the puck now reboots at once (0.3.0 halted until the 10 s watchdog fired). A crash still counts towards the boot-loop guard, and an unconfirmed update still rolls back. The values are refreshed at boot, on SET_TIME and every 10 s (60 s while idle); read DIAG when needed, there are no notifications. An app can log it once per connection and flag a growing `crash_count`.
 
@@ -334,7 +376,7 @@ Subscribe to STREAM, then write CONTROL `0C` + divider: the puck streams every d
 1. Connect only to the user's own puck (its stored serial). The link encrypts automatically because the phone is paired.
 2. Request MTU 247 or more, and subscribe to COUNT, EVENT, STATUS and, from firmware 0.3.12, CAPREC (CAPTURE on older firmware).
 3. Write SET_TIME.
-4. Read COUNT, then write `REPLAY(last_seq_seen_by_app + 1)`. The app owns this position; the puck keeps no per-phone sync state, so any number of phones can sync. From firmware 0.3.16 the replay ends with a 4-byte marker on EVENT holding that `from_seq`; older firmware sends none, so keep a timeout.
+4. Read COUNT, then write `REPLAY(last_seq_seen_by_app + 1)`, also when COUNT's `last_seq` is not above it: up to 0.3.21 `last_seq` moved only on accepted shots, so the rejects the app missed while offline came only with the replay. From 0.3.22 `last_seq` is the newest seq of any event (shot, reject or recording). The app owns this position; the puck keeps no per-phone sync state, so any number of phones can sync. From firmware 0.3.16 the replay ends with a 4-byte marker on EVENT holding that `from_seq`; older firmware sends none, so keep a timeout.
 5. Upsert events keyed by `(device_id, seq)`, with `device_id` = DIS serial number. seq is monotonic, so replays and duplicates are harmless.
 6. Stay connected during the end. Each shot arrives as an EVENT with `accepted = 1` about 0.6 s after release (the follow-through window), followed by its capture.
 7. Store captures keyed by `(device_id, seq)` as well. For accepted events without a complete capture, or a CAPREC capture that fails its check, write `GET_CAPTURE(seq)`: the puck keeps the newest captures in flash (see *CAPTURE*), so this also works after a session offline.
@@ -350,6 +392,7 @@ The puck runs **MCUboot** and exposes the standard **MCUmgr SMP** service, so no
 - **Charger required (0.3.2):** the puck accepts upload data only while the charger is attached. Each upload request is checked; without the charger the puck answers SMP `rc` 6 (`MGMT_ERR_EBADSTATE`) and writes nothing, and unplugging during an upload stops it at the next chunk (the incomplete image never boots). Check STATUS `SP_ST_VBUS` before starting and tell the user to plug the charger in. Image state changes (test, confirm) and reset are not gated.
 - **Upload speed (0.3.3):** the puck reports its MCUmgr buffers through the OS group's parameters command (`mcumgr params`: 4 buffers of 384 bytes, with SMP reassembly over BLE), and switches to the 15–30 ms connection interval while upload chunks arrive (back to 105–210 ms 5 s after the last). nRF Connect Device Manager reads the parameters by itself. With `mcumgr_flutter` set `pipelineDepth: 3` and `reassemblyBufferSize: 384` in `FirmwareUpgradeConfiguration` (the defaults, 1 and 0, send one MTU-sized chunk at a time).
 - **Fast interval on the charger (0.3.15):** from 0.3.15 the puck keeps the 15–30 ms interval for as long as a phone is connected and the charger is in, so an upload starts on it. Pucks on 0.3.14 or older still start on 105–210 ms with latency 4, and on some phones `mcumgr_flutter` then gives up after the first chunk (it allows 2.5 s per chunk and does not retry). nRF Connect Device Manager resends late chunks; use it for such a puck if the app update fails, with *Erase application settings* off.
+- **Slow first seconds on Android (0.3.19):** up to 0.3.18, Android applies the puck's preferred parameters (105–210 ms, latency 4) about 1 s into each connection, and the fast request takes effect only 8–10 s in. An upload that starts earlier can time out. For an update from 0.3.18 or older, either start the upload about 15 s after connecting, or turn the phone's Bluetooth off and on first: Android reads the preferred parameters only when pairing, so after a Bluetooth restart it has none to apply until the puck is paired again.
 - Recommended mode **Test and confirm**: upload (roughly 20–40 s at MTU 247), mark as test, reset. MCUboot then swaps the images (the puck is unavailable for about 10–20 s), the new version boots and advertises, and the phone reconnects and confirms it.
 - The puck also confirms a new image by itself once a paired phone has connected over an encrypted link and the image has run 10 s. Reconnect and pair (encrypt) after the OTA reset; until then the image stays on trial. If the new image crashes or hangs before that (the watchdog resets a hang after 10 s), MCUboot **rolls back** to the previous version on the next boot.
 - Only images signed with the ShotPuck private key are accepted: MCUboot checks the ECDSA-P256 signature before it boots anything.

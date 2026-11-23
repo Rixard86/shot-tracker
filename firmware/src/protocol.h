@@ -8,7 +8,8 @@
 
 #include <stdint.h>
 
-#define PROTO_VERSION 3
+#define PROTO_VERSION 4
+#define PROTO_VERSION_V3 3
 #define PROTO_VERSION_V2 2
 
 /* 128-bit UUIDs: 7a1e00XX-5b0c-4f3a-9c6e-3a5d2b9e0a01 */
@@ -33,7 +34,7 @@ enum {
 
 typedef struct __attribute__((packed)) {
 	uint32_t total;     /* lifetime accepted shots (persisted)           */
-	uint32_t last_seq;  /* seq of newest event in the device log         */
+	uint32_t last_seq;  /* seq of newest event: shot, reject, recording  */
 	uint32_t lifetime;
 } sp_count_t;
 
@@ -47,7 +48,7 @@ typedef struct __attribute__((packed)) {
 	uint16_t pre_still_ms;
 	uint16_t post_lf_mg;
 	uint8_t accepted;
-	uint8_t reason;         /* 0 ok, 1 not still before, 2 no follow-through */
+	uint8_t reason;         /* 0 ok, 1 not still, 2 no follow-through, 4 no ring */
 } sp_event_t;              /* 24 bytes: needs ATT MTU >= 27. The device     */
                            /* requests MTU 247 on connect.                  */
 
@@ -68,6 +69,7 @@ enum {
 	SP_CTRL_REG0_MODE = 0x0A,
 	SP_CTRL_RECORD = 0x0B,
 	SP_CTRL_STREAM = 0x0C,
+	SP_CTRL_REJECT_CAPTURE = 0x0D,
 };
 
 #define SP_FACTORY_RESET_CODE 0x45504957u
@@ -82,6 +84,7 @@ enum {
 #define SP_RECORD_MAX_S 10u
 #define SP_EVENT_REASON_RECORDING 3u
 #define SP_STREAM_MAX_DIVIDER 8u
+#define SP_REJECT_CAPTURE_MAX_G 65u
 
 enum {
 	SP_CAP_HEADER = 0x01,
@@ -163,8 +166,10 @@ typedef struct __attribute__((packed)) {
 	uint16_t wake_mg;
 	uint16_t idle_timeout_s;
 	uint8_t capture_mode;
+	uint16_t ring_min_permille;
 } sp_config_t;
 
+#define SP_CONFIG_V3_BYTES 20u
 #define SP_CONFIG_V2_BYTES 19u
 
 enum {
@@ -180,6 +185,7 @@ enum {
 	SP_ST_ACTIVE = 1u << 3,      /* detector running                       */
 	SP_ST_TIME_SET = 1u << 4,
 	SP_ST_REG0_LDO = 1u << 5,
+	SP_ST_REJECT_CAPTURE = 1u << 6,
 };
 
 typedef struct __attribute__((packed)) {
@@ -212,6 +218,8 @@ typedef struct __attribute__((packed)) {
 	uint32_t motion_wakes;
 	uint32_t wakes_without_shot;
 	uint32_t uptime_s;
+	uint32_t crash_pc;
+	uint32_t crash_lr;
 } sp_diag_t;
 
 #endif /* PROTOCOL_H */

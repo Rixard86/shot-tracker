@@ -20,6 +20,7 @@
 #define WIRE_WAKE_MAX_MG 2000u
 #define WIRE_IDLE_MIN_S 5u
 #define WIRE_IDLE_MAX_S 3600u
+#define WIRE_RING_MAX_PERMILLE 1000u
 
 typedef enum {
 	WIRE_CFG_OK,

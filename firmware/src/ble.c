@@ -25,7 +25,13 @@ LOG_MODULE_REGISTER(ble, LOG_LEVEL_INF);
 #define FAST_INTERVAL_MIN 12
 #define FAST_INTERVAL_MAX 24
 #define FAST_LATENCY 0
+#define SLOW_INTERVAL_MIN 84
+#define SLOW_INTERVAL_MAX 168
+#define SLOW_LATENCY 4
+#define LINK_TIMEOUT 800
 #define BULK_LINGER_MS 5000u
+
+enum link_speed { LINK_UNSET, LINK_SLOW, LINK_FAST };
 
 static struct bt_uuid_128 uuid_svc = BT_UUID_INIT_128(SP_UUID_SERVICE);
 static struct bt_uuid_128 uuid_count = BT_UUID_INIT_128(SP_UUID_COUNT);
@@ -53,15 +59,13 @@ static atomic_t link_secured;
 static struct bt_conn *cur_conn;
 static bool advertising;
 static bool notify_count, notify_event, notify_status, notify_capture, notify_stream, notify_caprec;
-static bool fast_link;
+static enum link_speed link_speed;
 static uint32_t bulk_seen_ms;
 
 static const struct bt_le_conn_param fast_param =
-	BT_LE_CONN_PARAM_INIT(FAST_INTERVAL_MIN, FAST_INTERVAL_MAX, FAST_LATENCY,
-			      CONFIG_BT_PERIPHERAL_PREF_TIMEOUT);
+	BT_LE_CONN_PARAM_INIT(FAST_INTERVAL_MIN, FAST_INTERVAL_MAX, FAST_LATENCY, LINK_TIMEOUT);
 static const struct bt_le_conn_param slow_param =
-	BT_LE_CONN_PARAM_INIT(CONFIG_BT_PERIPHERAL_PREF_MIN_INT, CONFIG_BT_PERIPHERAL_PREF_MAX_INT,
-			      CONFIG_BT_PERIPHERAL_PREF_LATENCY, CONFIG_BT_PERIPHERAL_PREF_TIMEOUT);
+	BT_LE_CONN_PARAM_INIT(SLOW_INTERVAL_MIN, SLOW_INTERVAL_MAX, SLOW_LATENCY, LINK_TIMEOUT);
 
 static ssize_t rd_blob(struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf,
 		       uint16_t len, uint16_t offset)
@@ -232,7 +236,7 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 		cur_conn = NULL;
 	}
 	notify_count = notify_event = notify_status = notify_capture = notify_stream = notify_caprec = false;
-	fast_link = false;
+	link_speed = LINK_UNSET;
 	on_conn(false); /* main decides whether to re-advertise */
 }
 
@@ -315,13 +319,14 @@ void ble_set_bulk(bool busy)
 	if (busy) {
 		bulk_seen_ms = now;
 	}
-	bool want = busy || (fast_link && now - bulk_seen_ms < BULK_LINGER_MS);
+	bool want = busy || (link_speed == LINK_FAST && now - bulk_seen_ms < BULK_LINGER_MS);
+	enum link_speed next = want ? LINK_FAST : LINK_SLOW;
 
-	if (!cur_conn || want == fast_link) {
+	if (!cur_conn || next == link_speed) {
 		return;
 	}
 	if (bt_conn_le_param_update(cur_conn, want ? &fast_param : &slow_param) == 0) {
-		fast_link = want;
+		link_speed = next;
 	}
 }
 

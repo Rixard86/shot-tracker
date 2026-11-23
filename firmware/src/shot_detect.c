@@ -6,9 +6,11 @@
 #include <math.h>
 #include <string.h>
 
-#define GUARD_SAMPLES 10u  /* motion within this many samples of the trigger
-                              is attributed to the shot itself (~20 ms)   */
+#define GUARD_SAMPLES 29u
 #define PEAK_WIN_MS 20u
+#define RING_START_MS 30u
+#define RING_END_MS 150u
+#define PER_MILLE 1000.0f
 #define WAKE_THS_LSB_MG 31.25f
 #define WAKE_THS_MAX 63u
 #define WAKE_HP_ODR_DIVISOR 45.0f
@@ -24,10 +26,11 @@ void sd_default_config(sd_config_t *c)
 	c->pre_still_min_ms = 500;
 	c->post_start_ms = 100;
 	c->post_end_ms = 600;
-	c->post_lf_min_mg = 250.0f;
+	c->post_lf_min_mg = 200.0f;
 	c->refractory_ms = 1500;
 	c->wake_mg = 90.0f;
 	c->idle_timeout_ms = 30000;
+	c->ring_min_permille = 40;
 }
 
 static float norm3(float x, float y, float z)
@@ -63,24 +66,87 @@ void sd_start_active(sd_state_t *s, uint32_t now_ms)
 	s->mode = SD_MODE_ACTIVE;
 }
 
+static int rings_too_little(const sd_state_t *s, float ring)
+{
+	return s->ring_n > 0u &&
+	       ring * PER_MILLE < (float)s->cfg.ring_min_permille * (float)s->cand.peak_hf_mg;
+}
+
 static void finalize(sd_state_t *s, sd_event_t *ev)
 {
 	const sd_config_t *c = &s->cfg;
 	float post = s->post_n ? s->post_sum / (float)s->post_n : 0.0f;
+	float ring = s->ring_n ? s->ring_sum / (float)s->ring_n : 0.0f;
 
 	s->cand.post_lf_mg = sat16(post);
+	s->cand.ring_mg = sat16(ring);
 	if (s->cand.pre_still_ms < c->pre_still_min_ms) {
 		s->cand.accepted = 0;
 		s->cand.reason = SD_REJ_NOT_STILL;
 	} else if (post < c->post_lf_min_mg) {
 		s->cand.accepted = 0;
 		s->cand.reason = SD_REJ_NO_FOLLOW;
+	} else if (rings_too_little(s, ring)) {
+		s->cand.accepted = 0;
+		s->cand.reason = SD_REJ_NO_RING;
 	} else {
 		s->cand.accepted = 1;
 		s->cand.reason = SD_REJ_NONE;
 	}
 	*ev = s->cand;
 	s->cand_active = 0;
+}
+
+static void accumulate(sd_state_t *s, float hf)
+{
+	const sd_config_t *c = &s->cfg;
+	uint32_t dt = s->now_ms - s->cand.t_ms;
+
+	if (dt <= PEAK_WIN_MS) {
+		uint16_t p = sat16(hf);
+		if (p > s->cand.peak_hf_mg) {
+			s->cand.peak_hf_mg = p;
+		}
+	}
+	if (dt >= RING_START_MS && dt <= RING_END_MS) {
+		s->ring_sum += hf;
+		s->ring_n++;
+	}
+	if (dt >= c->post_start_ms && dt <= c->post_end_ms) {
+		s->post_sum += norm3(s->lf[0] - s->g_pre[0], s->lf[1] - s->g_pre[1],
+				     s->lf[2] - s->g_pre[2]);
+		s->post_n++;
+	}
+}
+
+static void start_candidate(sd_state_t *s, float hf)
+{
+	uint32_t still = s->now_ms - s->last_move_ms;
+
+	s->cand_active = 1;
+	s->have_trig = 1;
+	s->last_trig_ms = s->now_ms;
+	memset(&s->cand, 0, sizeof(s->cand));
+	s->cand.t_ms = s->now_ms;
+	s->cand.peak_hf_mg = sat16(hf);
+	s->cand.pre_still_ms = still > 65535u ? 65535u : (uint16_t)still;
+	for (int i = 0; i < 3; i++) {
+		s->g_pre[i] = s->g_lp[i];
+	}
+	s->post_sum = 0.0f;
+	s->post_n = 0;
+	s->ring_sum = 0.0f;
+	s->ring_n = 0;
+}
+
+static void seed_filters(sd_state_t *s, const float x[3])
+{
+	for (int i = 0; i < 3; i++) {
+		s->g_lp[i] = x[i];
+		s->lf[i] = x[i];
+		s->prev[i] = x[i];
+	}
+	s->have_prev = 1;
 }
 
 int sd_process(sd_state_t *s, const int16_t xyz_mg[3], uint32_t t_ms, sd_event_t *ev)
@@ -90,15 +156,11 @@ int sd_process(sd_state_t *s, const int16_t xyz_mg[3], uint32_t t_ms, sd_event_t
 	int done = 0;
 
 	if (!s->have_prev) {
-		for (int i = 0; i < 3; i++) {
-			s->g_lp[i] = x[i];
-			s->lf[i] = x[i];
-			s->prev[i] = x[i];
-		}
-		s->have_prev = 1;
+		seed_filters(s, x);
 		return 0;
 	}
 
+	s->now_ms = t_ms;
 	float hf = norm3(x[0] - s->prev[0], x[1] - s->prev[1], x[2] - s->prev[2]);
 	for (int i = 0; i < 3; i++) {
 		s->prev[i] = x[i];
@@ -114,19 +176,8 @@ int sd_process(sd_state_t *s, const int16_t xyz_mg[3], uint32_t t_ms, sd_event_t
 	s->move_hist = (s->move_hist << 1) | (m > c->move_mg ? 1u : 0u);
 
 	if (s->cand_active) {
-		uint32_t dt = t_ms - s->cand.t_ms;
-		if (dt <= PEAK_WIN_MS) {
-			uint16_t p = sat16(hf);
-			if (p > s->cand.peak_hf_mg) {
-				s->cand.peak_hf_mg = p;
-			}
-		}
-		if (dt >= c->post_start_ms && dt <= c->post_end_ms) {
-			s->post_sum += norm3(s->lf[0] - s->g_pre[0], s->lf[1] - s->g_pre[1],
-					     s->lf[2] - s->g_pre[2]);
-			s->post_n++;
-		}
-		if (dt > c->post_end_ms) {
+		accumulate(s, hf);
+		if (t_ms - s->cand.t_ms > c->post_end_ms) {
 			finalize(s, ev);
 			done = 1;
 		}
@@ -136,19 +187,7 @@ int sd_process(sd_state_t *s, const int16_t xyz_mg[3], uint32_t t_ms, sd_event_t
 
 	if (hf >= c->trig_hf_mg &&
 	    (!s->have_trig || (t_ms - s->last_trig_ms) >= c->refractory_ms)) {
-		uint32_t still = t_ms - s->last_move_ms;
-		s->cand_active = 1;
-		s->have_trig = 1;
-		s->last_trig_ms = t_ms;
-		memset(&s->cand, 0, sizeof(s->cand));
-		s->cand.t_ms = t_ms;
-		s->cand.peak_hf_mg = sat16(hf);
-		s->cand.pre_still_ms = still > 65535u ? 65535u : (uint16_t)still;
-		for (int i = 0; i < 3; i++) {
-			s->g_pre[i] = s->g_lp[i];
-		}
-		s->post_sum = 0.0f;
-		s->post_n = 0;
+		start_candidate(s, hf);
 		return 0;
 	}
 

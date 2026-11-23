@@ -3,6 +3,7 @@
 #include <string.h>
 
 #define MS_PER_S 1000u
+#define NO_VERSION 0u
 
 void wire_config_out(const store_t *s, sp_config_t *w)
 {
@@ -19,6 +20,7 @@ void wire_config_out(const store_t *s, sp_config_t *w)
 	w->refractory_ms = c->refractory_ms;
 	w->wake_mg = (uint16_t)c->wake_mg;
 	w->idle_timeout_s = (uint16_t)(c->idle_timeout_ms / MS_PER_S);
+	w->ring_min_permille = c->ring_min_permille;
 }
 
 void wire_config_in(const sp_config_t *w, store_t *s)
@@ -35,6 +37,7 @@ void wire_config_in(const sp_config_t *w, store_t *s)
 	c->refractory_ms = w->refractory_ms;
 	c->wake_mg = w->wake_mg;
 	c->idle_timeout_ms = (uint32_t)w->idle_timeout_s * MS_PER_S;
+	c->ring_min_permille = w->ring_min_permille;
 }
 
 typedef struct {
@@ -61,19 +64,31 @@ bool wire_config_valid(const sp_config_t *w)
 	       w->post_lf_min_mg <= WIRE_POST_LF_MAX_MG &&
 	       in_range(w->refractory_ms, &refractory_range) &&
 	       in_range(w->wake_mg, &wake_range) && in_range(w->idle_timeout_s, &idle_range) &&
-	       w->capture_mode <= SP_CAPTURE_ULTRA;
+	       w->capture_mode <= SP_CAPTURE_ULTRA &&
+	       w->ring_min_permille <= WIRE_RING_MAX_PERMILLE;
+}
+
+static uint8_t version_of_length(uint16_t len)
+{
+	if (len == sizeof(sp_config_t)) {
+		return PROTO_VERSION;
+	}
+	if (len == SP_CONFIG_V3_BYTES) {
+		return PROTO_VERSION_V3;
+	}
+	return len == SP_CONFIG_V2_BYTES ? PROTO_VERSION_V2 : NO_VERSION;
 }
 
 wire_cfg_result_t wire_config_parse(sp_config_t *cfg, const wire_bytes_t *in)
 {
 	sp_config_t c = *cfg;
-	bool current = in->len == sizeof(c);
+	uint8_t version = version_of_length(in->len);
 
-	if (!current && in->len != SP_CONFIG_V2_BYTES) {
+	if (version == NO_VERSION) {
 		return WIRE_CFG_BAD_LENGTH;
 	}
 	memcpy(&c, in->data, in->len);
-	if (c.version != (current ? PROTO_VERSION : PROTO_VERSION_V2)) {
+	if (c.version != version) {
 		return WIRE_CFG_BAD_VALUE;
 	}
 	c.version = PROTO_VERSION;

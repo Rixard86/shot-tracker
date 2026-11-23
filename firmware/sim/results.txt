@@ -5,28 +5,65 @@ CHG LED TESTS: PASS
 RECOVERY TESTS: PASS
 CODEC TESTS: PASS
 CAPSTORE TESTS: PASS
-info: standard captures held 158, ratio 3.31 (synthetic signal)
-info: extended captures held 38, ratio 4.29 (synthetic signal)
+info: standard captures held 156, ratio 3.30 (synthetic signal)
+info: extended captures held 74, ratio 8.28 (synthetic signal)
 CAPWRITER TESTS: PASS
-info: 5373 single write/erase faults, 0 lost the next capture (live or after a reboot)
+info: 1055 single write/erase faults, 0 lost the next capture (live or after a reboot)
 CAPWRITER FAULT TESTS: PASS
 LED SEQ TESTS: PASS
 WIRE TESTS: PASS
 EVQ TESTS: PASS
-config: trig=6000 mg, move=300 mg, pre_still>=500 ms, post_lf>=250 mg [100-600 ms], fs=480 Hz
+EVQ TIME TESTS: PASS
+EVQ END TESTS: PASS
+CHARGE TESTS: PASS
+EVLOG DELETE TESTS: PASS
+LIFECOUNT TESTS: PASS
+CAPJOIN TESTS: PASS (10 captures without slot 1, 19 with)
+CRC32 TESTS: PASS
+CODEC CHOICE TESTS: PASS
+FLASH FORMAT TESTS: PASS
+DEVREC TESTS: PASS
+CAPSTORE WRAP TESTS: PASS
+DEVSTREAM TESTS: PASS
+WAKESTAT TESTS: PASS
+ZERORATE TESTS: PASS
+CAPOFFSET TESTS: PASS
+CAPAIM TESTS: PASS
+CAPAIM STORE TESTS: PASS
+standard               format 0   4571 B  delta/slope/raw axis-blocks [138, 0, 0]  escapes 0  ok
+recording              format 0   9136 B  delta/slope/raw axis-blocks [270, 0, 0]  escapes 0  ok
+extended               format 1  12021 B  delta/slope/raw axis-blocks [384, 0, 0]  escapes 1  ok
+extended-after-wake    format 1   9776 B  delta/slope/raw axis-blocks [300, 0, 0]  escapes 1  ok
+ultra                  format 2  18044 B  delta/slope/raw axis-blocks [654, 0, 0]  escapes 1  ok
+ultra-after-wake       format 2  15218 B  delta/slope/raw axis-blocks [528, 0, 0]  escapes 1  ok
+ultra-brief            format 2  10979 B  delta/slope/raw axis-blocks [342, 0, 0]  escapes 1  ok
+stress-standard        format 0   4097 B  delta/slope/raw axis-blocks [93, 22, 23]  escapes 17  ok
+stress-ultra           format 2  19317 B  delta/slope/raw axis-blocks [501, 107, 46]  escapes 179  ok
+CAPREC DECODER: PASS
+config: trig=6000 mg, move=300 mg, pre_still>=500 ms, post_lf>=200 mg [100-600 ms], ring>=40 permille of peak, fs=480 Hz
+CAPREC VECTOR TESTS: PASS
 [nominal] sessions=36 sim_time=4.47 h shots=494  recall=99.60%  precision=100.00%  FN=2 {'rej_not_still': 1, 'missed_trigger': 1}  FP=0 {}  ACTIVE=81.1% of time  wakes=98
   feature ranges over triggered candidates (5th/50th/95th pct):
-    peak_hf_mg    shots [10366 30482 57245]   non-shots [ 6393  9856 22120]
-    pre_still_ms  shots [ 969 4162 7447]   non-shots [   20    20 13607]
-    post_lf_mg    shots [ 396  720 1104]   non-shots [  5 366 828]
-[hard-cases] sessions=36 sim_time=4.38 h shots=448  recall=99.11%  precision=99.78%  FN=4 {'missed_trigger': 3, 'rej_not_still': 1}  FP=1 {'grab': 1}  ACTIVE=81.7% of time  wakes=100
+    peak_hf_mg    shots [10682 30357 57840]   non-shots [ 6355  9774 22208]
+    pre_still_ms  shots [ 969 4163 7447]   non-shots [   60    60 14848]
+    post_lf_mg    shots [ 408  744 1180]   non-shots [  5 364 855]
+    ring_permille shots [141 267 405]   non-shots [  4  14 145]
+[hard-cases] sessions=36 sim_time=4.38 h shots=448  recall=99.11%  precision=100.00%  FN=4 {'missed_trigger': 3, 'rej_not_still': 1}  FP=0 {}  ACTIVE=81.7% of time  wakes=100
   feature ranges over triggered candidates (5th/50th/95th pct):
-    peak_hf_mg    shots [11165 26965 56825]   non-shots [ 6255 10389 26053]
-    pre_still_ms  shots [ 973 4420 7473]   non-shots [   20    22 13699]
-    post_lf_mg    shots [ 390  713 1158]   non-shots [  5 314 804]
-[weak-bow (info)] sessions=18 sim_time=2.12 h shots=223  recall=81.17%  precision=100.00%  FN=42 {'rej_no_follow': 18, 'missed_trigger': 22, 'rej_not_still': 2}  FP=0 {}  ACTIVE=79.2% of time  wakes=45
+    peak_hf_mg    shots [11297 26627 57061]   non-shots [ 6280 10070 26156]
+    pre_still_ms  shots [ 973 4420 7473]   non-shots [   60    66 14154]
+    post_lf_mg    shots [ 402  730 1222]   non-shots [  5 310 796]
+    ring_permille shots [156 260 387]   non-shots [  3  14 128]
+[weak-bow (info)] sessions=18 sim_time=2.12 h shots=223  recall=88.34%  precision=100.00%  FN=26 {'missed_trigger': 21, 'rej_no_follow': 3, 'rej_not_still': 2}  FP=0 {}  ACTIVE=79.3% of time  wakes=45
   feature ranges over triggered candidates (5th/50th/95th pct):
-    peak_hf_mg    shots [ 6819 11037 17547]   non-shots [ 6262 10264 17906]
-    pre_still_ms  shots [1101 4351 7518]   non-shots [   20    20 11184]
-    post_lf_mg    shots [237 344 561]   non-shots [  4 318 667]
+    peak_hf_mg    shots [ 6815 11056 17417]   non-shots [ 6232 10051 17108]
+    pre_still_ms  shots [1102 4385 7518]   non-shots [   60    60 11458]
+    post_lf_mg    shots [245 354 565]   non-shots [  4 319 702]
+    ring_permille shots [115 250 381]   non-shots [  4  17 119]
+[knock-over (info)] sessions=18 sim_time=2.13 h shots=217  recall=100.00%  precision=100.00%  FN=0 {}  FP=0 {}  ACTIVE=82.7% of time  wakes=59
+  feature ranges over triggered candidates (5th/50th/95th pct):
+    peak_hf_mg    shots [11322 29195 63380]   non-shots [ 6190 10482 47200]
+    pre_still_ms  shots [ 948 4358 7470]   non-shots [   60    69 14507]
+    post_lf_mg    shots [ 421  749 1148]   non-shots [ 12 366 949]
+    ring_permille shots [148 257 384]   non-shots [  3  15 131]
 RESULT: PASS

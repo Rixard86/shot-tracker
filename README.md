@@ -108,7 +108,7 @@ order/                      order packages for JLC (PCB + assembly, plate, cap),
 | Hard cases | 479 | 99.6 % | 99.4 % | + taps while aiming, hard grabs off the stand (2 grabs, 1 stand knock) |
 | Weak bow (info) | 253 | 80.2 % | 99.5 % | 4–12 g shock, 5–30° rotation: **thresholds must be tuned on real shots** |
 
-The detector needs three things together: a high-frequency shock (6 g sample-to-sample), ≥ 0.5 s of stillness before it (aiming), and ≥ 250 mg of low-frequency bow motion 0.1–0.6 s after it (bow jump into the sling). See `firmware/src/shot_detect.h`. It uses the accelerometer only; the gyroscope feeds the capture.
+The detector needs four things together: a high-frequency shock (6 g sample-to-sample), ≥ 0.5 s of stillness before it (aiming), ≥ 200 mg (250 before 0.3.22) of low-frequency bow motion 0.1–0.6 s after it (bow jump into the sling), and, from 0.3.22, the bow ringing on after the shock: the mean sample-to-sample jump 30–150 ms after it must reach 4 % of the peak (a drop or set-down goes quiet within about 30 ms). See `firmware/src/shot_detect.h`. It uses the accelerometer only; the gyroscope feeds the capture.
 
 ## Battery life (estimate, verify via JP1)
 

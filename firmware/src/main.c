@@ -67,6 +67,7 @@ LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 #define SENSOR_STALL_MS 5000
 #define NO_SENSOR_POLL_MS 1000
 #define SLOW_IDLE_AFTER_MS (20u * 60u * 1000u)
+#define MG_PER_G 1000u
 
 static K_SEM_DEFINE(wake_sem, 0, 1);
 static atomic_t accel_pending;
@@ -87,6 +88,7 @@ static bool captures_ok;
 static sd_state_t det;
 static devrec_t rec;
 static devstream_t live_stream;
+static uint32_t reject_capture_min_mg;
 
 static wire_clock_t wall_clock;
 
@@ -122,7 +124,8 @@ static void publish_status(void)
 		.flags = (p->vbus ? SP_ST_VBUS : 0) | (p->charging ? SP_ST_CHARGING : 0) |
 			 (p->chg_inhibit ? SP_ST_CHG_INHIBIT : 0) |
 			 (det.mode == SD_MODE_ACTIVE ? SP_ST_ACTIVE : 0) |
-			 (wall_clock.set ? SP_ST_TIME_SET : 0) | (supply_reg0_ldo() ? SP_ST_REG0_LDO : 0),
+			 (wall_clock.set ? SP_ST_TIME_SET : 0) | (supply_reg0_ldo() ? SP_ST_REG0_LDO : 0) |
+			 (reject_capture_min_mg > 0u ? SP_ST_REJECT_CAPTURE : 0),
 		.fw_major = FW_MAJOR,
 		.fw_minor = FW_MINOR,
 	};
@@ -246,6 +249,13 @@ static void request_capture(const sd_event_t *e, uint32_t seq)
 	}
 }
 
+static void capture_reject(const sd_event_t *e, uint32_t seq)
+{
+	if (reject_capture_min_mg > 0u && e->peak_hf_mg >= reject_capture_min_mg) {
+		request_capture(e, seq);
+	}
+}
+
 static void handle_detection(const sd_event_t *e, int64_t uptime_ms)
 {
 	sp_event_t w = {
@@ -263,16 +273,17 @@ static void handle_detection(const sd_event_t *e, int64_t uptime_ms)
 		st.total++;
 		store_save_counts(&st);
 		lifetime_shot();
-		publish_count();
 		request_capture(e, w.seq);
 		wakestat_shot(&wakes);
 		led_play(LED_SHOT);
-		LOG_INF("SHOT #%u pk=%u still=%u lf=%u", st.total, e->peak_hf_mg,
-			e->pre_still_ms, e->post_lf_mg);
+		LOG_INF("SHOT #%u pk=%u still=%u lf=%u ring=%u", st.total, e->peak_hf_mg,
+			e->pre_still_ms, e->post_lf_mg, e->ring_mg);
 	} else {
-		LOG_INF("reject r=%u pk=%u still=%u lf=%u", e->reason, e->peak_hf_mg,
-			e->pre_still_ms, e->post_lf_mg);
+		capture_reject(e, w.seq);
+		LOG_INF("reject r=%u pk=%u still=%u lf=%u ring=%u", e->reason, e->peak_hf_mg,
+			e->pre_still_ms, e->post_lf_mg, e->ring_mg);
 	}
+	publish_count();
 }
 
 static uint32_t sample_ms(uint32_t index)
@@ -344,6 +355,7 @@ static void issue_recording(void)
 	req.gyro_offset = zr_offset_at(&zero_rate, sample_ms(sample_idx));
 
 	event_tx_record(&w);
+	publish_count();
 	if (captures_ok) {
 		capw_request(&capw, &req);
 	}
@@ -437,6 +449,9 @@ static void handle_dev_ctrl(const struct ctrl_msg *m)
 		start_recording(m->data[1]);
 	} else if (m->data[0] == SP_CTRL_STREAM) {
 		start_live_stream(m->data[1]);
+	} else if (m->data[0] == SP_CTRL_REJECT_CAPTURE) {
+		reject_capture_min_mg = m->data[1] * MG_PER_G;
+		publish_status();
 	}
 }
 

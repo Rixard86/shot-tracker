@@ -4,6 +4,7 @@
 #include <zephyr/drivers/hwinfo.h>
 #include <zephyr/fatal.h>
 #include <zephyr/kernel.h>
+#include <zephyr/linker/section_tags.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/logging/log_ctrl.h>
 #include <zephyr/sys/reboot.h>
@@ -19,12 +20,19 @@ LOG_MODULE_REGISTER(diag, LOG_LEVEL_INF);
 #define KNOWN_CAUSES (RESET_CPU_LOCKUP | RESET_WATCHDOG | RESET_PIN | RESET_LOW_POWER_WAKE | \
 		      RESET_POR | RESET_SOFTWARE)
 
+typedef struct {
+	uint32_t pc;
+	uint32_t lr;
+} crash_site_t;
+
 static uint8_t last_cause = SP_RESET_POWER_ON;
 static uint8_t last_reason = SP_CRASH_NONE;
+static __noinit crash_site_t crash_site;
+static crash_site_t last_site;
 
 void k_sys_fatal_error_handler(unsigned int reason, const struct arch_esf *esf)
 {
-	ARG_UNUSED(esf);
+	crash_site = esf ? (crash_site_t){esf->basic.pc, esf->basic.lr} : (crash_site_t){0};
 	LOG_PANIC();
 	nrf_power_gpregret_set(NRF_POWER, CRASH_MARK_REG, crash_mark_encode(reason));
 	sys_reboot(SYS_REBOOT_COLD);
@@ -49,6 +57,7 @@ void diag_boot(void)
 	};
 	last_cause = reset_classify(&flags);
 	last_reason = last_cause == SP_RESET_CRASH ? crash_mark_reason(mark) : SP_CRASH_NONE;
+	last_site = last_cause == SP_RESET_CRASH ? crash_site : (crash_site_t){0};
 	if (reset_is_crash(last_cause)) {
 		LOG_WRN("restarted after a crash: cause %u reason %u", last_cause, last_reason);
 	}
@@ -90,6 +99,8 @@ void diag_publish(const store_t *st, const wakestat_t *wakes)
 		.motion_wakes = wakes->motion_wakes,
 		.wakes_without_shot = wakes->wakes_without_shot,
 		.uptime_s = (uint32_t)(k_uptime_get() / MSEC_PER_SEC),
+		.crash_pc = last_site.pc,
+		.crash_lr = last_site.lr,
 	};
 
 	ble_update_diag(&d);

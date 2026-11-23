@@ -15,6 +15,9 @@ bool devcmd_valid(const devcmd_req_t *req)
 		return req->len >= DEVCMD_BYTES && req->data[DEVCMD_VALUE] >= SP_RECORD_MIN_S &&
 		       req->data[DEVCMD_VALUE] <= SP_RECORD_MAX_S;
 	}
+	if (req->data[0] == SP_CTRL_REJECT_CAPTURE) {
+		return req->len >= DEVCMD_BYTES && req->data[DEVCMD_VALUE] <= SP_REJECT_CAPTURE_MAX_G;
+	}
 	return true;
 }
 
